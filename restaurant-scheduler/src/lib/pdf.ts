@@ -1,9 +1,8 @@
-import { addDays, fromKey, pad, toMin, weekdayIndex } from './date'
+import { addDays, dayLong, fromKey, pad, toMin, weekdayIndex } from './date'
+import { intlLocale, tr } from '../i18n/core'
 import { isActive, leaveOn } from './validation'
 import type { Branch, Dept, Manager, State } from './types'
 import { DEPTS } from './types'
-
-const DAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 
 const ddmm = (k: string) => `${k.slice(8, 10)}.${k.slice(5, 7)}`
 const ddmmyyyy = (k: string) => `${ddmm(k)}.${k.slice(0, 4)}`
@@ -29,7 +28,7 @@ export function buildRota(s: State, branchId: string, weekStart: string, depts: 
   let hasDraft = false
   const rows = team.map((e) => {
     const cells: Cell[] = days.map((d) => {
-      if (leaveOn(s, e.id, d)) return { text: 'Leave', kind: 'leave', draft: false }
+      if (leaveOn(s, e.id, d)) return { text: tr('pdf.leave'), kind: 'leave', draft: false }
       const shifts = s.assignments
         .filter((a) => a.employeeId === e.id && a.date === d && isActive(a))
         .map((a) => ({ a, t: s.templates.find((t) => t.id === a.templateId)! }))
@@ -39,11 +38,11 @@ export function buildRota(s: State, branchId: string, weekStart: string, depts: 
         const draft = shifts.some((x) => x.a.state === 'added')
         hasDraft ||= draft
         const text = shifts
-          .map((x) => startLabel(x.t.start) + (x.a.dept !== e.dept ? ` ${x.a.dept}` : ''))
+          .map((x) => startLabel(x.t.start) + (x.a.dept !== e.dept ? ` ${tr(`dept.${x.a.dept}`)}` : ''))
           .join(' / ')
         return { text: draft ? text + '*' : text, kind: 'shift', draft }
       }
-      if (!e.availability[weekdayIndex(d)]) return { text: 'Off', kind: 'off', draft: false }
+      if (!e.availability[weekdayIndex(d)]) return { text: tr('pdf.off'), kind: 'off', draft: false }
       return { text: '', kind: 'empty', draft: false }
     })
     return { e, cells }
@@ -73,30 +72,32 @@ export async function downloadRotaPdf(opts: { s: State; branch: Branch; me: Mana
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(10.5)
   doc.setTextColor(...ink)
-  const scope = depts.length === DEPTS.length ? 'All departments' : depts.join(', ')
-  doc.text(`Staff rota · Week ${week} · ${ddmm(weekStart)}.–${ddmmyyyy(end)} · ${scope}`, M, 22.5)
+  const scope = depts.length === DEPTS.length ? tr('pdf.allDepts') : depts.map((d) => tr(`dept.${d}`)).join(', ')
+  doc.text([tr('pdf.title'), tr('pdf.week', { n: week }), `${ddmm(weekStart)}.–${ddmmyyyy(end)}`, scope].join(' · '), M, 22.5)
   doc.setFontSize(8.5)
   doc.setTextColor(...muted)
   doc.text(branch.address, M, 27)
   if (hasDraft) {
     doc.setTextColor(140, 83, 0)
-    doc.text('Draft — includes unpublished changes (*)', W - M, 16, { align: 'right' })
+    doc.text(tr('pdf.draft'), W - M, 16, { align: 'right' })
   }
 
   const DEPT_ROW = '__dept__'
   const body: string[][] = []
   const deptRows = new Set<number>()
+  const kinds = new Map<number, Cell['kind'][]>()
   const NOTE_ROW = notes.some(Boolean) ? 0 : -1
-  if (NOTE_ROW === 0) body.push(['Notes', ...notes])
+  if (NOTE_ROW === 0) body.push([tr('pdf.notes'), ...notes])
   let lastDept: Dept | null = null
   const first = (n: string) => n.split(' ')[0]
   const label = (n: string) => (rows.filter((x) => first(x.e.name) === first(n)).length > 1 ? `${first(n)} ${n.split(' ')[1]?.[0] ?? ''}.` : first(n))
   for (const r of rows) {
     if (depts.length > 1 && r.e.dept !== lastDept) {
       deptRows.add(body.length)
-      body.push([DEPT_ROW + r.e.dept, '', '', '', '', '', '', ''])
+      body.push([DEPT_ROW + tr(`dept.${r.e.dept}`), '', '', '', '', '', '', ''])
       lastDept = r.e.dept
     }
+    kinds.set(body.length, r.cells.map((c) => c.kind))
     body.push([label(r.e.name), ...r.cells.map((c) => c.text)])
   }
   // Spare rows for handwritten additions, only while the table still fits one page.
@@ -107,7 +108,7 @@ export async function downloadRotaPdf(opts: { s: State; branch: Branch; me: Mana
     startY: 31,
     margin: { left: M, right: M, bottom: 13 },
     theme: 'grid',
-    head: [[`Date\n${ddmm(weekStart)}–${ddmm(end)}`, ...days.map((d, i) => `${ddmm(d)}\n${DAY_NAMES[i]}`)]],
+    head: [[`${tr('pdf.date')}\n${ddmm(weekStart)}–${ddmm(end)}`, ...days.map((d, i) => `${ddmm(d)}\n${dayLong(i)}`)]],
     body,
     styles: { font: 'helvetica', fontSize: 9, textColor: ink, lineColor: [60, 60, 60], lineWidth: 0.25, cellPadding: { top: 1.1, bottom: 1.1, left: 2.5, right: 2.5 }, halign: 'center', valign: 'middle', minCellHeight: 6.2 },
     headStyles: { fillColor: [255, 255, 255], textColor: ink, fontStyle: 'bold', fontSize: 10, lineWidth: 0.35 },
@@ -137,8 +138,9 @@ export async function downloadRotaPdf(opts: { s: State; branch: Branch; me: Mana
         }
         return
       }
-      if (raw === 'Off') h.cell.styles.textColor = muted
-      if (raw === 'Leave') {
+      const kind = h.column.index > 0 ? kinds.get(h.row.index)?.[h.column.index - 1] : undefined
+      if (kind === 'off') h.cell.styles.textColor = muted
+      if (kind === 'leave') {
         h.cell.styles.fillColor = [246, 238, 236]
         h.cell.styles.textColor = [84, 48, 44]
       }
@@ -148,12 +150,12 @@ export async function downloadRotaPdf(opts: { s: State; branch: Branch; me: Mana
       const H = doc.internal.pageSize.getHeight()
       doc.setFontSize(7.5)
       doc.setTextColor(...muted)
-      const stamp = new Date().toLocaleString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
-      doc.text(`Numbers = start time (hour) · Off = day off · Leave = approved leave · * = not yet published`, M, H - 8)
-      doc.text(`Created ${stamp}${me ? ` by ${me.name}` : ''} · Page ${doc.getNumberOfPages()}`, W - M, H - 8, { align: 'right' })
+      const stamp = new Date().toLocaleString(intlLocale(), { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+      doc.text(tr('pdf.legend'), M, H - 8)
+      doc.text(tr('pdf.created', { stamp, name: me?.name ?? '—', page: doc.getNumberOfPages() }), W - M, H - 8, { align: 'right' })
     },
   })
 
   const slug = branch.name.replace(/[^\p{L}\p{N}]+/gu, '-')
-  doc.save(`Rota_${slug}_Week${week}_${weekStart}.pdf`)
+  doc.save(`${tr('pdf.file', { branch: slug, n: week, date: weekStart })}.pdf`)
 }

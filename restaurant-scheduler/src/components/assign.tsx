@@ -5,6 +5,8 @@ import { fmtDay, startOfWeek } from '../lib/date'
 import { checkAssignment, weekHours } from '../lib/validation'
 import type { Conflict, ConflictKind } from '../lib/validation'
 import type { Dept, Employee } from '../lib/types'
+import { useT } from '../i18n'
+import { conflictDetail, conflictTitle, deptName } from '../i18n/format'
 import { Avatar, Button, cx, deptDot, Modal } from './ui'
 
 const toneToPref = { morning: 'Mornings', day: 'Days', evening: 'Evenings', night: 'Nights' } as const
@@ -17,6 +19,7 @@ type Row = { e: Employee; conflicts: Conflict[]; hours: number; prefers: boolean
 
 export function AssignPanel({ slot, onPick }: { slot: Slot; onPick: (e: Employee, conflicts: Conflict[]) => void }) {
   const { s, branch } = useStore()
+  const { t } = useT()
   const [q, setQ] = useState('')
   const [showOther, setShowOther] = useState(false)
   const tpl = s.templates.find((t) => t.id === slot.templateId)!
@@ -51,24 +54,24 @@ export function AssignPanel({ slot, onPick }: { slot: Slot; onPick: (e: Employee
       <div className="border-b border-line px-4 pb-3 pt-4">
         <div className="flex items-center gap-2 text-sm font-semibold">
           <span className={cx('h-2 w-2 rounded-full', deptDot[slot.dept])} />
-          {slot.dept} · {tpl.name}
+          {deptName(t, slot.dept)} · {tpl.name}
         </div>
         <div className="mt-0.5 text-[13px] text-muted">
           {fmtDay(slot.date)}, {tpl.start}–{tpl.end}
         </div>
         <label className="relative mt-3 block">
-          <span className="sr-only">Search team</span>
+          <span className="sr-only">{t('assign.searchTeam')}</span>
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
-          <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search by name or role" className="input h-9 pl-9" />
+          <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('assign.search')} className="input h-9 pl-9" />
         </label>
       </div>
       <div className="flex-1 overflow-y-auto p-2">
-        <Group title={`Available (${available.length})`} rows={available} onPick={onPick} empty={q ? 'No matches.' : `Nobody in ${slot.dept} is free for this shift.`} />
-        {blocked.length > 0 && <Group title={`Has conflicts (${blocked.length})`} rows={blocked} onPick={onPick} />}
+        <Group title={t('assign.available', { count: available.length })} rows={available} onPick={onPick} empty={q ? t('assign.noMatches') : t('assign.nobodyFree', { dept: deptName(t, slot.dept) })} />
+        {blocked.length > 0 && <Group title={t('assign.conflicts', { count: blocked.length })} rows={blocked} onPick={onPick} />}
         {other.length > 0 && (
           <div className="mt-1 border-t border-line pt-1">
             <button onClick={() => setShowOther((v) => !v)} className="flex w-full items-center justify-between rounded-lg px-2 py-2 text-[13px] font-medium text-muted hover:bg-paper">
-              {showOther ? 'Hide' : 'Show'} {other.length} from other departments
+              {t(showOther ? 'assign.hideOther' : 'assign.showOther', { count: other.length })}
               <ChevronDown className={cx('h-4 w-4 transition-transform', showOther && 'rotate-180')} />
             </button>
             {showOther && <Group rows={other} onPick={onPick} />}
@@ -80,6 +83,7 @@ export function AssignPanel({ slot, onPick }: { slot: Slot; onPick: (e: Employee
 }
 
 function Group({ title, rows, onPick, empty }: { title?: string; rows: Row[]; onPick: (e: Employee, c: Conflict[]) => void; empty?: string }) {
+  const { t } = useT()
   return (
     <div className="mb-1">
       {title && <div className="px-2 pb-1 pt-2 text-xs font-medium text-muted">{title}</div>}
@@ -92,18 +96,18 @@ function Group({ title, rows, onPick, empty }: { title?: string; rows: Row[]; on
               <span className="min-w-0 flex-1">
                 <span className="flex items-center gap-2">
                   <span className="truncate text-sm font-medium">{r.e.name}</span>
-                  {r.e.status === 'invited' && <span className="text-[11px] text-muted">invite pending</span>}
+                  {r.e.status === 'invited' && <span className="text-[11px] text-muted">{t('assign.invitePending')}</span>}
                 </span>
                 <span className="block text-xs text-muted">
                   {r.e.position}
-                  {r.prefers && <span className="text-forest"> · prefers this shift</span>}
+                  {r.prefers && <span className="text-forest"> · {t('assign.prefers')}</span>}
                 </span>
-                {r.conflicts.map((c) => {
+                {r.conflicts.map((c, i) => {
                   const Icon = conflictIcon[c.kind]
                   return (
-                    <span key={c.kind + c.detail} className={cx('mt-1 flex items-start gap-1.5 text-xs', c.kind === 'overlap' ? 'text-danger' : 'text-warn')}>
+                    <span key={i} className={cx('mt-1 flex items-start gap-1.5 text-xs', c.kind === 'overlap' ? 'text-danger' : 'text-warn')}>
                       <Icon className="mt-px h-3.5 w-3.5 shrink-0" />
-                      {c.detail}
+                      {conflictDetail(t, c)}
                     </span>
                   )
                 })}
@@ -118,9 +122,10 @@ function Group({ title, rows, onPick, empty }: { title?: string; rows: Row[]; on
 }
 
 export function Hours({ used, max }: { used: number; max: number }) {
+  const { t } = useT()
   const pct = Math.min(1, used / max)
   return (
-    <span className="flex shrink-0 flex-col items-end gap-1 pt-0.5" title={`${used} of ${max} hours this week`}>
+    <span className="flex shrink-0 flex-col items-end gap-1 pt-0.5" title={t('assign.hoursTitle', { used, max })}>
       <span className="text-xs text-muted">
         <span className="font-medium text-ink">{used}</span>/{max}h
       </span>
@@ -144,6 +149,7 @@ export function ConflictDialog({
   onConfirm: () => void
   onClose: () => void
 }) {
+  const { t } = useT()
   const hardBlock = conflicts.some((c) => c.kind === 'overlap')
   const first = employee.name.split(' ')[0]
   return (
@@ -152,32 +158,32 @@ export function ConflictDialog({
       title={
         <span className="flex items-center gap-2">
           <AlertTriangle className={cx('h-5 w-5', hardBlock ? 'text-danger' : 'text-warn')} />
-          {hardBlock ? `${first} can’t take this shift` : `Check before assigning ${first}`}
+          {t(hardBlock ? 'assign.cantTitle' : 'assign.checkTitle', { name: first })}
         </span>
       }
       description={where}
       footer={
         <>
           <Button onClick={onClose} variant={hardBlock ? 'primary' : 'secondary'}>
-            Choose someone else
+            {t('assign.chooseOther')}
           </Button>
           {!hardBlock && (
             <Button variant="danger" onClick={onConfirm}>
-              Assign anyway
+              {t('assign.assignAnyway')}
             </Button>
           )}
         </>
       }
     >
       <ul className="space-y-2">
-        {conflicts.map((c) => {
+        {conflicts.map((c, i) => {
           const Icon = conflictIcon[c.kind]
           return (
-            <li key={c.kind + c.detail} className={cx('flex gap-3 rounded-xl p-3', c.kind === 'overlap' ? 'bg-danger-50' : 'bg-warn-50')}>
+            <li key={i} className={cx('flex gap-3 rounded-xl p-3', c.kind === 'overlap' ? 'bg-danger-50' : 'bg-warn-50')}>
               <Icon className={cx('mt-0.5 h-4 w-4 shrink-0', c.kind === 'overlap' ? 'text-danger' : 'text-warn')} />
               <div>
-                <div className="text-sm font-medium">{c.title}</div>
-                <div className="text-[13px] text-ink/75">{c.detail}</div>
+                <div className="text-sm font-medium">{conflictTitle(t, c)}</div>
+                <div className="text-[13px] text-ink/75">{conflictDetail(t, c)}</div>
               </div>
             </li>
           )
@@ -185,9 +191,7 @@ export function ConflictDialog({
       </ul>
       <p className="mt-4 flex items-start gap-2 text-[13px] text-muted">
         <Clock className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-        {hardBlock
-          ? 'Overlapping shifts can’t be overridden. Remove the other shift first, or pick someone else.'
-          : 'If you assign anyway, the shift is flagged on the schedule and the override is recorded in History.'}
+        {t(hardBlock ? 'assign.hardNote' : 'assign.softNote')}
       </p>
     </Modal>
   )

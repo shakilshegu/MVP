@@ -2,10 +2,12 @@ import { useState } from 'react'
 import { StickyNote } from 'lucide-react'
 import { useStore } from '../lib/store'
 import { fmtLong } from '../lib/date'
+import { useT } from '../i18n'
 import { Button, cx, Popover } from './ui'
 
 /** A day's note under the schedule header, or a quiet "+ Note" on hover. */
 export function DayNote({ note, editable, onEdit }: { note?: string; editable: boolean; onEdit: (el: HTMLElement) => void }) {
+  const { t } = useT()
   if (note) {
     return (
       <button
@@ -25,18 +27,19 @@ export function DayNote({ note, editable, onEdit }: { note?: string; editable: b
       onClick={(e) => onEdit(e.currentTarget)}
       className="mt-1.5 flex h-6 items-center gap-1 rounded-md px-1.5 text-xs text-muted opacity-0 transition-opacity hover:bg-paper hover:text-ink focus-visible:opacity-100 group-hover/day:opacity-100"
     >
-      <StickyNote className="h-3 w-3" aria-hidden /> Add note
+      <StickyNote className="h-3 w-3" aria-hidden /> {t('notes.add')}
     </button>
   )
 }
 
 export function NoteEditor({ date, rect, onClose }: { date: string; rect: DOMRect; onClose: () => void }) {
   const { s, a, branch, toast } = useStore()
+  const { t } = useT()
   const current = s.dayNotes[`${branch!.id}|${date}`] ?? ''
   const [text, setText] = useState(current)
   const save = (value: string) => {
     a.setDayNote(date, value)
-    toast(value.trim() ? 'Note saved' : 'Note removed')
+    toast(t(value.trim() ? 'notes.saved' : 'notes.removed'))
     onClose()
   }
   return (
@@ -49,9 +52,9 @@ export function NoteEditor({ date, rect, onClose }: { date: string; rect: DOMRec
         }}
       >
         <label htmlFor="day-note" className="text-sm font-semibold">
-          Note for {fmtLong(date)}
+          {t('notes.title', { date: fmtLong(date) })}
         </label>
-        <p className="mt-0.5 text-xs text-muted">Shown on the schedule and the PDF.</p>
+        <p className="mt-0.5 text-xs text-muted">{t('notes.hint')}</p>
         <textarea
           id="day-note"
           autoFocus
@@ -65,21 +68,21 @@ export function NoteEditor({ date, rect, onClose }: { date: string; rect: DOMRec
               save(text)
             }
           }}
-          placeholder="e.g. Private party, 40 guests"
+          placeholder={t('notes.placeholder')}
           className="input mt-3 h-auto resize-none py-2"
         />
         <div className={cx('mt-3 flex items-center gap-2', current ? 'justify-between' : 'justify-end')}>
           {current && (
             <Button size="sm" variant="ghost" className="text-danger hover:bg-danger-50 hover:text-danger" onClick={() => save('')}>
-              Remove
+              {t('common.remove')}
             </Button>
           )}
           <div className="flex gap-2">
             <Button size="sm" onClick={onClose}>
-              Cancel
+              {t('common.cancel')}
             </Button>
             <Button size="sm" variant="primary" type="submit">
-              Save note
+              {t('notes.save')}
             </Button>
           </div>
         </div>

@@ -1,4 +1,5 @@
 import { useStore } from './lib/store'
+import { useT } from './i18n'
 import { useRoute } from './lib/hooks'
 import Shell, { NoAccess } from './components/Shell'
 import { Toaster } from './components/ui'
@@ -12,6 +13,7 @@ import { History, Permissions, Settings } from './screens/Admin'
 
 function Screen() {
   const { s, branch } = useStore()
+  const { t } = useT()
   const { path, parts, query } = useRoute()
 
   if (!s.session.userId) return <Login />
@@ -60,7 +62,7 @@ function Screen() {
       page = <Dashboard />
       break
     default:
-      page = <NoAccess what="this page" />
+      page = <NoAccess what={t('shell.thisPage')} />
   }
   return <Shell path={path}>{page}</Shell>
 }

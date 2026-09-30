@@ -2,37 +2,38 @@ import { useEffect, useState } from 'react'
 import { Cloud, CloudDrizzle, CloudFog, CloudLightning, CloudRain, CloudSnow, CloudSun, Sun } from 'lucide-react'
 import { addDays, todayKey } from './date'
 
-export type City = { name: string; lat: number; lon: number }
+/** `name` is the stored key; `de` is the German spelling where it differs. */
+export type City = { name: string; de?: string; lat: number; lon: number }
 
 export const GERMAN_CITIES: City[] = [
   { name: 'Berlin', lat: 52.52, lon: 13.405 },
   { name: 'Hamburg', lat: 53.551, lon: 9.994 },
-  { name: 'Munich', lat: 48.137, lon: 11.575 },
-  { name: 'Cologne', lat: 50.938, lon: 6.96 },
+  { name: 'Munich', de: 'München', lat: 48.137, lon: 11.575 },
+  { name: 'Cologne', de: 'Köln', lat: 50.938, lon: 6.96 },
   { name: 'Frankfurt', lat: 50.11, lon: 8.682 },
   { name: 'Stuttgart', lat: 48.776, lon: 9.183 },
   { name: 'Düsseldorf', lat: 51.227, lon: 6.774 },
   { name: 'Leipzig', lat: 51.34, lon: 12.375 },
   { name: 'Dresden', lat: 51.05, lon: 13.738 },
-  { name: 'Hanover', lat: 52.375, lon: 9.732 },
-  { name: 'Nuremberg', lat: 49.452, lon: 11.077 },
+  { name: 'Hanover', de: 'Hannover', lat: 52.375, lon: 9.732 },
+  { name: 'Nuremberg', de: 'Nürnberg', lat: 49.452, lon: 11.077 },
   { name: 'Bremen', lat: 53.079, lon: 8.802 },
 ]
 
 export type DayWeather = { code: number; max: number; min: number; rain: number }
 
-type Kind = { label: string; Icon: typeof Sun; tint: string }
+type Kind = { key: 'clear' | 'partlyCloudy' | 'overcast' | 'fog' | 'drizzle' | 'rain' | 'snow' | 'thunder'; Icon: typeof Sun; tint: string }
 
 /** WMO weather interpretation codes, as returned by Open-Meteo. */
 export function weatherKind(code: number): Kind {
-  if (code === 0) return { label: 'Clear', Icon: Sun, tint: 'text-bar' }
-  if (code <= 2) return { label: 'Partly cloudy', Icon: CloudSun, tint: 'text-bar' }
-  if (code === 3) return { label: 'Overcast', Icon: Cloud, tint: 'text-muted' }
-  if (code <= 48) return { label: 'Fog', Icon: CloudFog, tint: 'text-muted' }
-  if (code <= 57) return { label: 'Drizzle', Icon: CloudDrizzle, tint: 'text-rain' }
-  if (code <= 67 || (code >= 80 && code <= 82)) return { label: 'Rain', Icon: CloudRain, tint: 'text-rain' }
-  if (code <= 77 || code === 85 || code === 86) return { label: 'Snow', Icon: CloudSnow, tint: 'text-night-ink' }
-  return { label: 'Thunderstorm', Icon: CloudLightning, tint: 'text-bark' }
+  if (code === 0) return { key: 'clear', Icon: Sun, tint: 'text-bar' }
+  if (code <= 2) return { key: 'partlyCloudy', Icon: CloudSun, tint: 'text-bar' }
+  if (code === 3) return { key: 'overcast', Icon: Cloud, tint: 'text-muted' }
+  if (code <= 48) return { key: 'fog', Icon: CloudFog, tint: 'text-muted' }
+  if (code <= 57) return { key: 'drizzle', Icon: CloudDrizzle, tint: 'text-rain' }
+  if (code <= 67 || (code >= 80 && code <= 82)) return { key: 'rain', Icon: CloudRain, tint: 'text-rain' }
+  if (code <= 77 || code === 85 || code === 86) return { key: 'snow', Icon: CloudSnow, tint: 'text-night-ink' }
+  return { key: 'thunder', Icon: CloudLightning, tint: 'text-bark' }
 }
 
 // Open-Meteo serves about 3 months back and 16 days ahead.
@@ -104,3 +105,8 @@ export function useWeather(city: City | undefined, days: string[]) {
 }
 
 export const cityOf = (name: string | undefined) => GERMAN_CITIES.find((c) => c.name === name)
+
+export const cityLabel = (name: string, locale: string) => {
+  const c = cityOf(name)
+  return (locale === 'de' && c?.de) || name
+}

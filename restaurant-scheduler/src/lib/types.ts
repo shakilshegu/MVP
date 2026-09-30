@@ -37,6 +37,8 @@ export type ShiftTemplate = {
   perDay?: Record<Dept, number[]>
 }
 
+export type ConflictKind = 'unavailable' | 'overlap' | 'maxHours' | 'elsewhere' | 'rest' | 'dayMax'
+
 export type Task = { id: string; text: string; done: boolean }
 
 export type Assignment = {
@@ -47,7 +49,7 @@ export type Assignment = {
   templateId: string
   dept: Dept
   state: 'published' | 'added' | 'removed'
-  overridden?: string[]
+  overridden?: ConflictKind[]
   tasks?: Task[]
   /** Tasks as the team last saw them; differences are unpublished changes. */
   publishedTasks?: Task[]
@@ -67,20 +69,20 @@ export type Leave = {
 }
 
 export type HistoryAction =
-  | 'Assigned'
-  | 'Removed'
-  | 'Tasks updated'
-  | 'Moved'
-  | 'Published'
-  | 'Shift edited'
-  | 'Shift created'
-  | 'Employee added'
-  | 'Employee edited'
-  | 'Availability'
-  | 'Leave approved'
-  | 'Leave declined'
-  | 'Permissions'
-  | 'Branch'
+  | 'assigned'
+  | 'removed'
+  | 'tasksUpdated'
+  | 'moved'
+  | 'published'
+  | 'shiftEdited'
+  | 'shiftCreated'
+  | 'employeeAdded'
+  | 'employeeEdited'
+  | 'availability'
+  | 'leaveApproved'
+  | 'leaveDeclined'
+  | 'permissions'
+  | 'branch'
 
 export type HistoryEntry = {
   id: string
@@ -88,21 +90,21 @@ export type HistoryEntry = {
   at: string
   by: string
   action: HistoryAction
+  /** Names and details are recorded in the language used when the change was made, like any audit log. */
   subject: string
   from?: string
   to?: string
+  /** For 'published': counts rendered in the viewer's language. */
+  count?: number
+  people?: number
 }
 
-export type Notice = { id: string; at: string; title: string; body: string; read: boolean; href?: string }
+export type NoticeKind = 'leaveRequested' | 'inviteNotAccepted' | 'availabilityUpdated' | 'published' | 'approvalRequested'
+/** Stored as a kind plus raw values so it renders in whichever language is active. */
+export type Notice = { id: string; at: string; kind: NoticeKind; params: Record<string, string | number>; read: boolean; href?: string }
 
-export const PERMS = [
-  { key: 'createEmployees', label: 'Add and edit employees', hint: 'Invite new staff and change their details' },
-  { key: 'editShifts', label: 'Edit shifts and templates', hint: 'Assign people and change shift times' },
-  { key: 'publish', label: 'Publish schedules', hint: 'Without this, managers send changes for approval' },
-  { key: 'approveLeave', label: 'Approve leave', hint: 'Approve or decline time-off requests' },
-  { key: 'manageBranches', label: 'Manage branches', hint: 'Add branches and assign managers' },
-] as const
-export type Perm = (typeof PERMS)[number]['key']
+export const PERMS = ['createEmployees', 'editShifts', 'publish', 'approveLeave', 'manageBranches'] as const
+export type Perm = (typeof PERMS)[number]
 
 export type State = {
   version: number

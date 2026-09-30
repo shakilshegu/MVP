@@ -1,4 +1,5 @@
-import { addDays, daysAgoIso, fmtShort, startOfWeek, todayKey, weekDays } from './date'
+import { addDays, daysAgoIso, startOfWeek, todayKey, weekDays } from './date'
+import { tr } from '../i18n/core'
 import type { Assignment, Dept, Employee, Preferred, ShiftTemplate, State } from './types'
 import { DEPTS } from './types'
 import { checkAssignment, needFor } from './validation'
@@ -40,64 +41,80 @@ function emp(
   }
 }
 
-export const TEMPLATES: ShiftTemplate[] = [
-  { id: 't1', name: 'Morning', start: '06:00', end: '14:00', tone: 'morning', needed: { Bar: 0, Service: 1, Kitchen: 1 } },
-  { id: 't2', name: 'Day', start: '10:00', end: '18:00', tone: 'day', needed: { Bar: 1, Service: 1, Kitchen: 1 } },
+const templates = (): ShiftTemplate[] => [
+  { id: 't1', name: tr('seed.shift.morning'), start: '06:00', end: '14:00', tone: 'morning', needed: { Bar: 0, Service: 1, Kitchen: 1 } },
+  { id: 't2', name: tr('seed.shift.day'), start: '10:00', end: '18:00', tone: 'day', needed: { Bar: 1, Service: 1, Kitchen: 1 } },
   {
     id: 't3',
-    name: 'Evening',
+    name: tr('seed.shift.evening'),
     start: '16:00',
     end: '23:00',
     tone: 'evening',
     needed: { Bar: 1, Service: 2, Kitchen: 2 },
     perDay: { Bar: [1, 1, 1, 1, 2, 2, 1], Service: [2, 2, 2, 2, 3, 3, 2], Kitchen: [2, 2, 2, 2, 2, 3, 2] },
   },
-  { id: 't4', name: 'Night', start: '22:00', end: '02:00', tone: 'night', needed: { Bar: 1, Service: 0, Kitchen: 1 } },
+  { id: 't4', name: tr('seed.shift.night'), start: '22:00', end: '02:00', tone: 'night', needed: { Bar: 1, Service: 0, Kitchen: 1 } },
 ]
 
+/** Demo data, written in the language active when it is created. */
 export function createSeed(): State {
   phone = 100
   const today = todayKey()
+  const P = {
+    headBartender: tr('seed.pos.headBartender'),
+    bartender: tr('seed.pos.bartender'),
+    barback: tr('seed.pos.barback'),
+    floorLead: tr('seed.pos.floorLead'),
+    server: tr('seed.pos.server'),
+    host: tr('seed.pos.host'),
+    runner: tr('seed.pos.runner'),
+    sousChef: tr('seed.pos.sousChef'),
+    lineCook: tr('seed.pos.lineCook'),
+    prepCook: tr('seed.pos.prepCook'),
+    pastryChef: tr('seed.pos.pastryChef'),
+    porter: tr('seed.pos.porter'),
+    headChef: tr('seed.pos.headChef'),
+  }
   const employees: Employee[] = [
-    emp('e1', 'b1', 'Marco Bellini', 'Bar', 'Head bartender', 40, [0], 'Evenings'),
-    emp('e2', 'b1', 'Aisha Khan', 'Bar', 'Bartender', 32, [2], 'Nights'),
-    emp('e3', 'b1', 'Tom Lindqvist', 'Bar', 'Barback', 24, [5, 6]),
-    emp('e4', 'b1', 'Zoe Achterberg', 'Bar', 'Bartender', 30, [1]),
-    emp('e5', 'b1', 'Sofia Alvarez', 'Service', 'Floor lead', 40, [6], 'Evenings'),
-    emp('e6', 'b1', 'Jonah Weiss', 'Service', 'Server', 32, [3]),
-    emp('e7', 'b1', 'Lina Haddad', 'Service', 'Server', 30, [], 'Days'),
-    emp('e8', 'b1', 'Kwame Mensah', 'Service', 'Server', 36, [0, 1]),
-    emp('e9', 'b1', 'Mei Tanaka', 'Service', 'Host', 24, [4], 'Mornings'),
-    emp('e10', 'b1', 'Rafael Costa', 'Service', 'Runner', 20, [], 'Flexible', 'invited'),
-    emp('e11', 'b1', 'Elena Rostova', 'Kitchen', 'Sous chef', 45, [0], 'Days'),
-    emp('e12', 'b1', 'Dario Fontana', 'Kitchen', 'Line cook', 40, [2]),
-    emp('e13', 'b1', 'Hana Kim', 'Kitchen', 'Line cook', 38, [6], 'Evenings'),
-    emp('e14', 'b1', 'Samuel Osei', 'Kitchen', 'Prep cook', 32, [], 'Mornings'),
-    emp('e15', 'b1', 'Nora Byrne', 'Kitchen', 'Pastry chef', 30, [5, 6], 'Mornings'),
-    emp('e16', 'b1', 'Ibrahim Farah', 'Kitchen', 'Kitchen porter', 28, [3], 'Nights'),
-    emp('e17', 'b1', 'Oskar Nilsen', 'Kitchen', 'Line cook', 36, [4]),
-    emp('e40', 'b1', 'Lukas Weber', 'Bar', 'Bartender', 32, [3], 'Evenings'),
-    emp('e41', 'b1', 'Ana Petrović', 'Service', 'Server', 30, [0], 'Evenings'),
-    emp('e42', 'b1', 'Jonas Richter', 'Service', 'Runner', 28, [2]),
-    emp('e43', 'b1', 'Mira Schulz', 'Kitchen', 'Line cook', 36, [1], 'Evenings'),
-    emp('e20', 'b2', 'Chloe Dubois', 'Bar', 'Bartender', 38, [1]),
-    emp('e21', 'b2', 'Mateo Silva', 'Bar', 'Bartender', 30, [3]),
-    emp('e22', 'b2', 'Leo Kowalski', 'Service', 'Floor lead', 40, [0]),
-    emp('e23', 'b2', 'Amara Nwosu', 'Service', 'Server', 32, [2]),
-    emp('e24', 'b2', 'Yusuf Demir', 'Service', 'Server', 30, [5]),
-    emp('e25', 'b2', 'Julian Reyes', 'Kitchen', 'Head chef', 45, [0]),
-    emp('e26', 'b2', 'Sora Nakamura', 'Kitchen', 'Line cook', 38, [6]),
-    emp('e27', 'b2', 'Ana Ruiz', 'Kitchen', 'Prep cook', 32, [3]),
-    emp('e28', 'b2', 'Felix Braun', 'Kitchen', 'Kitchen porter', 28, [1]),
+    emp('e1', 'b1', 'Marco Bellini', 'Bar', P.headBartender, 40, [0], 'Evenings'),
+    emp('e2', 'b1', 'Aisha Khan', 'Bar', P.bartender, 32, [2], 'Nights'),
+    emp('e3', 'b1', 'Tom Lindqvist', 'Bar', P.barback, 24, [5, 6]),
+    emp('e4', 'b1', 'Zoe Achterberg', 'Bar', P.bartender, 30, [1]),
+    emp('e5', 'b1', 'Sofia Alvarez', 'Service', P.floorLead, 40, [6], 'Evenings'),
+    emp('e6', 'b1', 'Jonah Weiss', 'Service', P.server, 32, [3]),
+    emp('e7', 'b1', 'Lina Haddad', 'Service', P.server, 30, [], 'Days'),
+    emp('e8', 'b1', 'Kwame Mensah', 'Service', P.server, 36, [0, 1]),
+    emp('e9', 'b1', 'Mei Tanaka', 'Service', P.host, 24, [4], 'Mornings'),
+    emp('e10', 'b1', 'Rafael Costa', 'Service', P.runner, 20, [], 'Flexible', 'invited'),
+    emp('e11', 'b1', 'Elena Rostova', 'Kitchen', P.sousChef, 45, [0], 'Days'),
+    emp('e12', 'b1', 'Dario Fontana', 'Kitchen', P.lineCook, 40, [2]),
+    emp('e13', 'b1', 'Hana Kim', 'Kitchen', P.lineCook, 38, [6], 'Evenings'),
+    emp('e14', 'b1', 'Samuel Osei', 'Kitchen', P.prepCook, 32, [], 'Mornings'),
+    emp('e15', 'b1', 'Nora Byrne', 'Kitchen', P.pastryChef, 30, [5, 6], 'Mornings'),
+    emp('e16', 'b1', 'Ibrahim Farah', 'Kitchen', P.porter, 28, [3], 'Nights'),
+    emp('e17', 'b1', 'Oskar Nilsen', 'Kitchen', P.lineCook, 36, [4]),
+    emp('e40', 'b1', 'Lukas Weber', 'Bar', P.bartender, 32, [3], 'Evenings'),
+    emp('e41', 'b1', 'Ana Petrović', 'Service', P.server, 30, [0], 'Evenings'),
+    emp('e42', 'b1', 'Jonas Richter', 'Service', P.runner, 28, [2]),
+    emp('e43', 'b1', 'Mira Schulz', 'Kitchen', P.lineCook, 36, [1], 'Evenings'),
+    emp('e20', 'b2', 'Chloe Dubois', 'Bar', P.bartender, 38, [1]),
+    emp('e21', 'b2', 'Mateo Silva', 'Bar', P.bartender, 30, [3]),
+    emp('e22', 'b2', 'Leo Kowalski', 'Service', P.floorLead, 40, [0]),
+    emp('e23', 'b2', 'Amara Nwosu', 'Service', P.server, 32, [2]),
+    emp('e24', 'b2', 'Yusuf Demir', 'Service', P.server, 30, [5]),
+    emp('e25', 'b2', 'Julian Reyes', 'Kitchen', P.headChef, 45, [0]),
+    emp('e26', 'b2', 'Sora Nakamura', 'Kitchen', P.lineCook, 38, [6]),
+    emp('e27', 'b2', 'Ana Ruiz', 'Kitchen', P.prepCook, 32, [3]),
+    emp('e28', 'b2', 'Felix Braun', 'Kitchen', P.porter, 28, [1]),
   ]
 
   const s: State = {
-    version: 6,
+    version: 7,
     session: { userId: null, branchId: null },
     branches: [
       { id: 'b1', name: 'Harbor House', address: 'Große Elbstraße 14, 22767 Hamburg', city: 'Hamburg', opens: '07:00', closes: '01:00' },
       { id: 'b2', name: 'Garden Room', address: 'Gärtnerplatz 3, 80469 München', city: 'Munich', opens: '08:00', closes: '23:30' },
-      { id: 'b3', name: 'Northside', address: 'Kastanienallee 88, 10435 Berlin — opening soon', city: 'Berlin', opens: '10:00', closes: '23:00' },
+      { id: 'b3', name: 'Northside', address: `Kastanienallee 88, 10435 Berlin — ${tr('seed.openingSoon')}`, city: 'Berlin', opens: '10:00', closes: '23:00' },
     ],
     managers: [
       { id: 'm1', name: 'Priya Raman', email: 'priya@harborhouse.co', role: 'manager', branchIds: ['b1', 'b2'] },
@@ -105,28 +122,28 @@ export function createSeed(): State {
       { id: 'm3', name: 'Daniel Okafor', email: 'daniel@harborhouse.co', role: 'super', branchIds: ['b1', 'b2', 'b3'] },
     ],
     employees,
-    templates: TEMPLATES,
+    templates: templates(),
     assignments: [],
     leaves: [
-      { id: 'l1', employeeId: 'e7', from: addDays(today, 3), to: addDays(today, 6), kind: 'Vacation', note: 'Family wedding in Lyon.', status: 'pending', requestedAt: daysAgoIso(0, 2) },
-      { id: 'l2', employeeId: 'e12', from: addDays(today, 9), to: addDays(today, 9), kind: 'Personal', note: 'Moving flat.', status: 'pending', requestedAt: daysAgoIso(1, 3) },
+      { id: 'l1', employeeId: 'e7', from: addDays(today, 3), to: addDays(today, 6), kind: 'Vacation', note: tr('seed.leaveNote.wedding'), status: 'pending', requestedAt: daysAgoIso(0, 2) },
+      { id: 'l2', employeeId: 'e12', from: addDays(today, 9), to: addDays(today, 9), kind: 'Personal', note: tr('seed.leaveNote.moving'), status: 'pending', requestedAt: daysAgoIso(1, 3) },
       { id: 'l3', employeeId: 'e23', from: addDays(today, 5), to: addDays(today, 7), kind: 'Vacation', note: '', status: 'pending', requestedAt: daysAgoIso(0, 6) },
-      { id: 'l4', employeeId: 'e15', from: addDays(today, 14), to: addDays(today, 18), kind: 'Vacation', note: 'Booked in spring.', status: 'approved', requestedAt: daysAgoIso(30) },
-      { id: 'l5', employeeId: 'e2', from: addDays(today, -8), to: addDays(today, -7), kind: 'Personal', note: 'Weekend away.', status: 'declined', requestedAt: daysAgoIso(21) },
+      { id: 'l4', employeeId: 'e15', from: addDays(today, 14), to: addDays(today, 18), kind: 'Vacation', note: tr('seed.leaveNote.spring'), status: 'approved', requestedAt: daysAgoIso(30) },
+      { id: 'l5', employeeId: 'e2', from: addDays(today, -8), to: addDays(today, -7), kind: 'Personal', note: tr('seed.leaveNote.weekend'), status: 'declined', requestedAt: daysAgoIso(21) },
     ],
     history: [],
     notices: [
-      { id: 'n1', at: daysAgoIso(0, 2), title: 'Lina Haddad requested leave', body: 'Harbor House · 4 days of vacation from ' + fmtShort(addDays(today, 3)), read: false, href: '/leave' },
-      { id: 'n2', at: daysAgoIso(0, 6), title: 'Amara Nwosu requested leave', body: 'Garden Room · 3 days of vacation', read: false, href: '/leave' },
-      { id: 'n3', at: daysAgoIso(1), title: 'Rafael Costa hasn’t joined yet', body: 'Invite sent 3 days ago. Resend from their profile.', read: false, href: '/team/e10' },
-      { id: 'n4', at: daysAgoIso(2), title: 'Hana Kim updated availability', body: 'Now unavailable on Sundays', read: true, href: '/availability' },
-      { id: 'n5', at: daysAgoIso(5), title: 'Schedule published', body: 'This week’s schedule went out to 16 people', read: true, href: '/history' },
+      { id: 'n1', at: daysAgoIso(0, 2), kind: 'leaveRequested', params: { name: 'Lina Haddad', branch: 'Harbor House', kind: 'Vacation', from: addDays(today, 3), to: addDays(today, 6) }, read: false, href: '/leave' },
+      { id: 'n2', at: daysAgoIso(0, 6), kind: 'leaveRequested', params: { name: 'Amara Nwosu', branch: 'Garden Room', kind: 'Vacation', from: addDays(today, 5), to: addDays(today, 7) }, read: false, href: '/leave' },
+      { id: 'n3', at: daysAgoIso(1), kind: 'inviteNotAccepted', params: { name: 'Rafael Costa' }, read: false, href: '/team/e10' },
+      { id: 'n4', at: daysAgoIso(2), kind: 'availabilityUpdated', params: { name: 'Hana Kim', weekday: 6 }, read: true, href: '/availability' },
+      { id: 'n5', at: daysAgoIso(5), kind: 'published', params: { changes: 142, people: 16 }, read: true, href: '/history' },
     ],
     perms: { createEmployees: true, editShifts: true, publish: true, approveLeave: true, manageBranches: false },
     pendingApproval: {},
     dayNotes: {
-      [`b1|${addDays(startOfWeek(today), 4)}`]: 'Private party, 40 guests from 19:00',
-      [`b1|${addDays(startOfWeek(today), 6)}`]: 'Terrace closed — deep clean',
+      [`b1|${addDays(startOfWeek(today), 4)}`]: tr('seed.note.party'),
+      [`b1|${addDays(startOfWeek(today), 6)}`]: tr('seed.note.terrace'),
     },
     lastPublish: null,
   }
@@ -167,13 +184,15 @@ export function createSeed(): State {
     if (cand) s.assignments.push({ ...out, id: `a${n++}`, employeeId: cand.id, state: 'added' } satisfies Assignment)
   }
 
+  const shifts = s.templates
+  const range = (t: ShiftTemplate) => `${t.name} ${t.start}–${t.end}`
   s.history = [
-    { id: 'h1', branchId: 'b1', at: daysAgoIso(5, 4), by: 'Priya Raman', action: 'Published', subject: 'Week of ' + fmtShort(thisWeek), to: '142 shifts · 16 people notified' },
-    { id: 'h2', branchId: 'b1', at: daysAgoIso(5, 5), by: 'Priya Raman', action: 'Moved', subject: 'Jonah Weiss', from: 'Day 10:00–18:00, Fri', to: 'Evening 16:00–23:00, Fri' },
-    { id: 'h3', branchId: 'b1', at: daysAgoIso(3), by: 'Priya Raman', action: 'Employee added', subject: 'Rafael Costa', to: 'Service · Runner · invite sent' },
-    { id: 'h4', branchId: 'b1', at: daysAgoIso(12), by: 'Daniel Okafor', action: 'Shift edited', subject: 'Evening', from: '16:00–22:30', to: '16:00–23:00' },
-    { id: 'h5', branchId: 'b1', at: daysAgoIso(20), by: 'Priya Raman', action: 'Leave declined', subject: 'Aisha Khan', to: 'Personal · 2 days' },
-    { id: 'h6', branchId: 'b2', at: daysAgoIso(4), by: 'Grace Liu', action: 'Published', subject: 'Week of ' + fmtShort(thisWeek), to: '96 shifts · 9 people notified' },
+    { id: 'h1', branchId: 'b1', at: daysAgoIso(5, 4), by: 'Priya Raman', action: 'published', subject: '', count: 142, people: 16 },
+    { id: 'h2', branchId: 'b1', at: daysAgoIso(5, 5), by: 'Priya Raman', action: 'moved', subject: 'Jonah Weiss', from: range(shifts[1]), to: range(shifts[2]) },
+    { id: 'h3', branchId: 'b1', at: daysAgoIso(3), by: 'Priya Raman', action: 'employeeAdded', subject: 'Rafael Costa', to: `${tr('dept.Service')} · ${P.runner} · ${tr('history.detail.inviteSent')}` },
+    { id: 'h4', branchId: 'b1', at: daysAgoIso(12), by: 'Daniel Okafor', action: 'shiftEdited', subject: shifts[2].name, from: '16:00–22:30', to: '16:00–23:00' },
+    { id: 'h5', branchId: 'b1', at: daysAgoIso(20), by: 'Priya Raman', action: 'leaveDeclined', subject: 'Aisha Khan', to: `${tr('leaveKind.Personal')} · ${tr('common.days', { count: 2 })}` },
+    { id: 'h6', branchId: 'b2', at: daysAgoIso(4), by: 'Grace Liu', action: 'published', subject: '', count: 96, people: 9 },
   ]
   return s
 }

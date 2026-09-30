@@ -1,8 +1,31 @@
-import { addDays, dayNumber, DAY_LONG, fmtDay, fmtRange, hoursBetween, startOfWeek, toMin, weekdayIndex } from './date'
-import type { Assignment, Dept, ShiftTemplate, State } from './types'
+import { addDays, dayNumber, hoursBetween, startOfWeek, toMin, weekdayIndex } from './date'
+import type { Assignment, ConflictKind, Dept, Leave, ShiftTemplate, State } from './types'
 
-export type ConflictKind = 'unavailable' | 'overlap' | 'maxHours' | 'elsewhere' | 'rest' | 'dayMax'
-export type Conflict = { kind: ConflictKind; title: string; detail: string }
+export type { ConflictKind } from './types'
+
+/**
+ * A rule problem as a code plus raw values. Rendering (and wording) happens in the UI,
+ * so the same conflict reads correctly in any language.
+ */
+export type ConflictParams = {
+  name: string
+  /** For 'unavailable': whether it comes from approved leave or the weekly availability. */
+  reason?: 'leave' | 'weekday'
+  weekday?: number
+  leaveKind?: Leave['kind']
+  from?: string
+  to?: string
+  shift?: string
+  start?: string
+  end?: string
+  date?: string
+  branch?: string
+  dept?: Dept
+  restMinutes?: number
+  total?: number
+  max?: number
+}
+export type Conflict = { kind: ConflictKind; params: ConflictParams }
 
 export type AssignRequest = {
   branchId: string
@@ -23,8 +46,6 @@ export const needFor = (t: ShiftTemplate, dept: Dept, date: string) => t.perDay?
 
 /** Break required by German working-time law (ArbZG §4) for a shift of this length. */
 export const breakMinutes = (hours: number) => (hours > 9 ? 45 : hours > 6 ? 30 : 0)
-
-const hm = (mins: number) => `${Math.floor(mins / 60)}h${mins % 60 ? ` ${mins % 60}m` : ''}`
 
 function interval(date: string, t: ShiftTemplate): [number, number] {
   const base = dayNumber(date) * 1440
@@ -55,63 +76,49 @@ export function checkAssignment(s: State, req: AssignRequest): Conflict[] {
   const emp = s.employees.find((e) => e.id === req.employeeId)
   const tpl = s.templates.find((t) => t.id === req.templateId)
   if (!emp || !tpl) return []
-  const first = emp.name.split(' ')[0]
+  const name = emp.name.split(' ')[0]
   const out: Conflict[] = []
 
   const leave = leaveOn(s, emp.id, req.date)
   if (leave) {
-    out.push({ kind: 'unavailable', title: 'On leave', detail: `${first} has approved ${leave.kind.toLowerCase()} leave ${fmtRange(leave.from, leave.to)}.` })
+    out.push({ kind: 'unavailable', params: { name, reason: 'leave', leaveKind: leave.kind, from: leave.from, to: leave.to } })
   } else if (!emp.availability[weekdayIndex(req.date)]) {
-    out.push({ kind: 'unavailable', title: 'Unavailable', detail: `${first} is marked unavailable on ${DAY_LONG[weekdayIndex(req.date)]}s.` })
+    out.push({ kind: 'unavailable', params: { name, reason: 'weekday', weekday: weekdayIndex(req.date) } })
   }
 
   const [s0, e0] = interval(req.date, tpl)
   const nearby = s.assignments.filter(
-    (a) =>
-      a.employeeId === emp.id &&
-      isActive(a) &&
-      a.id !== req.ignoreId &&
-      Math.abs(dayNumber(a.date) - dayNumber(req.date)) <= 1,
+    (a) => a.employeeId === emp.id && isActive(a) && a.id !== req.ignoreId && Math.abs(dayNumber(a.date) - dayNumber(req.date)) <= 1,
   )
   for (const a of nearby) {
     const t = s.templates.find((x) => x.id === a.templateId)
     if (!t) continue
     const [s1, e1] = interval(a.date, t)
-    const where = a.branchId !== req.branchId ? ` at ${s.branches.find((b) => b.id === a.branchId)?.name}` : ''
+    const other = { name, shift: t.name, start: t.start, end: t.end, date: a.date, branch: a.branchId !== req.branchId ? s.branches.find((b) => b.id === a.branchId)?.name : undefined }
     if (s0 < e1 && s1 < e0) {
-      out.push({ kind: 'overlap', title: 'Overlapping shift', detail: `Already on ${t.name} ${t.start}–${t.end}, ${fmtDay(a.date)}${where}.` })
+      out.push({ kind: 'overlap', params: other })
       continue
     }
     const gap = s0 >= e1 ? s0 - e1 : s1 - e0
-    if (gap < MIN_REST_HOURS * 60) {
-      out.push({
-        kind: 'rest',
-        title: 'Not enough rest',
-        detail: `Only ${hm(gap)} between this and ${t.name} ${t.start}–${t.end}, ${fmtDay(a.date)}. German law requires ${MIN_REST_HOURS}h.`,
-      })
-    }
-    if (a.date === req.date && (a.branchId !== req.branchId || a.dept !== req.dept)) {
-      out.push({ kind: 'elsewhere', title: 'Assigned elsewhere', detail: `Working ${a.dept} · ${t.name} that day${where}.` })
-    }
+    if (gap < MIN_REST_HOURS * 60) out.push({ kind: 'rest', params: { ...other, restMinutes: gap } })
+    if (a.date === req.date && (a.branchId !== req.branchId || a.dept !== req.dept)) out.push({ kind: 'elsewhere', params: { ...other, dept: a.dept } })
   }
 
   const dayTotal =
     s.assignments
       .filter((a) => a.employeeId === emp.id && isActive(a) && a.id !== req.ignoreId && a.date === req.date)
       .reduce((sum, a) => sum + shiftHours(s, a), 0) + hoursBetween(tpl.start, tpl.end)
-  if (dayTotal > MAX_DAY_HOURS) {
-    out.push({ kind: 'dayMax', title: 'Over 10 hours in a day', detail: `This makes ${dayTotal}h for ${first} on ${fmtDay(req.date)}. The legal maximum is ${MAX_DAY_HOURS}h.` })
-  }
+  if (dayTotal > MAX_DAY_HOURS) out.push({ kind: 'dayMax', params: { name, total: dayTotal, max: MAX_DAY_HOURS, date: req.date } })
 
-  const ws = startOfWeek(req.date)
-  const total = weekHours(s, emp.id, ws, req.ignoreId) + hoursBetween(tpl.start, tpl.end)
-  if (total > emp.maxHours) {
-    out.push({ kind: 'maxHours', title: 'Over max hours', detail: `This brings ${first} to ${total}h this week. Their limit is ${emp.maxHours}h.` })
-  }
+  const total = weekHours(s, emp.id, startOfWeek(req.date), req.ignoreId) + hoursBetween(tpl.start, tpl.end)
+  if (total > emp.maxHours) out.push({ kind: 'maxHours', params: { name, total, max: emp.maxHours } })
   return out
 }
 
-export type WeekIssue = { kind: 'rest' | 'dayMax' | 'maxHours'; detail: string }
+export type WeekIssue =
+  | { kind: 'rest'; restMinutes: number; shift: string; date: string }
+  | { kind: 'dayMax'; hours: number; date: string }
+  | { kind: 'maxHours'; total: number; max: number }
 
 /** Working-time problems already on the schedule for one person in one week. */
 export function weekIssues(s: State, employeeId: string, weekStart: string): WeekIssue[] {
@@ -126,17 +133,15 @@ export function weekIssues(s: State, employeeId: string, weekStart: string): Wee
     .sort((p, q) => p.iv[0] - q.iv[0])
   const out: WeekIssue[] = []
   for (let i = 1; i < mine.length; i++) {
-    const prev = mine[i - 1]
-    const cur = mine[i]
-    const gap = cur.iv[0] - prev.iv[1]
-    if (cur.a.date >= weekStart && gap >= 0 && gap < MIN_REST_HOURS * 60) {
-      out.push({ kind: 'rest', detail: `${hm(gap)} rest before ${cur.t.name}, ${fmtDay(cur.a.date)}` })
+    const gap = mine[i].iv[0] - mine[i - 1].iv[1]
+    if (mine[i].a.date >= weekStart && gap >= 0 && gap < MIN_REST_HOURS * 60) {
+      out.push({ kind: 'rest', restMinutes: gap, shift: mine[i].t.name, date: mine[i].a.date })
     }
   }
   const byDay = new Map<string, number>()
   for (const x of mine) if (x.a.date >= weekStart) byDay.set(x.a.date, (byDay.get(x.a.date) ?? 0) + hoursBetween(x.t.start, x.t.end))
-  for (const [d, h] of byDay) if (h > MAX_DAY_HOURS) out.push({ kind: 'dayMax', detail: `${h}h on ${fmtDay(d)}` })
+  for (const [date, hours] of byDay) if (hours > MAX_DAY_HOURS) out.push({ kind: 'dayMax', hours, date })
   const total = weekHours(s, employeeId, weekStart)
-  if (total > emp.maxHours) out.push({ kind: 'maxHours', detail: `${total}h of ${emp.maxHours}h max` })
+  if (total > emp.maxHours) out.push({ kind: 'maxHours', total, max: emp.maxHours })
   return out
 }

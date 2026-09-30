@@ -1,9 +1,11 @@
 import { useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { AlertTriangle, CalendarRange, ClipboardList, Download, Scale, StickyNote, Wand2, Loader2, MapPin, MoreHorizontal, ChevronLeft, ChevronRight, Copy, Eye, Plus, Undo2, UserPlus, Users } from 'lucide-react'
-import { branchChanges, describe, useStore } from '../lib/store'
+import { branchChanges, useStore } from '../lib/store'
+import { useT } from '../i18n'
+import { conflictTitles, deptName, describeSlot } from '../i18n/format'
 import { navigate, useLoad } from '../lib/hooks'
-import { addDays, DAY_SHORT, fmtDay, fmtRange, fmtShort, fromKey, hoursBetween, startOfWeek, todayKey, weekDays } from '../lib/date'
+import { addDays, dayShort, fmtDay, fmtRangeYear, fmtShort, fromKey, hoursBetween, startOfWeek, todayKey, weekDays } from '../lib/date'
 import { checkAssignment, isActive, needFor, weekHours } from '../lib/validation'
 import type { Conflict } from '../lib/validation'
 import type { Assignment, Dept, Employee, ShiftTemplate } from '../lib/types'
@@ -13,7 +15,7 @@ import { DayWeatherLine, DayWeatherMini } from '../components/weather'
 import { TaskList } from '../components/tasks'
 import { DayNote, NoteEditor } from '../components/notes'
 import { HoursDrawer } from '../components/hours'
-import { cityOf, useWeather } from '../lib/weather'
+import { cityLabel, cityOf, useWeather } from '../lib/weather'
 import { downloadRotaPdf } from '../lib/pdf'
 import type { DayWeather } from '../lib/weather'
 import type { Slot } from '../components/assign'
@@ -23,6 +25,7 @@ type Pending = { employee: Employee; conflicts: Conflict[]; slot: Slot; run: () 
 
 export default function WeeklySchedule({ week }: { week: string | null }) {
   const { s, a, branch, can, toast, me } = useStore()
+  const { t, locale } = useT()
   const [exporting, setExporting] = useState(false)
   const today = todayKey()
   const weekStart = startOfWeek(week ?? today)
@@ -80,11 +83,11 @@ export default function WeeklySchedule({ week }: { week: string | null }) {
   const tryAssign = (employee: Employee, conflicts: Conflict[], slot: Slot) => {
     const run = (override?: Conflict[]) => {
       const id = a.assign({ branchId: branch!.id, employeeId: employee.id, ...slot }, override)
-      const tpl = s.templates.find((t) => t.id === slot.templateId)!
+      const tpl = s.templates.find((x) => x.id === slot.templateId)!
       toast(
-        `${employee.name.split(' ')[0]} added to ${tpl.name}, ${fmtDay(slot.date)}`,
-        { label: 'Add task', run: () => openMenuById(id) },
-        { label: 'Undo', run: () => a.remove(id) },
+        t('schedule.toastAdded', { name: employee.name.split(' ')[0], shift: tpl.name, date: fmtDay(slot.date) }),
+        { label: t('schedule.addTask'), run: () => openMenuById(id) },
+        { label: t('common.undo'), run: () => a.remove(id) },
       )
     }
     setAssignAt(null)
@@ -100,7 +103,8 @@ export default function WeeklySchedule({ week }: { week: string | null }) {
     const conflicts = checkAssignment(s, { branchId: branch!.id, employeeId: x.employeeId, ...slot, ignoreId: x.id })
     const run = (override?: Conflict[]) => {
       a.move(id, slot, override)
-      toast(`Moved ${employee.name.split(' ')[0]} to ${describe(s, slot).split(' · ')[0]}`)
+      const tpl = s.templates.find((x) => x.id === slot.templateId)!
+      toast(t('schedule.toastMoved', { name: employee.name.split(' ')[0], shift: tpl.name, date: fmtDay(slot.date) }))
     }
     if (conflicts.length) setPending({ employee, conflicts, slot, run: () => run(conflicts) })
     else run()
@@ -127,31 +131,29 @@ export default function WeeklySchedule({ week }: { week: string | null }) {
       <div className="mb-5 flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="page-title">
-            {weekStart === startOfWeek(today) ? 'This week' : `Week of ${fmtShort(weekStart)}`}
+            {weekStart === startOfWeek(today) ? t('schedule.thisWeek') : t('schedule.weekOf', { date: fmtShort(weekStart) })}
           </h1>
           <p className="mt-2 text-sm text-muted">
-            {fmtRange(weekStart, days[6])} {fromKey(days[6]).getFullYear()}
+            {fmtRangeYear(weekStart, days[6])}
             {status === 'ready' && team.length > 0 && (
               <>
                 {' '}
-                · <span className="text-ink">{stats.coverage}% covered</span> ·{' '}
-                <span className={stats.open ? 'text-bark' : ''}>
-                  {stats.open} open {stats.open === 1 ? 'slot' : 'slots'}
-                </span>{' '}
-                · {stats.shifts} shifts, {stats.hours}h
+                · <span className="text-ink">{t('schedule.covered', { pct: stats.coverage })}</span> ·{' '}
+                <span className={stats.open ? 'text-bark' : ''}>{t('schedule.openSlots', { count: stats.open })}</span> ·{' '}
+                {t('schedule.shiftsHours', { shifts: stats.shifts, hours: stats.hours })}
               </>
             )}
             {city && (
               <>
                 {' '}
-                · <span className="inline-flex items-center gap-1"><MapPin className="h-3.5 w-3.5" />{city.name}</span>
+                · <span className="inline-flex items-center gap-1"><MapPin className="h-3.5 w-3.5" />{cityLabel(city.name, locale)}</span>
               </>
             )}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <div className="flex items-center rounded-lg bg-white ring-1 ring-line">
-            <IconButton label="Previous week" onClick={() => navigate(`/schedule?week=${addDays(weekStart, -7)}`)}>
+            <IconButton label={t('schedule.prevWeek')} onClick={() => navigate(`/schedule?week=${addDays(weekStart, -7)}`)}>
               <ChevronLeft className="h-4 w-4" />
             </IconButton>
             <button
@@ -159,17 +161,17 @@ export default function WeeklySchedule({ week }: { week: string | null }) {
               disabled={weekStart === startOfWeek(today)}
               className="h-9 px-2 text-[13px] font-medium text-ink disabled:text-muted"
             >
-              Today
+              {t('common.today')}
             </button>
-            <IconButton label="Next week" onClick={() => navigate(`/schedule?week=${addDays(weekStart, 7)}`)}>
+            <IconButton label={t('schedule.nextWeek')} onClick={() => navigate(`/schedule?week=${addDays(weekStart, 7)}`)}>
               <ChevronRight className="h-4 w-4" />
             </IconButton>
           </div>
           <Segmented
-            label="Department"
+            label={t('common.department')}
             value={dept}
             onChange={setDept}
-            options={[{ value: 'All', label: 'All' }, ...DEPTS.map((d) => ({ value: d, label: <><span className={cx('h-1.5 w-1.5 rounded-full', deptDot[d])} />{d}</> }))]}
+            options={[{ value: 'All', label: t('common.all') }, ...DEPTS.map((d) => ({ value: d, label: <><span className={cx('h-1.5 w-1.5 rounded-full', deptDot[d])} />{deptName(t, d)}</> }))]}
           />
           <MoreMenu
             exporting={exporting}
@@ -178,12 +180,12 @@ export default function WeeklySchedule({ week }: { week: string | null }) {
             onFill={() => {
               const r = a.autoFill(weekStart, visibleDepts)
               if (!r.ids.length) {
-                toast('No one is free for the open slots without breaking a rule')
+                toast(t('schedule.noOneFree'))
                 return
               }
               toast(
-                `Filled ${r.ids.length} ${r.ids.length === 1 ? 'slot' : 'slots'} as drafts${r.open ? ` · ${r.open} still open` : ''}`,
-                { label: 'Undo', run: () => a.removeMany(r.ids) },
+                [t('schedule.filled', { count: r.ids.length }), r.open ? t('schedule.stillOpen', { count: r.open }) : ''].filter(Boolean).join(' · '),
+                { label: t('common.undo'), run: () => a.removeMany(r.ids) },
               )
             }}
             onHours={() => setShowHours(true)}
@@ -191,9 +193,9 @@ export default function WeeklySchedule({ week }: { week: string | null }) {
               setExporting(true)
               try {
                 await downloadRotaPdf({ s, branch: branch!, me, weekStart, depts: visibleDepts })
-                toast('PDF downloaded')
+                toast(t('schedule.pdfDone'))
               } catch {
-                toast('Couldn’t create the PDF. Try again.')
+                toast(t('schedule.pdfFail'))
               } finally {
                 setExporting(false)
               }
@@ -204,25 +206,25 @@ export default function WeeklySchedule({ week }: { week: string | null }) {
 
       {!editable && (
         <div className="mb-4 flex items-center gap-2 rounded-xl bg-white/70 px-4 py-3 text-sm text-muted ring-1 ring-line">
-          <Eye className="h-4 w-4" /> View only. Your account can’t edit shifts — ask a super admin if you need to.
+          <Eye className="h-4 w-4" /> {t('schedule.viewOnly')}
         </div>
       )}
 
       {status === 'loading' && <GridSkeleton />}
       {status === 'error' && (
         <div className="panel">
-          <ErrorState what="the schedule" onRetry={retry} />
+          <ErrorState what={t('schedule.errorWhat')} onRetry={retry} />
         </div>
       )}
       {status === 'ready' && team.length === 0 && (
         <div className="panel">
           <EmptyState
             icon={<Users className="h-5 w-5" />}
-            title={`${branch!.name} has no team yet`}
-            body="Add the people who work here first. Then you can start filling shifts."
+            title={t('schedule.noTeamTitle', { branch: branch!.name })}
+            body={t('schedule.noTeamBody')}
             action={
               <Button variant="primary" onClick={() => navigate('/team?add=1')}>
-                <UserPlus className="h-4 w-4" /> Add employee
+                <UserPlus className="h-4 w-4" /> {t('schedule.addEmployee')}
               </Button>
             }
           />
@@ -234,9 +236,9 @@ export default function WeeklySchedule({ week }: { week: string | null }) {
           {weekIsEmpty && !isPastWeek && editable && (
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-forest px-5 py-4 text-white">
               <div>
-                <div className="font-medium">Nothing scheduled this week yet</div>
+                <div className="font-medium">{t('schedule.emptyWeekTitle')}</div>
                 <div className="text-sm text-white/75">
-                  {prevWeekHasShifts ? 'Start from last week’s schedule and adjust, or click any open slot.' : 'Click any open slot to assign someone.'}
+                  {t(prevWeekHasShifts ? 'schedule.emptyWeekCopy' : 'schedule.emptyWeekClick')}
                 </div>
               </div>
               {prevWeekHasShifts && (
@@ -244,10 +246,10 @@ export default function WeeklySchedule({ week }: { week: string | null }) {
                   className="bg-white text-forest hover:bg-forest-50"
                   onClick={() => {
                     const r = a.copyWeek(addDays(weekStart, -7), weekStart)
-                    toast(`Copied ${r.added} shifts as drafts${r.skipped ? ` · ${r.skipped} skipped because of conflicts` : ''}`)
+                    toast([t('schedule.copied', { count: r.added }), r.skipped ? t('schedule.copiedSkipped', { count: r.skipped }) : ''].filter(Boolean).join(' · '))
                   }}
                 >
-                  <Copy className="h-4 w-4" /> Copy last week
+                  <Copy className="h-4 w-4" /> {t('schedule.copyLastWeek')}
                 </Button>
               )}
             </div>
@@ -259,18 +261,18 @@ export default function WeeklySchedule({ week }: { week: string | null }) {
               {days.map((d, i) => {
                 let need = 0
                 let got = 0
-                for (const t of s.templates)
+                for (const tpl of s.templates)
                   for (const dp of visibleDepts) {
-                    const n = needFor(t, dp, d)
+                    const n = needFor(tpl, dp, d)
                     need += n
-                    got += Math.min(n, inWeek.filter((x) => isActive(x) && x.date === d && x.templateId === t.id && x.dept === dp).length)
+                    got += Math.min(n, inWeek.filter((x) => isActive(x) && x.date === d && x.templateId === tpl.id && x.dept === dp).length)
                   }
                 const isToday = d === today
                 return (
                   <div key={d} className={cx('group/day border-l border-line px-3 pb-3 pt-4', d < today && 'bg-paper/60')}>
                     <div className="flex items-baseline justify-between">
                       <div className="flex items-baseline gap-2">
-                        <span className={cx('text-[13px]', isToday ? 'font-semibold text-forest' : 'text-muted')}>{DAY_SHORT[i]}</span>
+                        <span className={cx('text-[13px]', isToday ? 'font-semibold text-forest' : 'text-muted')}>{dayShort(i)}</span>
                         <span
                           className={cx(
                             'text-xl font-semibold leading-none',
@@ -280,7 +282,7 @@ export default function WeeklySchedule({ week }: { week: string | null }) {
                           {fromKey(d).getDate()}
                         </span>
                       </div>
-                      <span className={cx('text-xs', got < need ? 'font-medium text-bark' : 'text-muted')} title={`${got} of ${need} slots filled`}>
+                      <span className={cx('text-xs', got < need ? 'font-medium text-bark' : 'text-muted')} title={t('common.slotsFilled', { got, need })}>
                         {got}/{need}
                       </span>
                     </div>
@@ -291,10 +293,10 @@ export default function WeeklySchedule({ week }: { week: string | null }) {
               })}
               {visibleDepts.map((dp) => (
                 <DeptBand key={dp} dept={dp} count={team.filter((e) => e.dept === dp).length}>
-                  {s.templates.map((t) => (
-                    <Row key={t.id} tpl={t}>
+                  {s.templates.map((tpl) => (
+                    <Row key={tpl.id} tpl={tpl}>
                       {days.map((d) => (
-                        <Cell key={d} {...cellProps} slot={{ date: d, templateId: t.id, dept: dp }} list={cellOf(d, t.id, dp)} needed={needFor(t, dp, d)} tone={t.tone} />
+                        <Cell key={d} {...cellProps} slot={{ date: d, templateId: tpl.id, dept: dp }} list={cellOf(d, tpl.id, dp)} needed={needFor(tpl, dp, d)} tone={tpl.tone} />
                       ))}
                     </Row>
                   ))}
@@ -314,33 +316,33 @@ export default function WeeklySchedule({ week }: { week: string | null }) {
                 )}
               >
                 <StickyNote className="h-4 w-4 shrink-0" />
-                {s.dayNotes[`${branch!.id}|${days[mobileDay]}`] ?? 'Add a note for this day'}
+                {s.dayNotes[`${branch!.id}|${days[mobileDay]}`] ?? t('schedule.addDayNote')}
               </button>
             )}
             {visibleDepts.map((dp) => (
               <section key={dp} className="panel overflow-hidden">
                 <h2 className="flex items-center gap-2 border-b border-line bg-paper px-4 py-2.5 text-sm font-semibold">
                   <span className={cx('h-2 w-2 rounded-full', deptDot[dp])} />
-                  {dp}
+                  {deptName(t, dp)}
                 </h2>
                 {s.templates
-                  .filter((t) => needFor(t, dp, days[mobileDay]) > 0 || cellOf(days[mobileDay], t.id, dp).length > 0)
-                  .map((t) => (
-                    <div key={t.id} className="flex gap-3 border-b border-line px-4 py-3 last:border-0">
+                  .filter((tpl) => needFor(tpl, dp, days[mobileDay]) > 0 || cellOf(days[mobileDay], tpl.id, dp).length > 0)
+                  .map((tpl) => (
+                    <div key={tpl.id} className="flex gap-3 border-b border-line px-4 py-3 last:border-0">
                       <div className="w-20 shrink-0">
-                        <div className="text-sm font-medium">{t.name}</div>
+                        <div className="text-sm font-medium">{tpl.name}</div>
                         <div className="text-xs text-muted">
-                          {t.start}–{t.end}
+                          {tpl.start}–{tpl.end}
                         </div>
                       </div>
                       <div className="flex-1">
                         <Cell
                           {...cellProps}
                           bare
-                          slot={{ date: days[mobileDay], templateId: t.id, dept: dp }}
-                          list={cellOf(days[mobileDay], t.id, dp)}
-                          needed={needFor(t, dp, days[mobileDay])}
-                          tone={t.tone}
+                          slot={{ date: days[mobileDay], templateId: tpl.id, dept: dp }}
+                          list={cellOf(days[mobileDay], tpl.id, dp)}
+                          needed={needFor(tpl, dp, days[mobileDay])}
+                          tone={tpl.tone}
                         />
                       </div>
                     </div>
@@ -356,21 +358,19 @@ export default function WeeklySchedule({ week }: { week: string | null }) {
       {changes.length > 0 && (
         <div className="sticky bottom-4 z-20 mt-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-ink px-5 py-3 text-white shadow-2xl">
           <div className="text-sm">
-            <span className="font-semibold">
-              {changes.length} unpublished {changes.length === 1 ? 'change' : 'changes'}
-            </span>
+            <span className="font-semibold">{t('shell.unpublished', { count: changes.length })}</span>
             <span className="text-white/65">
               {' '}
-              · {affected} {affected === 1 ? 'person' : 'people'} will be notified
-              {s.pendingApproval[branch!.id] && ' · waiting for approval'}
+              · {t('schedule.willNotify', { count: affected })}
+              {s.pendingApproval[branch!.id] && ` · ${t('schedule.waiting')}`}
             </span>
           </div>
           <div className="flex gap-2">
             <Button size="sm" variant="ghost" className="text-white/80 hover:bg-white/10 hover:text-white" onClick={() => setConfirmDiscard(true)}>
-              Discard
+              {t('schedule.discard')}
             </Button>
             <Button size="sm" className="bg-white text-forest hover:bg-forest-50" onClick={() => navigate('/review')}>
-              Review & publish
+              {t('schedule.reviewPublish')}
             </Button>
           </div>
         </div>
@@ -388,7 +388,7 @@ export default function WeeklySchedule({ week }: { week: string | null }) {
         <ConflictDialog
           employee={pending.employee}
           conflicts={pending.conflicts}
-          where={describe(s, pending.slot)}
+          where={describeSlot(t, s, pending.slot)}
           onClose={() => setPending(null)}
           onConfirm={() => {
             pending.run()
@@ -398,21 +398,21 @@ export default function WeeklySchedule({ week }: { week: string | null }) {
       )}
       {confirmDiscard && (
         <Modal
-          title="Discard all unpublished changes?"
-          description={`This undoes ${changes.length} ${changes.length === 1 ? 'change' : 'changes'} and restores the last published schedule. You can’t get them back.`}
+          title={t('schedule.discardTitle')}
+          description={t('schedule.discardBody', { count: changes.length })}
           onClose={() => setConfirmDiscard(false)}
           footer={
             <>
-              <Button onClick={() => setConfirmDiscard(false)}>Keep editing</Button>
+              <Button onClick={() => setConfirmDiscard(false)}>{t('schedule.keepEditing')}</Button>
               <Button
                 variant="danger"
                 onClick={() => {
                   a.discardChanges()
                   setConfirmDiscard(false)
-                  toast('Changes discarded')
+                  toast(t('schedule.discarded'))
                 }}
               >
-                Discard changes
+                {t('schedule.discardChanges')}
               </Button>
             </>
           }
@@ -437,12 +437,13 @@ function MoreMenu({
   onFill: () => void
   onHours: () => void
 }) {
+  const { t } = useT()
   const [rect, setRect] = useState<DOMRect | null>(null)
   const item = 'flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm hover:bg-paper disabled:opacity-45 disabled:hover:bg-transparent'
   return (
     <>
       <IconButton
-        label="More options"
+        label={t('schedule.moreOptions')}
         aria-haspopup="menu"
         className="h-10 w-10 bg-white ring-1 ring-line hover:bg-paper"
         onClick={(e) => {
@@ -466,8 +467,8 @@ function MoreMenu({
             >
               <Wand2 className="h-4 w-4 text-muted" />
               <span>
-                Fill open slots
-                <span className="block text-xs text-muted">As drafts, following all rules</span>
+                {t('schedule.fill')}
+                <span className="block text-xs text-muted">{t('schedule.fillHint')}</span>
               </span>
             </button>
             <button
@@ -478,7 +479,7 @@ function MoreMenu({
                 onHours()
               }}
             >
-              <Scale className="h-4 w-4 text-muted" /> Hours & rules
+              <Scale className="h-4 w-4 text-muted" /> {t('schedule.hoursRules')}
             </button>
             <div className="my-1 h-px bg-line" />
             <button
@@ -490,10 +491,10 @@ function MoreMenu({
                 onExport()
               }}
             >
-              <Download className="h-4 w-4 text-muted" /> Download PDF
+              <Download className="h-4 w-4 text-muted" /> {t('schedule.downloadPdf')}
             </button>
             <a role="menuitem" href="#/month" onClick={() => setRect(null)} className={item}>
-              <CalendarRange className="h-4 w-4 text-muted" /> Month view
+              <CalendarRange className="h-4 w-4 text-muted" /> {t('schedule.monthView')}
             </a>
           </div>
         </Popover>
@@ -503,12 +504,13 @@ function MoreMenu({
 }
 
 function DeptBand({ dept, count, children }: { dept: Dept; count: number; children: ReactNode }) {
+  const { t } = useT()
   return (
     <>
       <div className="sticky left-0 col-span-8 flex items-center gap-2 border-t border-line bg-paper px-4 py-2 text-sm">
         <span className={cx('h-2 w-2 rounded-full', deptDot[dept])} />
-        <span className="font-semibold">{dept}</span>
-        <span className="text-muted">· {count} people</span>
+        <span className="font-semibold">{deptName(t, dept)}</span>
+        <span className="text-muted">· {t('common.people', { count })}</span>
       </div>
       {children}
     </>
@@ -549,6 +551,7 @@ type CellProps = {
 }
 
 function Cell({ slot, list, needed, tone, today, editable, dragOver, setDragOver, onDrop, openAssign, openMenu, employees, bare }: CellProps) {
+  const { t } = useT()
   const key = `${slot.date}|${slot.templateId}|${slot.dept}`
   const past = slot.date < today
   const canEdit = editable && !past
@@ -589,7 +592,7 @@ function Cell({ slot, list, needed, tone, today, editable, dragOver, setDragOver
             }}
             data-assignment={x.id}
             onClick={(ev) => openMenu(x, ev.currentTarget)}
-            aria-label={`${e.name}${x.state === 'added' ? ', unpublished' : x.state === 'removed' ? ', removed, unpublished' : ''}`}
+            aria-label={x.state === 'added' ? t('schedule.a11yUnpublished', { name: e.name }) : x.state === 'removed' ? t('schedule.a11yRemoved', { name: e.name }) : e.name}
             className={cx(
               'flex w-full items-center gap-1.5 rounded-md px-2 py-1 text-left text-[13px] font-medium transition-shadow',
               canEdit && x.state !== 'removed' && 'cursor-grab active:cursor-grabbing',
@@ -601,13 +604,13 @@ function Cell({ slot, list, needed, tone, today, editable, dragOver, setDragOver
             <span className="truncate">{short}</span>
             <span className="ml-auto flex items-center gap-1">
               {!!x.tasks?.length && (
-                <span className="flex items-center gap-0.5 text-[11px] font-medium opacity-80" title={x.tasks.map((t) => t.text).join(', ')}>
+                <span className="flex items-center gap-0.5 text-[11px] font-medium opacity-80" title={x.tasks.map((task) => task.text).join(', ')}>
                   <ClipboardList className="h-3 w-3" aria-hidden />
-                  {x.tasks.length}
-                  <span className="sr-only"> tasks</span>
+                  <span aria-hidden>{x.tasks.length}</span>
+                  <span className="sr-only">{t('schedule.a11yTasks', { count: x.tasks.length })}</span>
                 </span>
               )}
-              {x.overridden && <AlertTriangle className="h-3.5 w-3.5 text-warn" aria-label="Override" />}
+              {x.overridden && <AlertTriangle className="h-3.5 w-3.5 text-warn" aria-label={t('schedule.override')} />}
               {x.state === 'added' && <span className="h-1.5 w-1.5 rounded-full bg-bark" />}
               {x.state === 'removed' && <Undo2 className="h-3.5 w-3.5 no-underline" />}
             </span>
@@ -621,21 +624,21 @@ function Cell({ slot, list, needed, tone, today, editable, dragOver, setDragOver
             onClick={(ev) => openAssign(slot, ev.currentTarget)}
             className="flex w-full items-center justify-center gap-1 rounded-md border border-dashed border-bark/35 py-1 text-xs font-medium text-bark/80 transition-colors hover:border-bark hover:bg-bark-50 hover:text-bark"
           >
-            <Plus className="h-3 w-3" /> Open slot
+            <Plus className="h-3 w-3" /> {t('schedule.openSlot')}
           </button>
         ))}
-      {!canEdit && openSlots > 0 && <div className="rounded-md bg-bark-50 py-1 text-center text-xs text-bark/80">{openSlots} unfilled</div>}
+      {!canEdit && openSlots > 0 && <div className="rounded-md bg-bark-50 py-1 text-center text-xs text-bark/80">{t('schedule.unfilled', { count: openSlots })}</div>}
       {canEdit && openSlots === 0 && (
         <button
           onClick={(ev) => openAssign(slot, ev.currentTarget)}
-          aria-label={`Add someone to ${slot.dept}`}
+          aria-label={t('schedule.addTo', { dept: deptName(t, slot.dept) })}
           className={cx(
             'flex items-center justify-center rounded-md py-0.5 text-muted transition-opacity hover:bg-forest-50 hover:text-forest focus-visible:opacity-100',
             bare ? 'w-full border border-dashed border-line py-1 text-xs' : 'opacity-0 group-hover/cell:opacity-100',
           )}
         >
           <Plus className="h-3.5 w-3.5" />
-          {bare && <span className="ml-1">Add</span>}
+          {bare && <span className="ml-1">{t('schedule.add')}</span>}
         </button>
       )}
       {needed === 0 && list.length === 0 && !bare && <span className="m-auto text-xs text-line group-hover/cell:hidden">—</span>}
@@ -645,6 +648,7 @@ function Cell({ slot, list, needed, tone, today, editable, dragOver, setDragOver
 
 function ChipMenu({ x, rect, onClose, editable }: { x: Assignment; rect: DOMRect; onClose: () => void; editable: boolean }) {
   const { s, a, toast } = useStore()
+  const { t } = useT()
   const e = s.employees.find((y) => y.id === x.employeeId)!
   const hours = weekHours(s, e.id, startOfWeek(x.date))
   return (
@@ -658,26 +662,26 @@ function ChipMenu({ x, rect, onClose, editable }: { x: Assignment; rect: DOMRect
         <Hours used={hours} max={e.maxHours} />
       </div>
       <div className="px-4 py-3 text-[13px] text-muted">
-        {describe(s, x)}
-        {x.state === 'added' && <div className="mt-1 font-medium text-forest">{x.movedFrom ? 'Moved · not published yet' : 'New · not published yet'}</div>}
-        {x.state === 'removed' && <div className="mt-1 font-medium text-bark">Removed · not published yet</div>}
-        {x.overridden && <div className="mt-1 text-warn">Assigned despite: {x.overridden.join(', ').toLowerCase()}</div>}
+        {describeSlot(t, s, x)}
+        {x.state === 'added' && <div className="mt-1 font-medium text-forest">{t(x.movedFrom ? 'schedule.chipMoved' : 'schedule.chipNew')}</div>}
+        {x.state === 'removed' && <div className="mt-1 font-medium text-bark">{t('schedule.chipRemoved')}</div>}
+        {x.overridden && <div className="mt-1 text-warn">{t('schedule.despite', { list: conflictTitles(t, x.overridden) })}</div>}
       </div>
       {x.state !== 'removed' && <TaskList x={x} editable={editable} />}
       <div className="flex flex-col gap-1 border-t border-line p-2">
         <a href={`#/team/${e.id}`} onClick={onClose} className="rounded-lg px-3 py-2 text-sm hover:bg-paper">
-          View profile
+          {t('common.viewProfile')}
         </a>
         {editable && x.state !== 'removed' && (
           <button
             onClick={() => {
               a.remove(x.id)
               onClose()
-              toast(`${e.name.split(' ')[0]} removed from shift`, { label: 'Undo', run: () => (x.state === 'added' ? a.assign({ ...x }) : a.undoRemove(x.id)) })
+              toast(t('schedule.toastRemoved', { name: e.name.split(' ')[0] }), { label: t('common.undo'), run: () => (x.state === 'added' ? a.assign({ ...x }) : a.undoRemove(x.id)) })
             }}
             className="rounded-lg px-3 py-2 text-left text-sm text-danger hover:bg-danger-50"
           >
-            Remove from shift
+            {t('schedule.removeFromShift')}
           </button>
         )}
         {editable && x.state === 'removed' && (
@@ -688,7 +692,7 @@ function ChipMenu({ x, rect, onClose, editable }: { x: Assignment; rect: DOMRect
             }}
             className="rounded-lg px-3 py-2 text-left text-sm font-medium text-forest hover:bg-forest-50"
           >
-            Undo removal
+            {t('schedule.undoRemoval')}
           </button>
         )}
       </div>
@@ -697,10 +701,11 @@ function ChipMenu({ x, rect, onClose, editable }: { x: Assignment; rect: DOMRect
 }
 
 function MobileDay({ days, active, setActive, weather, children }: { days: string[]; active: number; setActive: (i: number) => void; weather: Record<string, DayWeather>; children: ReactNode }) {
+  const { t } = useT()
   const today = todayKey()
   return (
     <div className="md:hidden">
-      <div role="tablist" aria-label="Day" className="-mx-4 mb-3 flex gap-1.5 overflow-x-auto px-4 pb-1">
+      <div role="tablist" aria-label={t('schedule.day')} className="-mx-4 mb-3 flex gap-1.5 overflow-x-auto px-4 pb-1">
         {days.map((d, i) => (
           <button
             key={d}
@@ -713,7 +718,7 @@ function MobileDay({ days, active, setActive, weather, children }: { days: strin
               d === today && i !== active && 'ring-1 ring-forest',
             )}
           >
-            {DAY_SHORT[i]}
+            {dayShort(i)}
             <span className="mt-0.5 text-base font-semibold">{fromKey(d).getDate()}</span>
             <DayWeatherMini w={weather[d]} />
           </button>
@@ -725,28 +730,30 @@ function MobileDay({ days, active, setActive, weather, children }: { days: strin
 }
 
 function Legend() {
+  const { t } = useT()
   return (
     <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-muted">
       <span className="flex items-center gap-1.5">
-        <span className="h-3 w-5 rounded bg-day" /> Published
+        <span className="h-3 w-5 rounded bg-day" /> {t('schedule.legendPublished')}
       </span>
       <span className="flex items-center gap-1.5">
-        <span className="h-3 w-5 rounded border-[1.5px] border-dashed border-forest bg-white" /> Unpublished
+        <span className="h-3 w-5 rounded border-[1.5px] border-dashed border-forest bg-white" /> {t('schedule.legendUnpublished')}
       </span>
       <span className="flex items-center gap-1.5">
-        <span className="line-through decoration-bark">Name</span> Removed
+        <span className="line-through decoration-bark">{t('schedule.legendName')}</span> {t('schedule.legendRemoved')}
       </span>
       <span className="flex items-center gap-1.5">
-        <AlertTriangle className="h-3.5 w-3.5 text-warn" /> Override
+        <AlertTriangle className="h-3.5 w-3.5 text-warn" /> {t('schedule.override')}
       </span>
-      <span className="hidden md:inline">Drag a name to move it. Click a name for details.</span>
+      <span className="hidden md:inline">{t('schedule.legendHint')}</span>
     </div>
   )
 }
 
 function GridSkeleton() {
+  const { t } = useT()
   return (
-    <div className="panel p-4" aria-busy="true" aria-label="Loading schedule">
+    <div className="panel p-4" aria-busy="true" aria-label={t('schedule.loading')}>
       <div className="grid grid-cols-8 gap-3">
         {Array.from({ length: 8 * 6 }).map((_, i) => (
           <Skeleton key={i} className={i % 8 === 0 ? 'h-12 w-3/4' : 'h-12'} />

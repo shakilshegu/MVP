@@ -1,12 +1,15 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import { addDays, fmtDay, fmtRange, daysInclusive, todayKey, toMin, weekDays } from './date'
+import { addDays, dayShort, fmtRange, daysInclusive, todayKey, toMin, weekDays } from './date'
+import { tr } from '../i18n/core'
+import type { MsgKey } from '../i18n/core'
+import { conflictTitles, deptName, describeSlot } from '../i18n/format'
 import { createSeed } from './seed'
 import type { Assignment, Dept, Task, Branch, Employee, HistoryEntry, Leave, Manager, Perm, ShiftTemplate, State } from './types'
 import { checkAssignment, isActive, needFor, weekHours } from './validation'
 import type { AssignRequest, Conflict } from './validation'
 
-const KEY = 'rota-state-v6'
+const KEY = 'rota-state-v7'
 const uid = () => Math.random().toString(36).slice(2, 10)
 
 function load(): State {
@@ -14,7 +17,7 @@ function load(): State {
     const raw = localStorage.getItem(KEY)
     if (raw) {
       const s = JSON.parse(raw) as State
-      if (s.version === 6) return s
+      if (s.version === 7) return s
     }
   } catch {
     /* fall through to seed */
@@ -52,10 +55,7 @@ export function branchChanges(s: State, branchId: string): Change[] {
   return out.sort((x, y) => x.a.date.localeCompare(y.a.date))
 }
 
-export function describe(s: State, a: Pick<Assignment, 'templateId' | 'date' | 'dept'>) {
-  const t = s.templates.find((x) => x.id === a.templateId)
-  return `${t?.name} ${t?.start}–${t?.end}, ${fmtDay(a.date)} · ${a.dept}`
-}
+const describe = (s: State, a: Pick<Assignment, 'templateId' | 'date' | 'dept'>) => describeSlot(tr, s, a)
 
 type ToastAction = { label: string; run: () => void }
 type Toast = { id: string; msg: string; action?: ToastAction; action2?: ToastAction }
@@ -63,7 +63,7 @@ type Toast = { id: string; msg: string; action?: ToastAction; action2?: ToastAct
 function makeActions(get: () => State, set: (s: State) => void) {
   const me = () => get().managers.find((m) => m.id === get().session.userId)
   const bid = () => get().session.branchId ?? ''
-  const empName = (id: string) => get().employees.find((e) => e.id === id)?.name ?? 'Someone'
+  const empName = (id: string) => get().employees.find((e) => e.id === id)?.name ?? '—'
   const entry = (e: Omit<HistoryEntry, 'id' | 'at' | 'by' | 'branchId'>, branchId = bid()): HistoryEntry => ({
     id: uid(),
     at: new Date().toISOString(),
@@ -78,9 +78,10 @@ function makeActions(get: () => State, set: (s: State) => void) {
   const log = (e: Omit<HistoryEntry, 'id' | 'at' | 'by' | 'branchId'>) => patch((s) => ({ history: [entry(e), ...s.history] }))
 
   return {
-    login(email: string): string | null {
+    /** Returns an error message key, or null when signed in. */
+    login(email: string): MsgKey | null {
       const m = get().managers.find((x) => x.email.toLowerCase() === email.trim().toLowerCase())
-      if (!m) return 'We couldn’t find an account with that email. Check the spelling, or ask your super admin to invite you.'
+      if (!m) return 'auth.notFound'
       const branches = m.role === 'super' ? get().branches : get().branches.filter((b) => m.branchIds.includes(b.id))
       patch(() => ({ session: { userId: m.id, branchId: branches.length === 1 ? branches[0].id : null } }))
       return null
@@ -98,7 +99,7 @@ function makeActions(get: () => State, set: (s: State) => void) {
         return restored.id
       }
       const a: Assignment = { id: uid(), branchId: req.branchId, employeeId: req.employeeId, date: req.date, templateId: req.templateId, dept: req.dept, state: 'added' }
-      if (override?.length) a.overridden = override.map((c) => c.title)
+      if (override?.length) a.overridden = override.map((c) => c.kind)
       set({ ...s, assignments: [...s.assignments, a] })
       return a.id
     },
@@ -134,7 +135,7 @@ function makeActions(get: () => State, set: (s: State) => void) {
       patch((s) => {
         const a = s.assignments.find((x) => x.id === id)
         if (!a || a.state === 'removed') return {}
-        const overridden = override?.length ? override.map((c) => c.title) : undefined
+        const overridden = override?.length ? override.map((c) => c.kind) : undefined
         if (a.state === 'added') {
           return { assignments: s.assignments.map((x) => (x.id === id ? { ...x, ...to, overridden } : x)) }
         }
@@ -223,7 +224,7 @@ function makeActions(get: () => State, set: (s: State) => void) {
       patch((s) => ({
         pendingApproval: { ...s.pendingApproval, [b]: true },
         notices: [
-          { id: uid(), at: new Date().toISOString(), title: `${me()?.name} sent changes for approval`, body: `${branch?.name} · ${branchChanges(s, b).length} changes waiting`, read: false, href: '/review' },
+          { id: uid(), at: new Date().toISOString(), kind: 'approvalRequested', params: { name: me()?.name ?? '', branch: branch?.name ?? '', changes: branchChanges(s, b).length }, read: false, href: '/review' },
           ...s.notices,
         ],
       }))
@@ -234,17 +235,18 @@ function makeActions(get: () => State, set: (s: State) => void) {
       const b = bid()
       const changes = branchChanges(s, b)
       const notified = [...new Set(changes.flatMap((c) => (c.kind === 'moved' ? [c.a.employeeId, c.from.employeeId] : [c.a.employeeId])))]
-      const taskNote = (x: Assignment) => (x.tasks?.length ? ` · tasks: ${x.tasks.map((t) => t.text).join(', ')}` : '')
+      const taskNote = (x: Assignment) => (x.tasks?.length ? ` · ${tr('history.detail.tasks', { list: x.tasks.map((t) => t.text).join(', ') })}` : '')
+      const overrideNote = (x: Assignment) => (x.overridden?.length ? ` (${tr('history.detail.override', { list: conflictTitles(tr, x.overridden) })})` : '')
       const logs: HistoryEntry[] = changes.map((c) =>
         c.kind === 'tasks'
-          ? entry({ action: 'Tasks updated', subject: empName(c.a.employeeId), to: `${[...c.added.map((t) => `+ ${t.text}`), ...c.removed.map((t) => `− ${t.text}`)].join(', ')} · ${describe(s, c.a)}` })
+          ? entry({ action: 'tasksUpdated', subject: empName(c.a.employeeId), to: `${[...c.added.map((t) => `+ ${t.text}`), ...c.removed.map((t) => `− ${t.text}`)].join(', ')} · ${describe(s, c.a)}` })
           : c.kind === 'added'
-          ? entry({ action: 'Assigned', subject: empName(c.a.employeeId), to: describe(s, c.a) + (c.a.overridden ? ` (override: ${c.a.overridden.join(', ')})` : '') + taskNote(c.a) })
-          : c.kind === 'removed'
-            ? entry({ action: 'Removed', subject: empName(c.a.employeeId), from: describe(s, c.a) })
-            : entry({ action: 'Moved', subject: empName(c.a.employeeId), from: describe(s, c.from), to: describe(s, c.a) }),
+            ? entry({ action: 'assigned', subject: empName(c.a.employeeId), to: describe(s, c.a) + overrideNote(c.a) + taskNote(c.a) })
+            : c.kind === 'removed'
+              ? entry({ action: 'removed', subject: empName(c.a.employeeId), from: describe(s, c.a) })
+              : entry({ action: 'moved', subject: empName(c.a.employeeId), from: describe(s, c.from), to: describe(s, c.a) }),
       )
-      logs.unshift(entry({ action: 'Published', subject: `${changes.length} changes`, to: `${notified.length} ${notified.length === 1 ? 'person' : 'people'} notified` }))
+      logs.unshift(entry({ action: 'published', subject: '', count: changes.length, people: notified.length }))
       const at = new Date().toISOString()
       set({
         ...s,
@@ -256,7 +258,7 @@ function makeActions(get: () => State, set: (s: State) => void) {
         pendingApproval: { ...s.pendingApproval, [b]: false },
         lastPublish: { branchId: b, at, count: changes.length, notified },
         notices: [
-          { id: uid(), at, title: 'Schedule published', body: `${changes.length} changes · ${notified.length} notified`, read: true, href: '/history' },
+          { id: uid(), at, kind: 'published', params: { changes: changes.length, people: notified.length }, read: true, href: '/history' },
           ...s.notices,
         ],
       })
@@ -268,14 +270,14 @@ function makeActions(get: () => State, set: (s: State) => void) {
       const existing = data.id ? s.employees.find((e) => e.id === data.id) : undefined
       if (existing) {
         const next = { ...existing, ...data }
-        set({ ...s, employees: s.employees.map((e) => (e.id === next.id ? next : e)), history: [entry({ action: 'Employee edited', subject: next.name, to: `${next.dept} · ${next.position}` }), ...s.history] })
+        set({ ...s, employees: s.employees.map((e) => (e.id === next.id ? next : e)), history: [entry({ action: 'employeeEdited', subject: next.name, to: `${deptName(tr, next.dept)} · ${next.position}` }), ...s.history] })
         return next
       }
       const e: Employee = { ...data, id: uid(), branchId: bid() }
       set({
         ...s,
         employees: [...s.employees, e],
-        history: [entry({ action: 'Employee added', subject: e.name, to: `${e.dept} · ${e.position}${e.status === 'invited' ? ' · invite sent' : ''}` }), ...s.history],
+        history: [entry({ action: 'employeeAdded', subject: e.name, to: `${deptName(tr, e.dept)} · ${e.position}${e.status === 'invited' ? ` · ${tr('history.detail.inviteSent')}` : ''}` }), ...s.history],
       })
       return e
     },
@@ -285,8 +287,9 @@ function makeActions(get: () => State, set: (s: State) => void) {
       if (!e) return
       const availability = e.availability.map((v, i) => (i === day ? value : v))
       patch((s) => ({ employees: s.employees.map((x) => (x.id === id ? { ...x, availability } : x)) }))
-      const d = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][day]
-      log({ action: 'Availability', subject: e.name, from: `${d} ${value ? 'unavailable' : 'available'}`, to: `${d} ${value ? 'available' : 'unavailable'}` })
+      const d = dayShort(day)
+      const state = (on: boolean) => tr(on ? 'common.available' : 'common.unavailable')
+      log({ action: 'availability', subject: e.name, from: `${d}: ${state(!value)}`, to: `${d}: ${state(value)}` })
     },
 
     setPreferred(id: string, preferred: Employee['preferred']) {
@@ -300,7 +303,14 @@ function makeActions(get: () => State, set: (s: State) => void) {
       patch((s) => ({
         leaves: s.leaves.map((x) => (x.id === id ? { ...x, status } : x)),
         history: [
-          entry({ action: status === 'approved' ? 'Leave approved' : 'Leave declined', subject: emp?.name ?? '', to: `${l.kind} · ${fmtRange(l.from, l.to)} (${daysInclusive(l.from, l.to)}d)` }, emp?.branchId),
+          entry(
+            {
+              action: status === 'approved' ? 'leaveApproved' : 'leaveDeclined',
+              subject: emp?.name ?? '',
+              to: `${tr(`leaveKind.${l.kind}`)} · ${fmtRange(l.from, l.to)} (${tr('common.days', { count: daysInclusive(l.from, l.to) })})`,
+            },
+            emp?.branchId,
+          ),
           ...s.history,
         ],
       }))
@@ -314,8 +324,8 @@ function makeActions(get: () => State, set: (s: State) => void) {
         templates: old ? s.templates.map((x) => (x.id === t.id ? t : x)) : [...s.templates, t],
         history: [
           old
-            ? entry({ action: 'Shift edited', subject: t.name, from: `${old.name} ${old.start}–${old.end}`, to: `${t.name} ${t.start}–${t.end}` })
-            : entry({ action: 'Shift created', subject: t.name, to: `${t.start}–${t.end}` }),
+            ? entry({ action: 'shiftEdited', subject: t.name, from: `${old.name} ${old.start}–${old.end}`, to: `${t.name} ${t.start}–${t.end}` })
+            : entry({ action: 'shiftCreated', subject: t.name, to: `${t.start}–${t.end}` }),
           ...s.history,
         ],
       })
@@ -359,7 +369,7 @@ function makeActions(get: () => State, set: (s: State) => void) {
 
     setPerm(p: Perm, v: boolean) {
       patch((s) => ({ perms: { ...s.perms, [p]: v } }))
-      log({ action: 'Permissions', subject: 'Managers', to: `${p} ${v ? 'on' : 'off'}` })
+      log({ action: 'permissions', subject: tr('history.detail.managers'), to: tr(v ? 'history.detail.permOn' : 'history.detail.permOff', { perm: tr(`perm.${p}.label`) }) })
     },
     setManagerBranch(managerId: string, branchId: string, on: boolean) {
       patch((s) => ({
@@ -375,7 +385,7 @@ function makeActions(get: () => State, set: (s: State) => void) {
         return
       }
       const nb = { ...b, id: uid() }
-      set({ ...s, branches: [...s.branches, nb], history: [entry({ action: 'Branch', subject: nb.name, to: 'Branch added' }, nb.id), ...s.history] })
+      set({ ...s, branches: [...s.branches, nb], history: [entry({ action: 'branch', subject: nb.name, to: tr('history.detail.branchAdded') }, nb.id), ...s.history] })
     },
     saveManager(m: Manager) {
       patch((s) => ({ managers: s.managers.map((x) => (x.id === m.id ? m : x)) }))

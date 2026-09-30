@@ -1,16 +1,19 @@
 import { AlertTriangle, BedDouble, CheckCircle2, Hourglass, Timer } from 'lucide-react'
 import { useStore } from '../lib/store'
-import { fmtRange, addDays } from '../lib/date'
+import { addDays, fmtRange } from '../lib/date'
 import { isActive, weekHours, weekIssues, MIN_REST_HOURS, MAX_DAY_HOURS } from '../lib/validation'
 import type { WeekIssue } from '../lib/validation'
 import type { Dept } from '../lib/types'
 import { DEPTS } from '../lib/types'
+import { useT } from '../i18n'
+import { deptName, weekIssueText } from '../i18n/format'
 import { Avatar, cx, Drawer } from './ui'
 
 const issueIcon: Record<WeekIssue['kind'], typeof Timer> = { rest: BedDouble, dayMax: Hourglass, maxHours: Timer }
 
 export function HoursDrawer({ weekStart, depts, onClose }: { weekStart: string; depts: Dept[]; onClose: () => void }) {
   const { s, branch } = useStore()
+  const { t } = useT()
   const end = addDays(weekStart, 6)
   const rows = s.employees
     .filter((e) => e.branchId === branch!.id && depts.includes(e.dept))
@@ -24,7 +27,7 @@ export function HoursDrawer({ weekStart, depts, onClose }: { weekStart: string; 
   const unscheduled = rows.filter((r) => r.hours === 0 && r.e.status === 'active').length
 
   return (
-    <Drawer title="Hours & rules" onClose={onClose}>
+    <Drawer title={t('hours.title')} onClose={onClose}>
       <p className="text-sm text-muted">
         {fmtRange(weekStart, end)} · {branch!.name}
       </p>
@@ -32,15 +35,11 @@ export function HoursDrawer({ weekStart, depts, onClose }: { weekStart: string; 
       <div className={cx('mt-4 flex gap-3 rounded-xl p-3 text-sm', withIssues ? 'bg-warn-50 text-warn' : 'bg-forest-50 text-forest')}>
         {withIssues ? <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" /> : <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />}
         <div>
-          <div className="font-medium">
-            {withIssues ? `${withIssues} ${withIssues === 1 ? 'person breaks' : 'people break'} a working-time rule` : 'Everyone is within the rules'}
-          </div>
-          <div className="mt-0.5 text-[13px] opacity-80">
-            {MIN_REST_HOURS}h rest between shifts · max {MAX_DAY_HOURS}h a day · each person’s weekly limit
-          </div>
+          <div className="font-medium">{withIssues ? t('hours.bad', { count: withIssues }) : t('hours.ok')}</div>
+          <div className="mt-0.5 text-[13px] opacity-80">{t('hours.rules', { rest: MIN_REST_HOURS, day: MAX_DAY_HOURS })}</div>
         </div>
       </div>
-      {unscheduled > 0 && <p className="mt-2 text-[13px] text-muted">{unscheduled} {unscheduled === 1 ? 'person has' : 'people have'} no shifts this week.</p>}
+      {unscheduled > 0 && <p className="mt-2 text-[13px] text-muted">{t('hours.unscheduled', { count: unscheduled })}</p>}
 
       <ul className="mt-4 divide-y divide-line">
         {rows.map(({ e, hours, shifts, issues }) => {
@@ -54,7 +53,7 @@ export function HoursDrawer({ weekStart, depts, onClose }: { weekStart: string; 
                     {e.name}
                   </a>
                   <div className="text-xs text-muted">
-                    {e.dept} · {shifts} {shifts === 1 ? 'shift' : 'shifts'}
+                    {deptName(t, e.dept)} · {t('common.shifts', { count: shifts })}
                   </div>
                 </div>
                 <div className="w-24 text-right">
@@ -69,12 +68,12 @@ export function HoursDrawer({ weekStart, depts, onClose }: { weekStart: string; 
               </div>
               {issues.length > 0 && (
                 <ul className="ml-11 mt-2 space-y-1">
-                  {issues.map((i) => {
+                  {issues.map((i, n) => {
                     const Icon = issueIcon[i.kind]
                     return (
-                      <li key={i.detail} className="flex items-center gap-1.5 text-xs text-warn">
+                      <li key={n} className="flex items-center gap-1.5 text-xs text-warn">
                         <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                        {i.detail}
+                        {weekIssueText(t, i)}
                       </li>
                     )
                   })}

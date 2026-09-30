@@ -3,6 +3,7 @@ import type { ButtonHTMLAttributes, ReactNode } from 'react'
 import { AlertTriangle, RotateCw, X } from 'lucide-react'
 import type { Dept, Employee, Tone } from '../lib/types'
 import { useToasts } from '../lib/store'
+import { useT } from '../i18n'
 
 export const cx = (...c: (string | false | null | undefined)[]) => c.filter(Boolean).join(' ')
 
@@ -75,6 +76,7 @@ export function Modal({
   width?: string
 }) {
   const d = useDialog(onClose)
+  const { t } = useT()
   return (
     <dialog {...d} className={cx('w-[calc(100%-32px)] animate-pop rounded-2xl bg-white p-0 text-ink shadow-2xl', width)}>
       <div className="flex items-start justify-between gap-4 px-6 pt-6">
@@ -82,7 +84,7 @@ export function Modal({
           <h2 className="text-lg font-semibold">{title}</h2>
           {description && <p className="mt-1 text-sm text-muted">{description}</p>}
         </div>
-        <IconButton label="Close" onClick={onClose} className="-mr-2 -mt-1">
+        <IconButton label={t('common.close')} onClick={onClose} className="-mr-2 -mt-1">
           <X className="h-4 w-4" />
         </IconButton>
       </div>
@@ -95,6 +97,7 @@ export function Modal({
 
 export function Drawer({ title, onClose, children, footer }: { title: ReactNode; onClose: () => void; children: ReactNode; footer?: ReactNode }) {
   const d = useDialog(onClose)
+  const { t } = useT()
   return (
     <dialog
       {...d}
@@ -102,7 +105,7 @@ export function Drawer({ title, onClose, children, footer }: { title: ReactNode;
     >
       <div className="flex items-center justify-between border-b border-line px-6 py-4">
         <h2 className="text-lg font-semibold">{title}</h2>
-        <IconButton label="Close" onClick={onClose}>
+        <IconButton label={t('common.close')} onClick={onClose}>
           <X className="h-4 w-4" />
         </IconButton>
       </div>
@@ -176,10 +179,11 @@ export function Avatar({ e, size = 36 }: { e: Pick<Employee, 'name' | 'dept' | '
 }
 
 export function DeptTag({ dept }: { dept: Dept }) {
+  const { t } = useT()
   return (
     <span className="inline-flex items-center gap-1.5 text-[13px] text-muted">
       <span className={cx('h-2 w-2 rounded-full', deptDot[dept])} />
-      {dept}
+      {t(`dept.${dept}`)}
     </span>
   )
 }
@@ -255,14 +259,15 @@ export function EmptyState({ icon, title, body, action }: { icon: ReactNode; tit
 }
 
 export function ErrorState({ what, onRetry }: { what: string; onRetry: () => void }) {
+  const { t } = useT()
   return (
     <EmptyState
       icon={<AlertTriangle className="h-5 w-5" />}
-      title={`Couldn’t load ${what}`}
-      body="There’s no connection to the server. Check your internet connection, then try again."
+      title={t('errors.couldNotLoad', { what })}
+      body={t('errors.noConnection')}
       action={
         <Button variant="primary" onClick={onRetry}>
-          <RotateCw className="h-4 w-4" /> Try again
+          <RotateCw className="h-4 w-4" /> {t('errors.tryAgain')}
         </Button>
       }
     />

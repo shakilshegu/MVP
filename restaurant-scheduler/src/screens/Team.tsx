@@ -3,7 +3,9 @@ import type { FormEvent } from 'react'
 import { ArrowLeft, Camera, ClipboardList, Mail, Pencil, Phone, Plane, Search, Send, UserPlus, Users } from 'lucide-react'
 import { useStore } from '../lib/store'
 import { navigate, useLoad } from '../lib/hooks'
-import { addDays, DAY_SHORT, fmtDay, fmtRange, startOfWeek, todayKey } from '../lib/date'
+import { addDays, dayShort, fmtDay, fmtRange, startOfWeek, todayKey, WEEK } from '../lib/date'
+import { useT } from '../i18n'
+import { deptName } from '../i18n/format'
 import { isActive, weekHours } from '../lib/validation'
 import { DEPTS, PREFERRED } from '../lib/types'
 import type { Dept, Employee } from '../lib/types'
@@ -12,6 +14,7 @@ import { Avatar, Badge, Button, cx, DeptTag, EmptyState, ErrorState, Field, Moda
 
 export function Team({ openAdd }: { openAdd: boolean }) {
   const { s, branch, can } = useStore()
+  const { t } = useT()
   const [q, setQ] = useState('')
   const [dept, setDept] = useState<'All' | Dept>('All')
   const [adding, setAdding] = useState(openAdd)
@@ -30,12 +33,17 @@ export function Team({ openAdd }: { openAdd: boolean }) {
   return (
     <div className="mx-auto max-w-5xl">
       <PageHeader
-        title="Team"
-        sub={`${team.length} people at ${branch!.name}${team.some((e) => e.status === 'invited') ? ` · ${team.filter((e) => e.status === 'invited').length} invite pending` : ''}`}
+        title={t('team.title')}
+        sub={[
+          t('team.sub', { count: team.length, branch: branch!.name }),
+          team.some((e) => e.status === 'invited') ? t('team.invitesPending', { count: team.filter((e) => e.status === 'invited').length }) : '',
+        ]
+          .filter(Boolean)
+          .join(' · ')}
         actions={
           can('createEmployees') && (
             <Button variant="primary" onClick={() => setAdding(true)}>
-              <UserPlus className="h-4 w-4" /> Add employee
+              <UserPlus className="h-4 w-4" /> {t('team.add')}
             </Button>
           )
         }
@@ -44,17 +52,17 @@ export function Team({ openAdd }: { openAdd: boolean }) {
       {team.length > 0 && (
         <div className="mb-4 flex flex-wrap items-center gap-3">
           <label className="relative min-w-[220px] flex-1">
-            <span className="sr-only">Search team</span>
+            <span className="sr-only">{t('assign.searchTeam')}</span>
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
-            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search name, role or email" className="input pl-9" />
+            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('team.searchPlaceholder')} className="input pl-9" />
           </label>
-          <Segmented label="Department" value={dept} onChange={setDept} options={[{ value: 'All', label: 'All' }, ...DEPTS.map((d) => ({ value: d, label: d }))]} />
+          <Segmented label={t('common.department')} value={dept} onChange={setDept} options={[{ value: 'All', label: t('common.all') }, ...DEPTS.map((d) => ({ value: d, label: deptName(t, d) }))]} />
         </div>
       )}
 
       <div className="panel overflow-hidden">
         {status === 'loading' && (
-          <div className="divide-y divide-line" aria-busy="true" aria-label="Loading team">
+          <div className="divide-y divide-line" aria-busy="true" aria-label={t('team.loading')}>
             {Array.from({ length: 6 }).map((_, i) => (
               <div key={i} className="flex items-center gap-3 px-5 py-4">
                 <Skeleton className="h-9 w-9 rounded-full" />
@@ -66,16 +74,16 @@ export function Team({ openAdd }: { openAdd: boolean }) {
             ))}
           </div>
         )}
-        {status === 'error' && <ErrorState what="your team" onRetry={retry} />}
+        {status === 'error' && <ErrorState what={t('team.errorWhat')} onRetry={retry} />}
         {status === 'ready' && team.length === 0 && (
           <EmptyState
             icon={<Users className="h-5 w-5" />}
-            title="No one here yet"
-            body={`Add the people who work at ${branch!.name}. They’ll get an email invite to see their shifts.`}
+            title={t('team.emptyTitle')}
+            body={t('team.emptyBody', { branch: branch!.name })}
             action={
               can('createEmployees') && (
                 <Button variant="primary" onClick={() => setAdding(true)}>
-                  <UserPlus className="h-4 w-4" /> Add your first employee
+                  <UserPlus className="h-4 w-4" /> {t('team.addFirst')}
                 </Button>
               )
             }
@@ -84,8 +92,8 @@ export function Team({ openAdd }: { openAdd: boolean }) {
         {status === 'ready' && team.length > 0 && list.length === 0 && (
           <EmptyState
             icon={<Search className="h-5 w-5" />}
-            title="No matches"
-            body={`Nobody matches “${q}”${dept !== 'All' ? ` in ${dept}` : ''}.`}
+            title={t('team.noMatches')}
+            body={dept !== 'All' ? t('team.noMatchesIn', { q, dept: deptName(t, dept) }) : t('team.noMatchesBody', { q })}
             action={
               <Button
                 onClick={() => {
@@ -93,7 +101,7 @@ export function Team({ openAdd }: { openAdd: boolean }) {
                   setDept('All')
                 }}
               >
-                Clear filters
+                {t('team.clearFilters')}
               </Button>
             }
           />
@@ -107,14 +115,14 @@ export function Team({ openAdd }: { openAdd: boolean }) {
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
                       <span className="truncate text-sm font-medium">{e.name}</span>
-                      {e.status === 'invited' && <Badge tone="warn">Invite pending</Badge>}
+                      {e.status === 'invited' && <Badge tone="warn">{t('team.invitePending')}</Badge>}
                     </div>
                     <div className="text-[13px] text-muted">{e.position}</div>
                   </div>
                   <div className="hidden w-28 sm:block">
                     <DeptTag dept={e.dept} />
                   </div>
-                  <div className="hidden w-24 text-[13px] text-muted md:block">{e.preferred}</div>
+                  <div className="hidden w-24 text-[13px] text-muted md:block">{t(`preferred.${e.preferred}`)}</div>
                   <Hours used={weekHours(s, e.id, ws)} max={e.maxHours} />
                 </a>
               </li>
@@ -130,6 +138,7 @@ export function Team({ openAdd }: { openAdd: boolean }) {
 
 export function EmployeeForm({ employee, onClose }: { employee?: Employee; onClose: () => void }) {
   const { a, toast } = useStore()
+  const { t } = useT()
   const [f, setF] = useState({
     name: employee?.name ?? '',
     email: employee?.email ?? '',
@@ -147,10 +156,10 @@ export function EmployeeForm({ employee, onClose }: { employee?: Employee; onClo
   const submit = (ev: FormEvent) => {
     ev.preventDefault()
     const e: Record<string, string> = {}
-    if (!f.name.trim()) e.name = 'Enter their full name.'
-    if (!/^\S+@\S+\.\S+$/.test(f.email)) e.email = 'Enter an email like name@example.com.'
-    if (!f.position.trim()) e.position = 'Enter a role, for example Server.'
-    if (!(f.maxHours >= 1 && f.maxHours <= 60)) e.maxHours = 'Use a number between 1 and 60.'
+    if (!f.name.trim()) e.name = t('employeeForm.errName')
+    if (!/^\S+@\S+\.\S+$/.test(f.email)) e.email = t('employeeForm.errEmail')
+    if (!f.position.trim()) e.position = t('employeeForm.errPosition')
+    if (!(f.maxHours >= 1 && f.maxHours <= 60)) e.maxHours = t('employeeForm.errMax')
     setErrors(e)
     if (Object.keys(e).length) return
     const saved = a.saveEmployee({
@@ -161,7 +170,7 @@ export function EmployeeForm({ employee, onClose }: { employee?: Employee; onClo
       availability: employee?.availability ?? [true, true, true, true, true, true, true],
       status: employee?.status ?? (invite ? 'invited' : 'active'),
     })
-    toast(employee ? 'Changes saved' : invite ? `Invite sent to ${saved.email}` : `${saved.name} added`)
+    toast(employee ? t('employeeForm.saved') : invite ? t('employeeForm.inviteSent', { email: saved.email }) : t('employeeForm.added', { name: saved.name }))
     onClose()
     if (!employee) navigate(`/team/${saved.id}`)
   }
@@ -169,7 +178,7 @@ export function EmployeeForm({ employee, onClose }: { employee?: Employee; onClo
   const onPhoto = (file?: File) => {
     if (!file) return
     if (file.size > 400_000) {
-      setErrors((p) => ({ ...p, photo: 'Pick an image under 400 KB.' }))
+      setErrors((p) => ({ ...p, photo: t('employeeForm.errPhoto') }))
       return
     }
     const r = new FileReader()
@@ -179,19 +188,19 @@ export function EmployeeForm({ employee, onClose }: { employee?: Employee; onClo
 
   return (
     <Modal
-      title={employee ? `Edit ${employee.name.split(' ')[0]}` : 'Add employee'}
-      description={employee ? undefined : 'They’ll show up on the schedule right away.'}
+      title={employee ? t('employeeForm.editTitle', { name: employee.name.split(' ')[0] }) : t('employeeForm.addTitle')}
+      description={employee ? undefined : t('employeeForm.addDesc')}
       onClose={onClose}
       footer={
         <>
-          <Button onClick={onClose}>Cancel</Button>
+          <Button onClick={onClose}>{t('common.cancel')}</Button>
           <Button variant="primary" type="submit" form="emp-form">
-            {employee ? 'Save changes' : invite ? (
+            {employee ? t('common.save') : invite ? (
               <>
-                <Send className="h-4 w-4" /> Add and send invite
+                <Send className="h-4 w-4" /> {t('employeeForm.addAndInvite')}
               </>
             ) : (
-              'Add employee'
+              t('employeeForm.addEmployee')
             )}
           </Button>
         </>
@@ -204,40 +213,42 @@ export function EmployeeForm({ employee, onClose }: { employee?: Employee; onClo
             <span className="absolute inset-0 flex items-center justify-center rounded-full bg-ink/50 text-white opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
               <Camera className="h-5 w-5" />
             </span>
-            <input type="file" accept="image/*" className="sr-only" onChange={(e) => onPhoto(e.target.files?.[0])} aria-label="Upload photo" />
+            <input type="file" accept="image/*" className="sr-only" onChange={(e) => onPhoto(e.target.files?.[0])} aria-label={t('employeeForm.uploadPhoto')} />
           </label>
           <div className="flex-1">
-            <Field label="Full name" htmlFor="f-name" error={errors.name}>
-              <input id="f-name" autoFocus className="input" value={f.name} onChange={(e) => set('name', e.target.value)} placeholder="e.g. Maya Robinson" />
+            <Field label={t('employeeForm.fullName')} htmlFor="f-name" error={errors.name}>
+              <input id="f-name" autoFocus className="input" value={f.name} onChange={(e) => set('name', e.target.value)} placeholder={t('employeeForm.namePlaceholder')} />
             </Field>
             {errors.photo && <p className="mt-1 text-[13px] text-danger">{errors.photo}</p>}
           </div>
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Email" htmlFor="f-email" error={errors.email}>
-            <input id="f-email" type="email" className="input" value={f.email} onChange={(e) => set('email', e.target.value)} placeholder="maya@example.com" />
+          <Field label={t('employeeForm.email')} htmlFor="f-email" error={errors.email}>
+            <input id="f-email" type="email" className="input" value={f.email} onChange={(e) => set('email', e.target.value)} placeholder={t('employeeForm.emailPlaceholder')} />
           </Field>
-          <Field label="Phone" htmlFor="f-phone" hint="Optional">
+          <Field label={t('employeeForm.phone')} htmlFor="f-phone" hint={t('common.optional')}>
             <input id="f-phone" type="tel" className="input" value={f.phone} onChange={(e) => set('phone', e.target.value)} />
           </Field>
         </div>
-        <Field label="Department">
-          <Segmented label="Department" value={f.dept} onChange={(v) => set('dept', v)} options={DEPTS.map((d) => ({ value: d, label: d }))} />
+        <Field label={t('common.department')}>
+          <Segmented label={t('common.department')} value={f.dept} onChange={(v) => set('dept', v)} options={DEPTS.map((d) => ({ value: d, label: deptName(t, d) }))} />
         </Field>
         <div className="grid gap-4 sm:grid-cols-3">
           <div className="sm:col-span-2">
-            <Field label="Position" htmlFor="f-pos" error={errors.position}>
-              <input id="f-pos" className="input" value={f.position} onChange={(e) => set('position', e.target.value)} placeholder="Server, Line cook…" />
+            <Field label={t('employeeForm.position')} htmlFor="f-pos" error={errors.position}>
+              <input id="f-pos" className="input" value={f.position} onChange={(e) => set('position', e.target.value)} placeholder={t('employeeForm.positionPlaceholder')} />
             </Field>
           </div>
-          <Field label="Max hours / week" htmlFor="f-max" error={errors.maxHours}>
+          <Field label={t('employeeForm.maxHours')} htmlFor="f-max" error={errors.maxHours}>
             <input id="f-max" type="number" min={1} max={60} className="input" value={f.maxHours} onChange={(e) => set('maxHours', Number(e.target.value))} />
           </Field>
         </div>
-        <Field label="Preferred shifts" htmlFor="f-pref">
+        <Field label={t('employeeForm.preferred')} htmlFor="f-pref">
           <select id="f-pref" className="input" value={f.preferred} onChange={(e) => set('preferred', e.target.value as Employee['preferred'])}>
             {PREFERRED.map((p) => (
-              <option key={p}>{p}</option>
+              <option key={p} value={p}>
+                {t(`preferred.${p}`)}
+              </option>
             ))}
           </select>
         </Field>
@@ -245,8 +256,8 @@ export function EmployeeForm({ employee, onClose }: { employee?: Employee; onClo
           <label className="flex cursor-pointer items-start gap-3 rounded-xl bg-paper p-3 text-sm">
             <input type="checkbox" checked={invite} onChange={(e) => setInvite(e.target.checked)} className="mt-0.5 h-4 w-4 accent-forest" />
             <span>
-              <span className="font-medium">Email an invite</span>
-              <span className="block text-[13px] text-muted">They can sign in to see their shifts and set their availability.</span>
+              <span className="font-medium">{t('employeeForm.invite')}</span>
+              <span className="block text-[13px] text-muted">{t('employeeForm.inviteHint')}</span>
             </span>
           </label>
         )}
@@ -257,12 +268,13 @@ export function EmployeeForm({ employee, onClose }: { employee?: Employee; onClo
 
 export function EmployeeProfile({ id }: { id: string }) {
   const { s, can, toast, a } = useStore()
+  const { t } = useT()
   const [editing, setEditing] = useState(false)
   const e = s.employees.find((x) => x.id === id)
   if (!e) {
     return (
       <div className="panel mx-auto max-w-md">
-        <EmptyState icon={<Users className="h-5 w-5" />} title="Employee not found" body="They may have been removed from this branch." action={<Button onClick={() => navigate('/team')}>Back to team</Button>} />
+        <EmptyState icon={<Users className="h-5 w-5" />} title={t('profile.notFound')} body={t('profile.notFoundBody')} action={<Button onClick={() => navigate('/team')}>{t('profile.backToTeam')}</Button>} />
       </div>
     )
   }
@@ -274,7 +286,7 @@ export function EmployeeProfile({ id }: { id: string }) {
   return (
     <div className="mx-auto max-w-4xl">
       <a href="#/team" className="mb-4 inline-flex items-center gap-1.5 text-sm text-muted hover:text-ink">
-        <ArrowLeft className="h-4 w-4" /> Team
+        <ArrowLeft className="h-4 w-4" /> {t('team.title')}
       </a>
       <div className="panel flex flex-wrap items-center gap-5 p-6">
         <Avatar e={e} size={72} />
@@ -283,18 +295,18 @@ export function EmployeeProfile({ id }: { id: string }) {
           <div className="mt-1 flex flex-wrap items-center gap-3 text-sm text-muted">
             {e.position}
             <DeptTag dept={e.dept} />
-            {e.status === 'invited' && <Badge tone="warn">Invite pending</Badge>}
+            {e.status === 'invited' && <Badge tone="warn">{t('team.invitePending')}</Badge>}
           </div>
         </div>
         <div className="flex gap-2">
           {e.status === 'invited' && (
-            <Button onClick={() => toast(`Invite resent to ${e.email}`)}>
-              <Send className="h-4 w-4" /> Resend invite
+            <Button onClick={() => toast(t('profile.resent', { email: e.email }))}>
+              <Send className="h-4 w-4" /> {t('profile.resendInvite')}
             </Button>
           )}
           {can('createEmployees') && (
             <Button onClick={() => setEditing(true)}>
-              <Pencil className="h-4 w-4" /> Edit
+              <Pencil className="h-4 w-4" /> {t('common.edit')}
             </Button>
           )}
         </div>
@@ -303,25 +315,25 @@ export function EmployeeProfile({ id }: { id: string }) {
       <div className="mt-6 grid gap-6 md:grid-cols-[1fr_300px]">
         <section className="panel">
           <div className="flex items-center justify-between border-b border-line px-5 py-3.5">
-            <h2 className="text-sm font-semibold">This week</h2>
+            <h2 className="text-sm font-semibold">{t('profile.thisWeek')}</h2>
             <Hours used={weekHours(s, e.id, ws)} max={e.maxHours} />
           </div>
           {shifts.length === 0 ? (
-            <p className="px-5 py-8 text-center text-sm text-muted">No shifts this week.</p>
+            <p className="px-5 py-8 text-center text-sm text-muted">{t('profile.noShifts')}</p>
           ) : (
             <ul className="divide-y divide-line">
               {shifts.map((x) => {
-                const t = s.templates.find((y) => y.id === x.templateId)!
+                const tpl = s.templates.find((y) => y.id === x.templateId)!
                 return (
                   <li key={x.id} className={cx('px-5 py-3', x.date < today && 'opacity-55')}>
                     <div className="flex items-center gap-4">
                     <div className="w-24 text-sm font-medium">{fmtDay(x.date)}</div>
-                    <span className={cx('rounded-md px-2 py-0.5 text-xs font-medium', toneCls[t.tone])}>{t.name}</span>
+                    <span className={cx('rounded-md px-2 py-0.5 text-xs font-medium', toneCls[tpl.tone])}>{tpl.name}</span>
                     <span className="text-sm text-muted">
-                      {t.start}–{t.end}
+                      {tpl.start}–{tpl.end}
                     </span>
                     <span className="ml-auto flex items-center gap-2">
-                      {x.state === 'added' && <Badge tone="green">Unpublished</Badge>}
+                      {x.state === 'added' && <Badge tone="green">{t('profile.unpublished')}</Badge>}
                       <DeptTag dept={x.dept} />
                     </span>
                     </div>
@@ -344,7 +356,7 @@ export function EmployeeProfile({ id }: { id: string }) {
 
         <div className="space-y-6">
           <section className="panel p-5">
-            <h2 className="text-sm font-semibold">Contact</h2>
+            <h2 className="text-sm font-semibold">{t('profile.contact')}</h2>
             <a href={`mailto:${e.email}`} className="mt-3 flex items-center gap-2 text-sm text-forest hover:underline">
               <Mail className="h-4 w-4" /> {e.email}
             </a>
@@ -356,42 +368,42 @@ export function EmployeeProfile({ id }: { id: string }) {
           </section>
           <section className="panel p-5">
             <div className="flex items-center justify-between">
-              <h2 className="text-sm font-semibold">Availability</h2>
+              <h2 className="text-sm font-semibold">{t('profile.availability')}</h2>
               <a href="#/availability" className="text-[13px] font-medium text-forest hover:underline">
-                Edit
+                {t('common.edit')}
               </a>
             </div>
             <div className="mt-3 grid grid-cols-7 gap-1">
-              {DAY_SHORT.map((d, i) => (
+              {WEEK.map((i) => (
                 <button
-                  key={d}
+                  key={i}
                   onClick={() => a.setAvailability(e.id, i, !e.availability[i])}
                   aria-pressed={e.availability[i]}
-                  aria-label={`${d}: ${e.availability[i] ? 'available' : 'unavailable'}`}
+                  aria-label={t('profile.dayState', { day: dayShort(i), state: t(e.availability[i] ? 'common.available' : 'common.unavailable') })}
                   className={cx(
                     'rounded-md py-1.5 text-center text-[11px] font-medium',
                     e.availability[i] ? 'bg-forest-50 text-forest' : 'bg-paper text-muted line-through',
                   )}
                 >
-                  {d.slice(0, 2)}
+                  {dayShort(i).slice(0, 2)}
                 </button>
               ))}
             </div>
             <p className="mt-3 text-[13px] text-muted">
-              Prefers {e.preferred.toLowerCase()} · max {e.maxHours}h a week
+              {t('profile.prefers', { pref: t(`preferred.${e.preferred}`), max: e.maxHours })}
             </p>
           </section>
           <section className="panel p-5">
-            <h2 className="text-sm font-semibold">Upcoming leave</h2>
+            <h2 className="text-sm font-semibold">{t('profile.upcomingLeave')}</h2>
             {leaves.length === 0 ? (
-              <p className="mt-2 text-[13px] text-muted">None booked.</p>
+              <p className="mt-2 text-[13px] text-muted">{t('profile.noneBooked')}</p>
             ) : (
               <ul className="mt-3 space-y-2">
                 {leaves.map((l) => (
                   <li key={l.id} className="flex items-center gap-2 text-sm">
                     <Plane className="h-4 w-4 text-muted" />
                     {fmtRange(l.from, l.to)}
-                    <span className="ml-auto">{l.status === 'pending' ? <Badge tone="warn">Pending</Badge> : <Badge tone="green">Approved</Badge>}</span>
+                    <span className="ml-auto">{l.status === 'pending' ? <Badge tone="warn">{t('profile.pending')}</Badge> : <Badge tone="green">{t('profile.approved')}</Badge>}</span>
                   </li>
                 ))}
               </ul>
