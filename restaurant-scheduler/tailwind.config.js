@@ -20,6 +20,7 @@ export default {
         bar: '#B7791F',
         service: '#2F7A64',
         kitchen: '#8A4B42',
+        rain: '#3A6F9E',
       },
       fontFamily: {
         sans: ['"Instrument Sans"', 'system-ui', 'sans-serif'],

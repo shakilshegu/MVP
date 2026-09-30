@@ -6,7 +6,7 @@ export type Tone = 'morning' | 'day' | 'evening' | 'night'
 export type Preferred = 'Mornings' | 'Days' | 'Evenings' | 'Nights' | 'Flexible'
 export const PREFERRED: Preferred[] = ['Flexible', 'Mornings', 'Days', 'Evenings', 'Nights']
 
-export type Branch = { id: string; name: string; address: string; opens: string; closes: string }
+export type Branch = { id: string; name: string; address: string; city: string; opens: string; closes: string }
 
 export type Manager = { id: string; name: string; email: string; role: Role; branchIds: string[] }
 
@@ -35,6 +35,8 @@ export type ShiftTemplate = {
   needed: Record<Dept, number>
 }
 
+export type Task = { id: string; text: string; done: boolean }
+
 export type Assignment = {
   id: string
   branchId: string
@@ -44,6 +46,9 @@ export type Assignment = {
   dept: Dept
   state: 'published' | 'added' | 'removed'
   overridden?: string[]
+  tasks?: Task[]
+  /** Tasks as the team last saw them; differences are unpublished changes. */
+  publishedTasks?: Task[]
   movedFrom?: string
   movedTo?: string
 }
@@ -62,6 +67,7 @@ export type Leave = {
 export type HistoryAction =
   | 'Assigned'
   | 'Removed'
+  | 'Tasks updated'
   | 'Moved'
   | 'Published'
   | 'Shift edited'

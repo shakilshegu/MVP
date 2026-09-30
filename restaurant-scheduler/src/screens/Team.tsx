@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
-import { ArrowLeft, Camera, Mail, Pencil, Phone, Plane, Search, Send, UserPlus, Users } from 'lucide-react'
+import { ArrowLeft, Camera, ClipboardList, Mail, Pencil, Phone, Plane, Search, Send, UserPlus, Users } from 'lucide-react'
 import { useStore } from '../lib/store'
 import { navigate, useLoad } from '../lib/hooks'
 import { addDays, DAY_SHORT, fmtDay, fmtRange, startOfWeek, todayKey } from '../lib/date'
@@ -313,7 +313,8 @@ export function EmployeeProfile({ id }: { id: string }) {
               {shifts.map((x) => {
                 const t = s.templates.find((y) => y.id === x.templateId)!
                 return (
-                  <li key={x.id} className={cx('flex items-center gap-4 px-5 py-3', x.date < today && 'opacity-55')}>
+                  <li key={x.id} className={cx('px-5 py-3', x.date < today && 'opacity-55')}>
+                    <div className="flex items-center gap-4">
                     <div className="w-24 text-sm font-medium">{fmtDay(x.date)}</div>
                     <span className={cx('rounded-md px-2 py-0.5 text-xs font-medium', toneCls[t.tone])}>{t.name}</span>
                     <span className="text-sm text-muted">
@@ -323,6 +324,17 @@ export function EmployeeProfile({ id }: { id: string }) {
                       {x.state === 'added' && <Badge tone="green">Unpublished</Badge>}
                       <DeptTag dept={x.dept} />
                     </span>
+                    </div>
+                    {!!x.tasks?.length && (
+                      <ul className="ml-28 mt-1.5 space-y-0.5">
+                        {x.tasks.map((task) => (
+                          <li key={task.id} className={cx('flex items-center gap-2 text-[13px]', task.done ? 'text-muted line-through' : 'text-ink/80')}>
+                            <ClipboardList className="h-3.5 w-3.5 shrink-0 text-muted" aria-hidden />
+                            {task.text}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
                   </li>
                 )
               })}

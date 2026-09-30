@@ -1,7 +1,8 @@
 import { useState } from 'react'
-import { AlertTriangle, ArrowRight, Bell, CalendarCheck2, Check, Hourglass, Undo2, WifiOff } from 'lucide-react'
+import { AlertTriangle, ArrowRight, ClipboardList, Bell, CalendarCheck2, Check, Hourglass, Undo2, WifiOff } from 'lucide-react'
 import { branchChanges, describe, useStore } from '../lib/store'
 import type { Change } from '../lib/store'
+import type { Task } from '../lib/types'
 import { navigate, useOnline } from '../lib/hooks'
 import { fmtLong, relTime } from '../lib/date'
 import { Avatar, Badge, Button, cx, EmptyState, PageHeader } from '../components/ui'
@@ -16,7 +17,8 @@ export function ReviewPublish() {
   const waiting = s.pendingApproval[branch!.id]
   const canPublish = can('publish')
   const notifyIds = [...new Set(changes.flatMap((c) => (c.kind === 'moved' ? [c.a.employeeId, c.from.employeeId] : [c.a.employeeId])))]
-  const overrides = changes.filter((c) => c.a.overridden).length
+  const overrides = changes.filter((c) => c.kind !== 'tasks' && c.a.overridden).length
+  const taskChanges = changes.filter((c) => c.kind === 'tasks').length
   const step = confirmed ? 3 : 1
 
   const byDate = changes.reduce<Record<string, Change[]>>((m, c) => {
@@ -81,6 +83,11 @@ export function ReviewPublish() {
                           {c.kind === 'added' && <Badge tone="green">Added</Badge>}
                           {c.kind === 'removed' && <Badge tone="danger">Removed</Badge>}
                           {c.kind === 'moved' && <Badge tone="dark">Moved</Badge>}
+                          {c.kind === 'tasks' && (
+                            <Badge tone="neutral">
+                              <ClipboardList className="h-3 w-3" /> Tasks
+                            </Badge>
+                          )}
                         </div>
                         <div className="mt-0.5 text-[13px] text-muted">
                           {c.kind === 'moved' ? (
@@ -93,13 +100,18 @@ export function ReviewPublish() {
                             <span className={c.kind === 'removed' ? 'line-through' : ''}>{describe(s, c.a)}</span>
                           )}
                         </div>
-                        {c.a.overridden && (
+                        {c.kind === 'tasks' ? (
+                          <TaskLines added={c.added} removed={c.removed} />
+                        ) : (
+                          c.kind !== 'removed' && !!c.a.tasks?.length && <TaskLines added={c.a.tasks} removed={[]} />
+                        )}
+                        {c.kind !== 'tasks' && c.a.overridden && (
                           <div className="mt-1 flex items-center gap-1.5 text-[13px] text-warn">
                             <AlertTriangle className="h-3.5 w-3.5" /> Assigned despite: {c.a.overridden.join(', ').toLowerCase()}
                           </div>
                         )}
                       </div>
-                      <Button size="sm" variant="ghost" onClick={() => (c.kind === 'removed' ? a.undoRemove(c.a.id) : a.remove(c.a.id))} aria-label={`Undo change for ${e.name}`}>
+                      <Button size="sm" variant="ghost" onClick={() => (c.kind === 'tasks' ? a.revertTasks(c.a.id) : c.kind === 'removed' ? a.undoRemove(c.a.id) : a.remove(c.a.id))} aria-label={`Undo change for ${e.name}`}>
                         <Undo2 className="h-3.5 w-3.5" /> Undo
                       </Button>
                     </li>
@@ -112,11 +124,12 @@ export function ReviewPublish() {
 
         <aside className="lg:sticky lg:top-4 lg:self-start">
           <div className="panel p-5">
-            <dl className="grid grid-cols-3 gap-2 text-center">
+            <dl className={cx('grid gap-2 text-center', taskChanges ? 'grid-cols-4' : 'grid-cols-3')}>
               {[
                 ['Added', changes.filter((c) => c.kind === 'added').length],
                 ['Moved', changes.filter((c) => c.kind === 'moved').length],
                 ['Removed', changes.filter((c) => c.kind === 'removed').length],
+                ...(taskChanges ? [['Tasks', taskChanges] as const] : []),
               ].map(([k, v]) => (
                 <div key={k} className="rounded-xl bg-paper py-3">
                   <dd className="text-xl font-semibold">{v}</dd>
@@ -251,5 +264,24 @@ export function Published() {
         </div>
       </div>
     </div>
+  )
+}
+
+function TaskLines({ added, removed }: { added: Task[]; removed: Task[] }) {
+  return (
+    <ul className="mt-1.5 space-y-0.5 text-[13px]">
+      {added.map((t) => (
+        <li key={t.id} className="flex items-center gap-1.5 text-forest">
+          <span className="w-3 text-center font-semibold" aria-label="Added task">+</span>
+          {t.text}
+        </li>
+      ))}
+      {removed.map((t) => (
+        <li key={t.id} className="flex items-center gap-1.5 text-bark">
+          <span className="w-3 text-center font-semibold" aria-label="Removed task">−</span>
+          <span className="line-through">{t.text}</span>
+        </li>
+      ))}
+    </ul>
   )
 }

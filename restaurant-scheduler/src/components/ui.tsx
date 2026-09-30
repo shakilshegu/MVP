@@ -136,7 +136,7 @@ export function Popover({ anchor, onClose, children, width = 340 }: { anchor: DO
   return (
     <dialog
       {...d}
-      className="bare fixed m-0 max-h-[min(560px,calc(100vh-16px))] overflow-hidden rounded-xl border border-line bg-white p-0 text-ink shadow-xl"
+      className="bare fixed m-0 max-h-[min(560px,calc(100vh-16px))] overflow-y-auto rounded-xl border border-line bg-white p-0 text-ink shadow-xl"
       style={{ width, top: pos?.top ?? anchor.bottom + 6, left: pos?.left ?? anchor.left, visibility: pos ? 'visible' : 'hidden' }}
     >
       {children}
@@ -290,17 +290,18 @@ export function Toaster() {
       {toasts.map((t) => (
         <div key={t.id} className="pointer-events-auto flex animate-pop items-center gap-4 rounded-xl bg-ink px-4 py-3 text-sm text-white shadow-xl">
           <span>{t.msg}</span>
-          {t.action && (
+          {[t.action, t.action2].filter((x) => !!x).map((act) => (
             <button
+              key={act.label}
               className="font-semibold text-[#A8D5BF] hover:text-white"
               onClick={() => {
-                t.action!.run()
+                act.run()
                 dismiss(t.id)
               }}
             >
-              {t.action.label}
+              {act.label}
             </button>
-          )}
+          ))}
         </div>
       ))}
     </div>

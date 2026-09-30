@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
-import { AlertTriangle, CalendarRange, ChevronLeft, ChevronRight, Copy, Eye, Plus, Undo2, UserPlus, Users } from 'lucide-react'
+import { AlertTriangle, CalendarRange, ClipboardList, Download, Loader2, MapPin, MoreHorizontal, ChevronLeft, ChevronRight, Copy, Eye, Plus, Undo2, UserPlus, Users } from 'lucide-react'
 import { branchChanges, describe, useStore } from '../lib/store'
 import { navigate, useLoad } from '../lib/hooks'
 import { addDays, DAY_SHORT, fmtDay, fmtRange, fmtShort, fromKey, hoursBetween, startOfWeek, todayKey, weekDays } from '../lib/date'
@@ -9,25 +9,33 @@ import type { Conflict } from '../lib/validation'
 import type { Assignment, Dept, Employee, ShiftTemplate } from '../lib/types'
 import { DEPTS } from '../lib/types'
 import { AssignPanel, ConflictDialog, Hours } from '../components/assign'
+import { DayWeatherLine, DayWeatherMini } from '../components/weather'
+import { TaskList } from '../components/tasks'
+import { cityOf, useWeather } from '../lib/weather'
+import { downloadRotaPdf } from '../lib/pdf'
+import type { DayWeather } from '../lib/weather'
 import type { Slot } from '../components/assign'
 import { Avatar, Button, cx, deptDot, EmptyState, ErrorState, IconButton, Modal, Popover, Segmented, Skeleton, toneCls } from '../components/ui'
 
 type Pending = { employee: Employee; conflicts: Conflict[]; slot: Slot; run: () => void }
 
 export default function WeeklySchedule({ week }: { week: string | null }) {
-  const { s, a, branch, can, toast } = useStore()
+  const { s, a, branch, can, toast, me } = useStore()
+  const [exporting, setExporting] = useState(false)
   const today = todayKey()
   const weekStart = startOfWeek(week ?? today)
   const days = weekDays(weekStart)
   const [dept, setDept] = useState<'All' | Dept>('All')
   const [assignAt, setAssignAt] = useState<{ slot: Slot; rect: DOMRect } | null>(null)
-  const [menu, setMenu] = useState<{ a: Assignment; rect: DOMRect } | null>(null)
+  const [menu, setMenu] = useState<{ id: string; rect: DOMRect } | null>(null)
   const [pending, setPending] = useState<Pending | null>(null)
   const [confirmDiscard, setConfirmDiscard] = useState(false)
   const [dragOver, setDragOver] = useState<string | null>(null)
   const [mobileDay, setMobileDay] = useState(() => Math.max(0, days.indexOf(today)))
   const { status, retry } = useLoad(branch!.id + weekStart)
   const editable = can('editShifts')
+  const city = cityOf(branch!.city)
+  const weather = useWeather(city, days)
 
   const team = s.employees.filter((e) => e.branchId === branch!.id)
   const inWeek = useMemo(
@@ -60,11 +68,20 @@ export default function WeeklySchedule({ week }: { week: string | null }) {
     return { coverage: needed ? Math.round((filled / needed) * 100) : 100, open, shifts: active.length, hours }
   }, [days, s.templates, visibleDepts, inWeek])
 
+  const openMenuById = (id: string) => {
+    const el = [...document.querySelectorAll<HTMLElement>(`[data-assignment="${id}"]`)].find((n) => n.offsetParent !== null)
+    if (el) setMenu({ id, rect: el.getBoundingClientRect() })
+  }
+
   const tryAssign = (employee: Employee, conflicts: Conflict[], slot: Slot) => {
     const run = (override?: Conflict[]) => {
       const id = a.assign({ branchId: branch!.id, employeeId: employee.id, ...slot }, override)
       const tpl = s.templates.find((t) => t.id === slot.templateId)!
-      toast(`${employee.name.split(' ')[0]} added to ${tpl.name}, ${fmtDay(slot.date)}`, { label: 'Undo', run: () => a.remove(id) })
+      toast(
+        `${employee.name.split(' ')[0]} added to ${tpl.name}, ${fmtDay(slot.date)}`,
+        { label: 'Add task', run: () => openMenuById(id) },
+        { label: 'Undo', run: () => a.remove(id) },
+      )
     }
     setAssignAt(null)
     if (conflicts.length) setPending({ employee, conflicts, slot, run: () => run(conflicts) })
@@ -92,10 +109,11 @@ export default function WeeklySchedule({ week }: { week: string | null }) {
     setDragOver,
     onDrop,
     openAssign: (slot: Slot, el: HTMLElement) => setAssignAt({ slot, rect: el.getBoundingClientRect() }),
-    openMenu: (x: Assignment, el: HTMLElement) => setMenu({ a: x, rect: el.getBoundingClientRect() }),
+    openMenu: (x: Assignment, el: HTMLElement) => setMenu({ id: x.id, rect: el.getBoundingClientRect() }),
     employees: s.employees,
   }
 
+  const menuItem = menu ? s.assignments.find((y) => y.id === menu.id) : undefined
   const weekIsEmpty = !inWeek.some(isActive)
   const prevWeekHasShifts = s.assignments.some((x) => x.branchId === branch!.id && isActive(x) && x.date >= addDays(weekStart, -7) && x.date < weekStart)
   const isPastWeek = days[6] < today
@@ -117,6 +135,12 @@ export default function WeeklySchedule({ week }: { week: string | null }) {
                   {stats.open} open {stats.open === 1 ? 'slot' : 'slots'}
                 </span>{' '}
                 · {stats.shifts} shifts, {stats.hours}h
+              </>
+            )}
+            {city && (
+              <>
+                {' '}
+                · <span className="inline-flex items-center gap-1"><MapPin className="h-3.5 w-3.5" />{city.name}</span>
               </>
             )}
           </p>
@@ -143,9 +167,21 @@ export default function WeeklySchedule({ week }: { week: string | null }) {
             onChange={setDept}
             options={[{ value: 'All', label: 'All' }, ...DEPTS.map((d) => ({ value: d, label: <><span className={cx('h-1.5 w-1.5 rounded-full', deptDot[d])} />{d}</> }))]}
           />
-          <a href="#/month" className="hidden h-10 items-center gap-2 rounded-lg px-3 text-sm font-medium text-forest hover:bg-white/50 sm:inline-flex">
-            <CalendarRange className="h-4 w-4" /> Month
-          </a>
+          <MoreMenu
+            exporting={exporting}
+            canExport={team.length > 0}
+            onExport={async () => {
+              setExporting(true)
+              try {
+                await downloadRotaPdf({ s, branch: branch!, me, weekStart, depts: visibleDepts })
+                toast('PDF downloaded')
+              } catch {
+                toast('Couldn’t create the PDF. Try again.')
+              } finally {
+                setExporting(false)
+              }
+            }}
+          />
         </div>
       </div>
 
@@ -230,6 +266,7 @@ export default function WeeklySchedule({ week }: { week: string | null }) {
                         {got}/{need}
                       </span>
                     </div>
+                    <DayWeatherLine w={weather.data[d]} status={weather.status} />
                   </div>
                 )
               })}
@@ -247,7 +284,7 @@ export default function WeeklySchedule({ week }: { week: string | null }) {
             </div>
           </div>
 
-          <MobileDay days={days} active={mobileDay} setActive={setMobileDay}>
+          <MobileDay days={days} active={mobileDay} setActive={setMobileDay} weather={weather.data}>
             {visibleDepts.map((dp) => (
               <section key={dp} className="panel overflow-hidden">
                 <h2 className="flex items-center gap-2 border-b border-line bg-paper px-4 py-2.5 text-sm font-semibold">
@@ -312,7 +349,7 @@ export default function WeeklySchedule({ week }: { week: string | null }) {
           <AssignPanel slot={assignAt.slot} onPick={(e, c) => tryAssign(e, c, assignAt.slot)} />
         </Popover>
       )}
-      {menu && <ChipMenu x={menu.a} rect={menu.rect} onClose={() => setMenu(null)} editable={editable && menu.a.date >= today} />}
+      {menuItem && <ChipMenu x={menuItem} rect={menu!.rect} onClose={() => setMenu(null)} editable={editable && menuItem.date >= today} />}
       {pending && (
         <ConflictDialog
           employee={pending.employee}
@@ -348,6 +385,46 @@ export default function WeeklySchedule({ week }: { week: string | null }) {
         />
       )}
     </div>
+  )
+}
+
+function MoreMenu({ exporting, canExport, onExport }: { exporting: boolean; canExport: boolean; onExport: () => void }) {
+  const [rect, setRect] = useState<DOMRect | null>(null)
+  const item = 'flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm hover:bg-paper disabled:opacity-45 disabled:hover:bg-transparent'
+  return (
+    <>
+      <IconButton
+        label="More options"
+        aria-haspopup="menu"
+        className="h-10 w-10 bg-white ring-1 ring-line hover:bg-paper"
+        onClick={(e) => {
+          const r = e.currentTarget.getBoundingClientRect()
+          setRect(new DOMRect(r.right - 220, r.top, 220, r.height))
+        }}
+      >
+        {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <MoreHorizontal className="h-4 w-4" />}
+      </IconButton>
+      {rect && (
+        <Popover anchor={rect} onClose={() => setRect(null)} width={220}>
+          <div role="menu" className="p-1.5">
+            <button
+              role="menuitem"
+              disabled={!canExport || exporting}
+              className={item}
+              onClick={() => {
+                setRect(null)
+                onExport()
+              }}
+            >
+              <Download className="h-4 w-4 text-muted" /> Download PDF
+            </button>
+            <a role="menuitem" href="#/month" onClick={() => setRect(null)} className={item}>
+              <CalendarRange className="h-4 w-4 text-muted" /> Month view
+            </a>
+          </div>
+        </Popover>
+      )}
+    </>
   )
 }
 
@@ -436,6 +513,7 @@ function Cell({ slot, list, needed, tone, today, editable, dragOver, setDragOver
               ev.dataTransfer.setData('text/plain', x.id)
               ev.dataTransfer.effectAllowed = 'move'
             }}
+            data-assignment={x.id}
             onClick={(ev) => openMenu(x, ev.currentTarget)}
             aria-label={`${e.name}${x.state === 'added' ? ', unpublished' : x.state === 'removed' ? ', removed, unpublished' : ''}`}
             className={cx(
@@ -448,6 +526,13 @@ function Cell({ slot, list, needed, tone, today, editable, dragOver, setDragOver
           >
             <span className="truncate">{short}</span>
             <span className="ml-auto flex items-center gap-1">
+              {!!x.tasks?.length && (
+                <span className="flex items-center gap-0.5 text-[11px] font-medium opacity-80" title={x.tasks.map((t) => t.text).join(', ')}>
+                  <ClipboardList className="h-3 w-3" aria-hidden />
+                  {x.tasks.length}
+                  <span className="sr-only"> tasks</span>
+                </span>
+              )}
               {x.overridden && <AlertTriangle className="h-3.5 w-3.5 text-warn" aria-label="Override" />}
               {x.state === 'added' && <span className="h-1.5 w-1.5 rounded-full bg-bark" />}
               {x.state === 'removed' && <Undo2 className="h-3.5 w-3.5 no-underline" />}
@@ -489,7 +574,7 @@ function ChipMenu({ x, rect, onClose, editable }: { x: Assignment; rect: DOMRect
   const e = s.employees.find((y) => y.id === x.employeeId)!
   const hours = weekHours(s, e.id, startOfWeek(x.date))
   return (
-    <Popover anchor={rect} onClose={onClose} width={280}>
+    <Popover anchor={rect} onClose={onClose} width={320}>
       <div className="flex items-center gap-3 border-b border-line p-4">
         <Avatar e={e} size={40} />
         <div className="min-w-0 flex-1">
@@ -504,6 +589,7 @@ function ChipMenu({ x, rect, onClose, editable }: { x: Assignment; rect: DOMRect
         {x.state === 'removed' && <div className="mt-1 font-medium text-bark">Removed · not published yet</div>}
         {x.overridden && <div className="mt-1 text-warn">Assigned despite: {x.overridden.join(', ').toLowerCase()}</div>}
       </div>
+      {x.state !== 'removed' && <TaskList x={x} editable={editable} />}
       <div className="flex flex-col gap-1 border-t border-line p-2">
         <a href={`#/team/${e.id}`} onClick={onClose} className="rounded-lg px-3 py-2 text-sm hover:bg-paper">
           View profile
@@ -536,7 +622,7 @@ function ChipMenu({ x, rect, onClose, editable }: { x: Assignment; rect: DOMRect
   )
 }
 
-function MobileDay({ days, active, setActive, children }: { days: string[]; active: number; setActive: (i: number) => void; children: ReactNode }) {
+function MobileDay({ days, active, setActive, weather, children }: { days: string[]; active: number; setActive: (i: number) => void; weather: Record<string, DayWeather>; children: ReactNode }) {
   const today = todayKey()
   return (
     <div className="md:hidden">
@@ -548,13 +634,14 @@ function MobileDay({ days, active, setActive, children }: { days: string[]; acti
             aria-selected={i === active}
             onClick={() => setActive(i)}
             className={cx(
-              'flex w-12 shrink-0 flex-col items-center rounded-xl py-2 text-xs transition-colors',
+              'flex w-14 shrink-0 flex-col items-center rounded-xl py-2 text-xs transition-colors',
               i === active ? 'bg-forest text-white' : 'bg-white/60 text-muted',
               d === today && i !== active && 'ring-1 ring-forest',
             )}
           >
             {DAY_SHORT[i]}
             <span className="mt-0.5 text-base font-semibold">{fromKey(d).getDate()}</span>
+            <DayWeatherMini w={weather[d]} />
           </button>
         ))}
       </div>

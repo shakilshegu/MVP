@@ -2,11 +2,11 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import type { ReactNode } from 'react'
 import { addDays, fmtDay, fmtRange, daysInclusive } from './date'
 import { createSeed } from './seed'
-import type { Assignment, Branch, Employee, HistoryEntry, Leave, Manager, Perm, ShiftTemplate, State } from './types'
+import type { Assignment, Task, Branch, Employee, HistoryEntry, Leave, Manager, Perm, ShiftTemplate, State } from './types'
 import { checkAssignment, isActive } from './validation'
 import type { AssignRequest, Conflict } from './validation'
 
-const KEY = 'rota-state-v3'
+const KEY = 'rota-state-v4'
 const uid = () => Math.random().toString(36).slice(2, 10)
 
 function load(): State {
@@ -14,7 +14,7 @@ function load(): State {
     const raw = localStorage.getItem(KEY)
     if (raw) {
       const s = JSON.parse(raw) as State
-      if (s.version === 3) return s
+      if (s.version === 4) return s
     }
   } catch {
     /* fall through to seed */
@@ -26,10 +26,22 @@ export type Change =
   | { kind: 'added'; a: Assignment }
   | { kind: 'removed'; a: Assignment }
   | { kind: 'moved'; from: Assignment; a: Assignment }
+  | { kind: 'tasks'; a: Assignment; added: Task[]; removed: Task[] }
+
+export function taskDiff(a: Assignment) {
+  const pub = a.publishedTasks ?? []
+  const cur = a.tasks ?? []
+  return { added: cur.filter((t) => !pub.some((p) => p.id === t.id)), removed: pub.filter((p) => !cur.some((t) => t.id === p.id)) }
+}
 
 export function branchChanges(s: State, branchId: string): Change[] {
   const list = s.assignments.filter((a) => a.branchId === branchId && a.state !== 'published')
   const out: Change[] = []
+  for (const a of s.assignments) {
+    if (a.branchId !== branchId || a.state !== 'published') continue
+    const d = taskDiff(a)
+    if (d.added.length || d.removed.length) out.push({ kind: 'tasks', a, ...d })
+  }
   for (const a of list) {
     if (a.state === 'added' && a.movedFrom) {
       const from = s.assignments.find((x) => x.id === a.movedFrom)
@@ -45,7 +57,8 @@ export function describe(s: State, a: Pick<Assignment, 'templateId' | 'date' | '
   return `${t?.name} ${t?.start}–${t?.end}, ${fmtDay(a.date)} · ${a.dept}`
 }
 
-type Toast = { id: string; msg: string; action?: { label: string; run: () => void } }
+type ToastAction = { label: string; run: () => void }
+type Toast = { id: string; msg: string; action?: ToastAction; action2?: ToastAction }
 
 function makeActions(get: () => State, set: (s: State) => void) {
   const me = () => get().managers.find((m) => m.id === get().session.userId)
@@ -137,7 +150,8 @@ function makeActions(get: () => State, set: (s: State) => void) {
       patch((s) => ({
         assignments: s.assignments
           .filter((a) => !(a.branchId === b && a.state === 'added'))
-          .map((a) => (a.branchId === b && a.state === 'removed' ? { ...a, state: 'published' as const, movedTo: undefined } : a)),
+          .map((a) => (a.branchId === b && a.state === 'removed' ? { ...a, state: 'published' as const, movedTo: undefined } : a))
+          .map((a) => (a.branchId === b ? { ...a, tasks: a.publishedTasks } : a)),
         pendingApproval: { ...s.pendingApproval, [b]: false },
       }))
     },
@@ -182,9 +196,12 @@ function makeActions(get: () => State, set: (s: State) => void) {
       const b = bid()
       const changes = branchChanges(s, b)
       const notified = [...new Set(changes.flatMap((c) => (c.kind === 'moved' ? [c.a.employeeId, c.from.employeeId] : [c.a.employeeId])))]
+      const taskNote = (x: Assignment) => (x.tasks?.length ? ` · tasks: ${x.tasks.map((t) => t.text).join(', ')}` : '')
       const logs: HistoryEntry[] = changes.map((c) =>
-        c.kind === 'added'
-          ? entry({ action: 'Assigned', subject: empName(c.a.employeeId), to: describe(s, c.a) + (c.a.overridden ? ` (override: ${c.a.overridden.join(', ')})` : '') })
+        c.kind === 'tasks'
+          ? entry({ action: 'Tasks updated', subject: empName(c.a.employeeId), to: `${[...c.added.map((t) => `+ ${t.text}`), ...c.removed.map((t) => `− ${t.text}`)].join(', ')} · ${describe(s, c.a)}` })
+          : c.kind === 'added'
+          ? entry({ action: 'Assigned', subject: empName(c.a.employeeId), to: describe(s, c.a) + (c.a.overridden ? ` (override: ${c.a.overridden.join(', ')})` : '') + taskNote(c.a) })
           : c.kind === 'removed'
             ? entry({ action: 'Removed', subject: empName(c.a.employeeId), from: describe(s, c.a) })
             : entry({ action: 'Moved', subject: empName(c.a.employeeId), from: describe(s, c.from), to: describe(s, c.a) }),
@@ -195,7 +212,8 @@ function makeActions(get: () => State, set: (s: State) => void) {
         ...s,
         assignments: s.assignments
           .filter((a) => !(a.branchId === b && a.state === 'removed'))
-          .map((a) => (a.branchId === b && a.state === 'added' ? { ...a, state: 'published' as const, movedFrom: undefined } : a)),
+          .map((a) => (a.branchId === b && a.state === 'added' ? { ...a, state: 'published' as const, movedFrom: undefined } : a))
+          .map((a) => (a.branchId === b ? { ...a, publishedTasks: a.tasks } : a)),
         history: [...logs, ...s.history],
         pendingApproval: { ...s.pendingApproval, [b]: false },
         lastPublish: { branchId: b, at, count: changes.length, notified },
@@ -266,6 +284,29 @@ function makeActions(get: () => State, set: (s: State) => void) {
     },
     deleteTemplate: (id: string) => patch((s) => ({ templates: s.templates.filter((t) => t.id !== id), assignments: s.assignments.filter((a) => a.templateId !== id) })),
 
+    addTask(assignmentId: string, text: string) {
+      const t = text.trim()
+      if (!t) return
+      patch((s) => ({
+        assignments: s.assignments.map((x) => (x.id === assignmentId ? { ...x, tasks: [...(x.tasks ?? []), { id: uid(), text: t, done: false }] } : x)),
+      }))
+    },
+    toggleTask(assignmentId: string, taskId: string) {
+      patch((s) => ({
+        assignments: s.assignments.map((x) =>
+          x.id === assignmentId ? { ...x, tasks: x.tasks?.map((t) => (t.id === taskId ? { ...t, done: !t.done } : t)) } : x,
+        ),
+      }))
+    },
+    revertTasks(assignmentId: string) {
+      patch((s) => ({ assignments: s.assignments.map((x) => (x.id === assignmentId ? { ...x, tasks: x.publishedTasks } : x)) }))
+    },
+    removeTask(assignmentId: string, taskId: string) {
+      patch((s) => ({
+        assignments: s.assignments.map((x) => (x.id === assignmentId ? { ...x, tasks: x.tasks?.filter((t) => t.id !== taskId) } : x)),
+      }))
+    },
+
     markRead: (id?: string) => patch((s) => ({ notices: s.notices.map((n) => (!id || n.id === id ? { ...n, read: true } : n)) })),
 
     setPerm(p: Perm, v: boolean) {
@@ -307,7 +348,7 @@ type Ctx = {
   branch: Branch | null
   myBranches: Branch[]
   can: (p: Perm) => boolean
-  toast: (msg: string, action?: Toast['action']) => void
+  toast: (msg: string, action?: ToastAction, action2?: ToastAction) => void
   pendingLeave: Leave[]
 }
 
@@ -341,9 +382,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const dismiss = useCallback((id: string) => setToasts((t) => t.filter((x) => x.id !== id)), [])
   const toast = useCallback(
-    (msg: string, action?: Toast['action']) => {
+    (msg: string, action?: ToastAction, action2?: ToastAction) => {
       const id = uid()
-      setToasts((t) => [...t.slice(-2), { id, msg, action }])
+      setToasts((t) => [...t.slice(-2), { id, msg, action, action2 }])
       setTimeout(() => dismiss(id), action ? 6000 : 3500)
     },
     [dismiss],

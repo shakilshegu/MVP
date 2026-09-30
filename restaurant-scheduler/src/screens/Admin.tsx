@@ -7,10 +7,11 @@ import { fmtStamp, relTime } from '../lib/date'
 import { DEPTS, PERMS } from '../lib/types'
 import type { HistoryAction } from '../lib/types'
 import { NoAccess } from '../components/Shell'
+import { GERMAN_CITIES } from '../lib/weather'
 import { Badge, Button, cx, deptDot, EmptyState, Field, Modal, PageHeader, Segmented, Switch } from '../components/ui'
 
 const GROUPS: Record<string, HistoryAction[]> = {
-  Schedule: ['Assigned', 'Removed', 'Moved', 'Published', 'Shift edited', 'Shift created'],
+  Schedule: ['Assigned', 'Removed', 'Tasks updated', 'Moved', 'Published', 'Shift edited', 'Shift created'],
   Team: ['Employee added', 'Employee edited', 'Availability'],
   Leave: ['Leave approved', 'Leave declined'],
   Admin: ['Permissions', 'Branch'],
@@ -177,6 +178,7 @@ export function Settings({ tab: initial }: { tab: string | null }) {
   const [tab, setTab] = useState<Tab>(tabs.some((t) => t.value === initial) ? (initial as Tab) : 'restaurant')
   const [name, setName] = useState(branch!.name)
   const [address, setAddress] = useState(branch!.address)
+  const [city, setCity] = useState(branch!.city)
   const [opens, setOpens] = useState(branch!.opens)
   const [closes, setCloses] = useState(branch!.closes)
   const [adding, setAdding] = useState(false)
@@ -185,7 +187,7 @@ export function Settings({ tab: initial }: { tab: string | null }) {
   const saveBranch = (e: FormEvent) => {
     e.preventDefault()
     if (!name.trim()) return
-    a.saveBranch({ id: branch!.id, name: name.trim(), address, opens, closes })
+    a.saveBranch({ id: branch!.id, name: name.trim(), address, city, opens, closes })
     toast('Settings saved')
   }
 
@@ -203,6 +205,13 @@ export function Settings({ tab: initial }: { tab: string | null }) {
           </Field>
           <Field label="Address" htmlFor="s-addr">
             <input id="s-addr" className="input" value={address} onChange={(e) => setAddress(e.target.value)} />
+          </Field>
+          <Field label="City" htmlFor="s-city" hint="Used for the weather forecast on the schedule.">
+            <select id="s-city" className="input" value={city} onChange={(e) => setCity(e.target.value)}>
+              {GERMAN_CITIES.map((c) => (
+                <option key={c.name}>{c.name}</option>
+              ))}
+            </select>
           </Field>
           <div className="flex justify-end">
             <Button type="submit" variant="primary">
@@ -335,6 +344,7 @@ function AddBranch({ onClose }: { onClose: () => void }) {
   const { a, toast } = useStore()
   const [name, setName] = useState('')
   const [address, setAddress] = useState('')
+  const [city, setCity] = useState('Berlin')
   const [err, setErr] = useState('')
   return (
     <Modal
@@ -356,13 +366,20 @@ function AddBranch({ onClose }: { onClose: () => void }) {
         onSubmit={(e) => {
           e.preventDefault()
           if (!name.trim()) return setErr('Enter a name for the branch.')
-          a.saveBranch({ name: name.trim(), address: address.trim(), opens: '10:00', closes: '23:00' })
+          a.saveBranch({ name: name.trim(), address: address.trim(), city, opens: '10:00', closes: '23:00' })
           toast(`${name.trim()} added`)
           onClose()
         }}
       >
         <Field label="Name" htmlFor="b-name" error={err}>
           <input id="b-name" autoFocus className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Riverside" />
+        </Field>
+        <Field label="City" htmlFor="b-city">
+          <select id="b-city" className="input" value={city} onChange={(e) => setCity(e.target.value)}>
+            {GERMAN_CITIES.map((c) => (
+              <option key={c.name}>{c.name}</option>
+            ))}
+          </select>
         </Field>
         <Field label="Address" htmlFor="b-addr" hint="Optional">
           <input id="b-addr" className="input" value={address} onChange={(e) => setAddress(e.target.value)} />

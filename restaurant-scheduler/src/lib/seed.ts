@@ -33,7 +33,7 @@ function emp(
     position,
     maxHours,
     email: `${name.split(' ')[0].toLowerCase()}@${domain}`,
-    phone: `+44 7700 900${String(phone++).slice(-3)}`,
+    phone: `+49 151 2345 6${String(phone++).slice(-3)}`,
     availability: Array.from({ length: 7 }, (_, i) => !off.includes(i)),
     preferred,
     status,
@@ -80,12 +80,12 @@ export function createSeed(): State {
   ]
 
   const s: State = {
-    version: 3,
+    version: 4,
     session: { userId: null, branchId: null },
     branches: [
-      { id: 'b1', name: 'Harbor House', address: '14 Quay Street, Bristol', opens: '07:00', closes: '01:00' },
-      { id: 'b2', name: 'Garden Room', address: '3 Orchard Lane, Bath', opens: '08:00', closes: '23:30' },
-      { id: 'b3', name: 'Northside', address: '88 Mill Road, Bristol — opening soon', opens: '10:00', closes: '23:00' },
+      { id: 'b1', name: 'Harbor House', address: 'Große Elbstraße 14, 22767 Hamburg', city: 'Hamburg', opens: '07:00', closes: '01:00' },
+      { id: 'b2', name: 'Garden Room', address: 'Gärtnerplatz 3, 80469 München', city: 'Munich', opens: '08:00', closes: '23:30' },
+      { id: 'b3', name: 'Northside', address: 'Kastanienallee 88, 10435 Berlin — opening soon', city: 'Berlin', opens: '10:00', closes: '23:00' },
     ],
     managers: [
       { id: 'm1', name: 'Priya Raman', email: 'priya@harborhouse.co', role: 'manager', branchIds: ['b1', 'b2'] },
