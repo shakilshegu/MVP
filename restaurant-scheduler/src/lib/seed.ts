@@ -1,7 +1,7 @@
 import { addDays, daysAgoIso, fmtShort, startOfWeek, todayKey, weekDays } from './date'
 import type { Assignment, Dept, Employee, Preferred, ShiftTemplate, State } from './types'
 import { DEPTS } from './types'
-import { checkAssignment } from './validation'
+import { checkAssignment, needFor } from './validation'
 
 function rng(seed: number) {
   return () => {
@@ -43,7 +43,15 @@ function emp(
 export const TEMPLATES: ShiftTemplate[] = [
   { id: 't1', name: 'Morning', start: '06:00', end: '14:00', tone: 'morning', needed: { Bar: 0, Service: 1, Kitchen: 1 } },
   { id: 't2', name: 'Day', start: '10:00', end: '18:00', tone: 'day', needed: { Bar: 1, Service: 1, Kitchen: 1 } },
-  { id: 't3', name: 'Evening', start: '16:00', end: '23:00', tone: 'evening', needed: { Bar: 1, Service: 2, Kitchen: 2 } },
+  {
+    id: 't3',
+    name: 'Evening',
+    start: '16:00',
+    end: '23:00',
+    tone: 'evening',
+    needed: { Bar: 1, Service: 2, Kitchen: 2 },
+    perDay: { Bar: [1, 1, 1, 1, 2, 2, 1], Service: [2, 2, 2, 2, 3, 3, 2], Kitchen: [2, 2, 2, 2, 2, 3, 2] },
+  },
   { id: 't4', name: 'Night', start: '22:00', end: '02:00', tone: 'night', needed: { Bar: 1, Service: 0, Kitchen: 1 } },
 ]
 
@@ -68,6 +76,10 @@ export function createSeed(): State {
     emp('e15', 'b1', 'Nora Byrne', 'Kitchen', 'Pastry chef', 30, [5, 6], 'Mornings'),
     emp('e16', 'b1', 'Ibrahim Farah', 'Kitchen', 'Kitchen porter', 28, [3], 'Nights'),
     emp('e17', 'b1', 'Oskar Nilsen', 'Kitchen', 'Line cook', 36, [4]),
+    emp('e40', 'b1', 'Lukas Weber', 'Bar', 'Bartender', 32, [3], 'Evenings'),
+    emp('e41', 'b1', 'Ana Petrović', 'Service', 'Server', 30, [0], 'Evenings'),
+    emp('e42', 'b1', 'Jonas Richter', 'Service', 'Runner', 28, [2]),
+    emp('e43', 'b1', 'Mira Schulz', 'Kitchen', 'Line cook', 36, [1], 'Evenings'),
     emp('e20', 'b2', 'Chloe Dubois', 'Bar', 'Bartender', 38, [1]),
     emp('e21', 'b2', 'Mateo Silva', 'Bar', 'Bartender', 30, [3]),
     emp('e22', 'b2', 'Leo Kowalski', 'Service', 'Floor lead', 40, [0]),
@@ -80,7 +92,7 @@ export function createSeed(): State {
   ]
 
   const s: State = {
-    version: 4,
+    version: 6,
     session: { userId: null, branchId: null },
     branches: [
       { id: 'b1', name: 'Harbor House', address: 'Große Elbstraße 14, 22767 Hamburg', city: 'Hamburg', opens: '07:00', closes: '01:00' },
@@ -112,6 +124,10 @@ export function createSeed(): State {
     ],
     perms: { createEmployees: true, editShifts: true, publish: true, approveLeave: true, manageBranches: false },
     pendingApproval: {},
+    dayNotes: {
+      [`b1|${addDays(startOfWeek(today), 4)}`]: 'Private party, 40 guests from 19:00',
+      [`b1|${addDays(startOfWeek(today), 6)}`]: 'Terrace closed — deep clean',
+    },
     lastPublish: null,
   }
 
@@ -124,8 +140,8 @@ export function createSeed(): State {
         for (const t of s.templates) {
           for (const dept of DEPTS) {
             const pool = employees.filter((e) => e.branchId === branchId && e.dept === dept && e.status === 'active').sort(() => r() - 0.5)
-            let need = t.needed[dept]
-            if (need > 0 && r() < 0.07) need--
+            let need = needFor(t, dept, date)
+            if (need > 0 && r() < (date >= today ? 0.3 : 0.07)) need--
             for (const e of pool) {
               if (need <= 0) break
               const req = { branchId, employeeId: e.id, date, templateId: t.id, dept }

@@ -1,12 +1,12 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import { addDays, fmtDay, fmtRange, daysInclusive } from './date'
+import { addDays, fmtDay, fmtRange, daysInclusive, todayKey, toMin, weekDays } from './date'
 import { createSeed } from './seed'
-import type { Assignment, Task, Branch, Employee, HistoryEntry, Leave, Manager, Perm, ShiftTemplate, State } from './types'
-import { checkAssignment, isActive } from './validation'
+import type { Assignment, Dept, Task, Branch, Employee, HistoryEntry, Leave, Manager, Perm, ShiftTemplate, State } from './types'
+import { checkAssignment, isActive, needFor, weekHours } from './validation'
 import type { AssignRequest, Conflict } from './validation'
 
-const KEY = 'rota-state-v4'
+const KEY = 'rota-state-v6'
 const uid = () => Math.random().toString(36).slice(2, 10)
 
 function load(): State {
@@ -14,7 +14,7 @@ function load(): State {
     const raw = localStorage.getItem(KEY)
     if (raw) {
       const s = JSON.parse(raw) as State
-      if (s.version === 4) return s
+      if (s.version === 6) return s
     }
   } catch {
     /* fall through to seed */
@@ -179,6 +179,44 @@ function makeActions(get: () => State, set: (s: State) => void) {
       return { added, skipped }
     },
 
+    /** Fills open slots as drafts with people who pass every check. */
+    autoFill(weekStart: string, depts: Dept[]) {
+      const s = get()
+      const b = bid()
+      const today = todayKey()
+      const pref = { morning: 'Mornings', day: 'Days', evening: 'Evenings', night: 'Nights' } as const
+      const draft: State = { ...s, assignments: [...s.assignments] }
+      const ids: string[] = []
+      let open = 0
+      const tpls = [...s.templates].sort((x, y) => toMin(x.start) - toMin(y.start))
+      for (const date of weekDays(weekStart)) {
+        if (date < today) continue
+        for (const t of tpls)
+          for (const dept of depts) {
+            const have = draft.assignments.filter((a) => a.branchId === b && isActive(a) && a.date === date && a.templateId === t.id && a.dept === dept).length
+            let need = needFor(t, dept, date) - have
+            if (need <= 0) continue
+            const pool = draft.employees
+              .filter((e) => e.branchId === b && e.dept === dept && e.status === 'active')
+              .map((e) => ({ e, prefers: e.preferred === pref[t.tone], load: weekHours(draft, e.id, weekStart) / e.maxHours }))
+              .sort((p, q) => Number(q.prefers) - Number(p.prefers) || p.load - q.load)
+            for (const { e } of pool) {
+              if (need <= 0) break
+              const req = { branchId: b, employeeId: e.id, date, templateId: t.id, dept }
+              if (checkAssignment(draft, req).length) continue
+              const id = uid()
+              draft.assignments.push({ id, ...req, state: 'added' })
+              ids.push(id)
+              need--
+            }
+            open += Math.max(0, need)
+          }
+      }
+      set(draft)
+      return { ids, open }
+    },
+    removeMany: (ids: string[]) => patch((s) => ({ assignments: s.assignments.filter((a) => !ids.includes(a.id)) })),
+
     sendForApproval() {
       const b = bid()
       const branch = get().branches.find((x) => x.id === b)
@@ -305,6 +343,16 @@ function makeActions(get: () => State, set: (s: State) => void) {
       patch((s) => ({
         assignments: s.assignments.map((x) => (x.id === assignmentId ? { ...x, tasks: x.tasks?.filter((t) => t.id !== taskId) } : x)),
       }))
+    },
+
+    setDayNote(date: string, text: string) {
+      const key = `${bid()}|${date}`
+      patch((s) => {
+        const dayNotes = { ...s.dayNotes }
+        if (text.trim()) dayNotes[key] = text.trim()
+        else delete dayNotes[key]
+        return { dayNotes }
+      })
     },
 
     markRead: (id?: string) => patch((s) => ({ notices: s.notices.map((n) => (!id || n.id === id ? { ...n, read: true } : n)) })),

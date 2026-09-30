@@ -3,7 +3,7 @@ import { ChevronLeft, ChevronRight, Clock3, Hourglass, Plus, Send, Trash2 } from
 import { branchChanges, useStore } from '../lib/store'
 import { navigate } from '../lib/hooks'
 import { addDays, DAY_SHORT, daysInclusive, fmtLong, fmtRange, fromKey, hoursBetween, pad, startOfWeek, todayKey, toKey, toMin } from '../lib/date'
-import { isActive } from '../lib/validation'
+import { breakMinutes, isActive, needFor } from '../lib/validation'
 import { DEPTS } from '../lib/types'
 import type { Dept, ShiftTemplate, Tone } from '../lib/types'
 import { Avatar, Badge, Button, cx, deptDot, Drawer, EmptyState, Field, PageHeader, toneCls } from '../components/ui'
@@ -13,8 +13,9 @@ function coverage(s: ReturnType<typeof useStore>['s'], branchId: string, date: s
   let got = 0
   for (const t of s.templates)
     for (const d of DEPTS) {
-      need += t.needed[d]
-      got += Math.min(t.needed[d], s.assignments.filter((x) => x.branchId === branchId && isActive(x) && x.date === date && x.templateId === t.id && x.dept === d).length)
+      const n = needFor(t, d, date)
+      need += n
+      got += Math.min(n, s.assignments.filter((x) => x.branchId === branchId && isActive(x) && x.date === date && x.templateId === t.id && x.dept === d).length)
     }
   return { need, got }
 }
@@ -323,7 +324,10 @@ export function ShiftTemplates() {
             const st = toMin(t.start) / 60
             let en = toMin(t.end) / 60
             if (en <= st) en += 24
-            const staff = DEPTS.reduce((n, d) => n + t.needed[d], 0)
+            const totals = Array.from({ length: 7 }, (_, i) => DEPTS.reduce((n, d) => n + (t.perDay?.[d]?.[i] ?? t.needed[d]), 0))
+            const lo = Math.min(...totals)
+            const hi = Math.max(...totals)
+            const brk = breakMinutes(hoursBetween(t.start, t.end))
             return (
               <li key={t.id}>
                 <button onClick={() => can('editShifts') && setEditing(t)} className="flex w-full flex-col gap-3 px-5 py-4 text-left hover:bg-paper sm:flex-row sm:items-center">
@@ -333,8 +337,13 @@ export function ShiftTemplates() {
                       <span className="text-xs text-muted">{hoursBetween(t.start, t.end)}h</span>
                     </div>
                     <div className="text-sm text-muted">
-                      {t.start}–{t.end} · {staff} staff
+                      {t.start}–{t.end} · {lo === hi ? lo : `${lo}–${hi}`} staff
                     </div>
+                    {(brk > 0 || t.perDay) && (
+                      <div className="mt-0.5 text-xs text-muted">
+                        {[brk ? `${brk} min break` : '', t.perDay ? 'Varies by day' : ''].filter(Boolean).join(' · ')}
+                      </div>
+                    )}
                   </div>
                   <div className="relative h-8 w-full flex-1 rounded-md bg-paper">
                     <div className={cx('absolute inset-y-0 flex items-center gap-2 rounded-md px-2 text-[11px] font-medium', toneCls[t.tone])} style={{ left: `${(st / 28) * 100}%`, width: `${((en - st) / 28) * 100}%` }}>
@@ -423,6 +432,9 @@ function ShiftDrawer({ t, onClose }: { t: ShiftTemplate | null; onClose: () => v
         <div>
           <div className="mb-1.5 text-sm font-medium">Staff needed</div>
           <p className="mb-3 text-[13px] text-muted">Empty spots show up as open slots on the schedule.</p>
+          {f.perDay ? (
+            <PerDayGrid f={f} setF={setF} />
+          ) : (
           <div className="space-y-2">
             {DEPTS.map((d) => (
               <div key={d} className="flex items-center justify-between rounded-xl bg-paper px-3 py-2">
@@ -444,7 +456,27 @@ function ShiftDrawer({ t, onClose }: { t: ShiftTemplate | null; onClose: () => v
               </div>
             ))}
           </div>
+          )}
+          <label className="mt-3 flex cursor-pointer items-center gap-2.5 text-sm">
+            <input
+              type="checkbox"
+              className="h-4 w-4 accent-forest"
+              checked={!!f.perDay}
+              onChange={(e) =>
+                setF((p) => ({
+                  ...p,
+                  perDay: e.target.checked ? (Object.fromEntries(DEPTS.map((d) => [d, Array(7).fill(p.needed[d])])) as Record<Dept, number[]>) : undefined,
+                }))
+              }
+            />
+            Different numbers on some days
+          </label>
         </div>
+        {breakMinutes(hoursBetween(f.start, f.end)) > 0 && (
+          <p className="rounded-xl bg-paper px-3 py-2.5 text-[13px] text-muted">
+            Shifts over {hoursBetween(f.start, f.end) > 9 ? '9' : '6'} hours need a {breakMinutes(hoursBetween(f.start, f.end))}-minute break by German law. Plan it within the shift.
+          </p>
+        )}
         {t && upcoming > 0 && <Badge tone="neutral">Used by {upcoming} upcoming shifts</Badge>}
         {confirmDelete && (
           <div className="rounded-xl border border-danger/30 bg-danger-50 p-4">
@@ -475,3 +507,49 @@ function ShiftDrawer({ t, onClose }: { t: ShiftTemplate | null; onClose: () => v
   )
 }
 
+
+function PerDayGrid({ f, setF }: { f: ShiftTemplate; setF: (fn: (p: ShiftTemplate) => ShiftTemplate) => void }) {
+  const set = (d: Dept, i: number, n: number) =>
+    setF((p) => ({ ...p, perDay: { ...p.perDay!, [d]: p.perDay![d].map((v, j) => (j === i ? Math.max(0, Math.min(9, n)) : v)) } }))
+  return (
+    <div className="overflow-x-auto rounded-xl bg-paper p-2">
+      <table className="w-full text-center text-sm">
+        <thead>
+          <tr className="text-xs text-muted">
+            <th className="w-20" />
+            {DAY_SHORT.map((d) => (
+              <th key={d} className="px-0.5 pb-1 font-medium">
+                {d.slice(0, 2)}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {DEPTS.map((d) => (
+            <tr key={d}>
+              <td className="py-1 pr-1 text-left">
+                <span className="flex items-center gap-1.5 text-[13px]">
+                  <span className={cx('h-2 w-2 rounded-full', deptDot[d])} />
+                  {d}
+                </span>
+              </td>
+              {f.perDay![d].map((v, i) => (
+                <td key={i} className="px-0.5 py-1">
+                  <input
+                    type="number"
+                    min={0}
+                    max={9}
+                    value={v}
+                    aria-label={`${d} on ${DAY_SHORT[i]}`}
+                    onChange={(e) => set(d, i, Number(e.target.value))}
+                    className="h-8 w-full min-w-[30px] rounded-md border border-line bg-white text-center text-sm focus:border-forest focus:outline-none"
+                  />
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}

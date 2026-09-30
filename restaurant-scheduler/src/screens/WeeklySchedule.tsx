@@ -1,16 +1,18 @@
 import { useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
-import { AlertTriangle, CalendarRange, ClipboardList, Download, Loader2, MapPin, MoreHorizontal, ChevronLeft, ChevronRight, Copy, Eye, Plus, Undo2, UserPlus, Users } from 'lucide-react'
+import { AlertTriangle, CalendarRange, ClipboardList, Download, Scale, StickyNote, Wand2, Loader2, MapPin, MoreHorizontal, ChevronLeft, ChevronRight, Copy, Eye, Plus, Undo2, UserPlus, Users } from 'lucide-react'
 import { branchChanges, describe, useStore } from '../lib/store'
 import { navigate, useLoad } from '../lib/hooks'
 import { addDays, DAY_SHORT, fmtDay, fmtRange, fmtShort, fromKey, hoursBetween, startOfWeek, todayKey, weekDays } from '../lib/date'
-import { checkAssignment, isActive, weekHours } from '../lib/validation'
+import { checkAssignment, isActive, needFor, weekHours } from '../lib/validation'
 import type { Conflict } from '../lib/validation'
 import type { Assignment, Dept, Employee, ShiftTemplate } from '../lib/types'
 import { DEPTS } from '../lib/types'
 import { AssignPanel, ConflictDialog, Hours } from '../components/assign'
 import { DayWeatherLine, DayWeatherMini } from '../components/weather'
 import { TaskList } from '../components/tasks'
+import { DayNote, NoteEditor } from '../components/notes'
+import { HoursDrawer } from '../components/hours'
 import { cityOf, useWeather } from '../lib/weather'
 import { downloadRotaPdf } from '../lib/pdf'
 import type { DayWeather } from '../lib/weather'
@@ -29,6 +31,8 @@ export default function WeeklySchedule({ week }: { week: string | null }) {
   const [assignAt, setAssignAt] = useState<{ slot: Slot; rect: DOMRect } | null>(null)
   const [menu, setMenu] = useState<{ id: string; rect: DOMRect } | null>(null)
   const [pending, setPending] = useState<Pending | null>(null)
+  const [noteAt, setNoteAt] = useState<{ date: string; rect: DOMRect } | null>(null)
+  const [showHours, setShowHours] = useState(false)
   const [confirmDiscard, setConfirmDiscard] = useState(false)
   const [dragOver, setDragOver] = useState<string | null>(null)
   const [mobileDay, setMobileDay] = useState(() => Math.max(0, days.indexOf(today)))
@@ -54,7 +58,7 @@ export default function WeeklySchedule({ week }: { week: string | null }) {
     for (const date of days)
       for (const t of s.templates)
         for (const d of visibleDepts) {
-          const n = t.needed[d]
+          const n = needFor(t, d, date)
           const f = inWeek.filter((x) => isActive(x) && x.date === date && x.templateId === t.id && x.dept === d).length
           needed += n
           filled += Math.min(n, f)
@@ -170,6 +174,19 @@ export default function WeeklySchedule({ week }: { week: string | null }) {
           <MoreMenu
             exporting={exporting}
             canExport={team.length > 0}
+            canFill={editable && team.length > 0 && days[6] >= today && stats.open > 0}
+            onFill={() => {
+              const r = a.autoFill(weekStart, visibleDepts)
+              if (!r.ids.length) {
+                toast('No one is free for the open slots without breaking a rule')
+                return
+              }
+              toast(
+                `Filled ${r.ids.length} ${r.ids.length === 1 ? 'slot' : 'slots'} as drafts${r.open ? ` · ${r.open} still open` : ''}`,
+                { label: 'Undo', run: () => a.removeMany(r.ids) },
+              )
+            }}
+            onHours={() => setShowHours(true)}
             onExport={async () => {
               setExporting(true)
               try {
@@ -244,12 +261,13 @@ export default function WeeklySchedule({ week }: { week: string | null }) {
                 let got = 0
                 for (const t of s.templates)
                   for (const dp of visibleDepts) {
-                    need += t.needed[dp]
-                    got += Math.min(t.needed[dp], inWeek.filter((x) => isActive(x) && x.date === d && x.templateId === t.id && x.dept === dp).length)
+                    const n = needFor(t, dp, d)
+                    need += n
+                    got += Math.min(n, inWeek.filter((x) => isActive(x) && x.date === d && x.templateId === t.id && x.dept === dp).length)
                   }
                 const isToday = d === today
                 return (
-                  <div key={d} className={cx('border-l border-line px-3 pb-3 pt-4', d < today && 'bg-paper/60')}>
+                  <div key={d} className={cx('group/day border-l border-line px-3 pb-3 pt-4', d < today && 'bg-paper/60')}>
                     <div className="flex items-baseline justify-between">
                       <div className="flex items-baseline gap-2">
                         <span className={cx('text-[13px]', isToday ? 'font-semibold text-forest' : 'text-muted')}>{DAY_SHORT[i]}</span>
@@ -267,6 +285,7 @@ export default function WeeklySchedule({ week }: { week: string | null }) {
                       </span>
                     </div>
                     <DayWeatherLine w={weather.data[d]} status={weather.status} />
+                    <DayNote note={s.dayNotes[`${branch!.id}|${d}`]} editable={editable && d >= today} onEdit={(el) => setNoteAt({ date: d, rect: el.getBoundingClientRect() })} />
                   </div>
                 )
               })}
@@ -275,7 +294,7 @@ export default function WeeklySchedule({ week }: { week: string | null }) {
                   {s.templates.map((t) => (
                     <Row key={t.id} tpl={t}>
                       {days.map((d) => (
-                        <Cell key={d} {...cellProps} slot={{ date: d, templateId: t.id, dept: dp }} list={cellOf(d, t.id, dp)} needed={t.needed[dp]} tone={t.tone} />
+                        <Cell key={d} {...cellProps} slot={{ date: d, templateId: t.id, dept: dp }} list={cellOf(d, t.id, dp)} needed={needFor(t, dp, d)} tone={t.tone} />
                       ))}
                     </Row>
                   ))}
@@ -285,6 +304,19 @@ export default function WeeklySchedule({ week }: { week: string | null }) {
           </div>
 
           <MobileDay days={days} active={mobileDay} setActive={setMobileDay} weather={weather.data}>
+            {(s.dayNotes[`${branch!.id}|${days[mobileDay]}`] || (editable && days[mobileDay] >= today)) && (
+              <button
+                disabled={!editable || days[mobileDay] < today}
+                onClick={(e) => setNoteAt({ date: days[mobileDay], rect: e.currentTarget.getBoundingClientRect() })}
+                className={cx(
+                  'flex w-full items-center gap-2 rounded-xl px-4 py-2.5 text-left text-sm',
+                  s.dayNotes[`${branch!.id}|${days[mobileDay]}`] ? 'bg-morning/60 text-morning-ink' : 'border border-dashed border-sage-dark text-muted',
+                )}
+              >
+                <StickyNote className="h-4 w-4 shrink-0" />
+                {s.dayNotes[`${branch!.id}|${days[mobileDay]}`] ?? 'Add a note for this day'}
+              </button>
+            )}
             {visibleDepts.map((dp) => (
               <section key={dp} className="panel overflow-hidden">
                 <h2 className="flex items-center gap-2 border-b border-line bg-paper px-4 py-2.5 text-sm font-semibold">
@@ -292,7 +324,7 @@ export default function WeeklySchedule({ week }: { week: string | null }) {
                   {dp}
                 </h2>
                 {s.templates
-                  .filter((t) => t.needed[dp] > 0 || cellOf(days[mobileDay], t.id, dp).length > 0)
+                  .filter((t) => needFor(t, dp, days[mobileDay]) > 0 || cellOf(days[mobileDay], t.id, dp).length > 0)
                   .map((t) => (
                     <div key={t.id} className="flex gap-3 border-b border-line px-4 py-3 last:border-0">
                       <div className="w-20 shrink-0">
@@ -307,7 +339,7 @@ export default function WeeklySchedule({ week }: { week: string | null }) {
                           bare
                           slot={{ date: days[mobileDay], templateId: t.id, dept: dp }}
                           list={cellOf(days[mobileDay], t.id, dp)}
-                          needed={t.needed[dp]}
+                          needed={needFor(t, dp, days[mobileDay])}
                           tone={t.tone}
                         />
                       </div>
@@ -350,6 +382,8 @@ export default function WeeklySchedule({ week }: { week: string | null }) {
         </Popover>
       )}
       {menuItem && <ChipMenu x={menuItem} rect={menu!.rect} onClose={() => setMenu(null)} editable={editable && menuItem.date >= today} />}
+      {noteAt && <NoteEditor date={noteAt.date} rect={noteAt.rect} onClose={() => setNoteAt(null)} />}
+      {showHours && <HoursDrawer weekStart={weekStart} depts={visibleDepts} onClose={() => setShowHours(false)} />}
       {pending && (
         <ConflictDialog
           employee={pending.employee}
@@ -388,7 +422,21 @@ export default function WeeklySchedule({ week }: { week: string | null }) {
   )
 }
 
-function MoreMenu({ exporting, canExport, onExport }: { exporting: boolean; canExport: boolean; onExport: () => void }) {
+function MoreMenu({
+  exporting,
+  canExport,
+  onExport,
+  canFill,
+  onFill,
+  onHours,
+}: {
+  exporting: boolean
+  canExport: boolean
+  onExport: () => void
+  canFill: boolean
+  onFill: () => void
+  onHours: () => void
+}) {
   const [rect, setRect] = useState<DOMRect | null>(null)
   const item = 'flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm hover:bg-paper disabled:opacity-45 disabled:hover:bg-transparent'
   return (
@@ -399,14 +447,40 @@ function MoreMenu({ exporting, canExport, onExport }: { exporting: boolean; canE
         className="h-10 w-10 bg-white ring-1 ring-line hover:bg-paper"
         onClick={(e) => {
           const r = e.currentTarget.getBoundingClientRect()
-          setRect(new DOMRect(r.right - 220, r.top, 220, r.height))
+          setRect(new DOMRect(r.right - 240, r.top, 240, r.height))
         }}
       >
         {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <MoreHorizontal className="h-4 w-4" />}
       </IconButton>
       {rect && (
-        <Popover anchor={rect} onClose={() => setRect(null)} width={220}>
+        <Popover anchor={rect} onClose={() => setRect(null)} width={240}>
           <div role="menu" className="p-1.5">
+            <button
+              role="menuitem"
+              disabled={!canFill}
+              className={item}
+              onClick={() => {
+                setRect(null)
+                onFill()
+              }}
+            >
+              <Wand2 className="h-4 w-4 text-muted" />
+              <span>
+                Fill open slots
+                <span className="block text-xs text-muted">As drafts, following all rules</span>
+              </span>
+            </button>
+            <button
+              role="menuitem"
+              className={item}
+              onClick={() => {
+                setRect(null)
+                onHours()
+              }}
+            >
+              <Scale className="h-4 w-4 text-muted" /> Hours & rules
+            </button>
+            <div className="my-1 h-px bg-line" />
             <button
               role="menuitem"
               disabled={!canExport || exporting}

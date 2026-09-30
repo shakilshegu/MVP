@@ -48,13 +48,14 @@ export function buildRota(s: State, branchId: string, weekStart: string, depts: 
     })
     return { e, cells }
   })
-  return { days, rows, hasDraft }
+  const notes = days.map((d) => s.dayNotes[`${branchId}|${d}`] ?? '')
+  return { days, rows, hasDraft, notes }
 }
 
 export async function downloadRotaPdf(opts: { s: State; branch: Branch; me: Manager | null; weekStart: string; depts: Dept[] }) {
   const [{ jsPDF }, { default: autoTable }] = await Promise.all([import('jspdf'), import('jspdf-autotable')])
   const { s, branch, me, weekStart, depts } = opts
-  const { days, rows, hasDraft } = buildRota(s, branch.id, weekStart, depts)
+  const { days, rows, hasDraft, notes } = buildRota(s, branch.id, weekStart, depts)
   const week = isoWeek(weekStart)
   const end = days[6]
 
@@ -85,6 +86,8 @@ export async function downloadRotaPdf(opts: { s: State; branch: Branch; me: Mana
   const DEPT_ROW = '__dept__'
   const body: string[][] = []
   const deptRows = new Set<number>()
+  const NOTE_ROW = notes.some(Boolean) ? 0 : -1
+  if (NOTE_ROW === 0) body.push(['Notes', ...notes])
   let lastDept: Dept | null = null
   const first = (n: string) => n.split(' ')[0]
   const label = (n: string) => (rows.filter((x) => first(x.e.name) === first(n)).length > 1 ? `${first(n)} ${n.split(' ')[1]?.[0] ?? ''}.` : first(n))
@@ -96,7 +99,9 @@ export async function downloadRotaPdf(opts: { s: State; branch: Branch; me: Mana
     }
     body.push([label(r.e.name), ...r.cells.map((c) => c.text)])
   }
-  for (let i = 0; i < 3; i++) body.push(['', '', '', '', '', '', '', ''])
+  // Spare rows for handwritten additions, only while the table still fits one page.
+  const spare = Math.max(0, Math.min(3, 25 - body.length))
+  for (let i = 0; i < spare; i++) body.push(['', '', '', '', '', '', '', ''])
 
   autoTable(doc, {
     startY: 31,
@@ -106,10 +111,20 @@ export async function downloadRotaPdf(opts: { s: State; branch: Branch; me: Mana
     body,
     styles: { font: 'helvetica', fontSize: 9, textColor: ink, lineColor: [60, 60, 60], lineWidth: 0.25, cellPadding: { top: 1.1, bottom: 1.1, left: 2.5, right: 2.5 }, halign: 'center', valign: 'middle', minCellHeight: 6.2 },
     headStyles: { fillColor: [255, 255, 255], textColor: ink, fontStyle: 'bold', fontSize: 10, lineWidth: 0.35 },
-    columnStyles: { 0: { halign: 'left', fontStyle: 'bold', cellWidth: 42 } },
+    columnStyles: {
+      0: { halign: 'left', fontStyle: 'bold', cellWidth: 42 },
+      ...Object.fromEntries(days.map((_, i) => [i + 1, { cellWidth: (W - 2 * M - 42) / 7 }])),
+    },
     didParseCell: (h) => {
       if (h.section !== 'body') return
       const raw = String(h.cell.raw ?? '')
+      if (h.row.index === NOTE_ROW) {
+        h.cell.styles.fillColor = [251, 244, 222]
+        h.cell.styles.textColor = [101, 74, 8]
+        h.cell.styles.fontSize = 7.5
+        h.cell.styles.fontStyle = h.column.index === 0 ? 'bold' : 'italic'
+        return
+      }
       if (deptRows.has(h.row.index)) {
         h.cell.styles.fillColor = [238, 243, 239]
         h.cell.styles.textColor = forest

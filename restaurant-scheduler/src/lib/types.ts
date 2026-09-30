@@ -33,6 +33,8 @@ export type ShiftTemplate = {
   end: string
   tone: Tone
   needed: Record<Dept, number>
+  /** Optional per-weekday staffing (Monday first); overrides `needed`. */
+  perDay?: Record<Dept, number[]>
 }
 
 export type Task = { id: string; text: string; done: boolean }
@@ -116,5 +118,7 @@ export type State = {
   /** What managers may do. Super admins can always do everything. */
   perms: Record<Perm, boolean>
   pendingApproval: Record<string, boolean>
+  /** Keyed by `${branchId}|${date}` */
+  dayNotes: Record<string, string>
   lastPublish: { branchId: string; at: string; count: number; notified: string[] } | null
 }

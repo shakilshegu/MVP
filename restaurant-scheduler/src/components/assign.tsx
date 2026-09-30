@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { AlertTriangle, Ban, CalendarX2, ChevronDown, Clock, Search, Timer, Users } from 'lucide-react'
+import { AlertTriangle, Ban, BedDouble, CalendarX2, ChevronDown, Clock, Hourglass, Search, Timer, Users } from 'lucide-react'
 import { useStore } from '../lib/store'
 import { fmtDay, startOfWeek } from '../lib/date'
 import { checkAssignment, weekHours } from '../lib/validation'
@@ -9,7 +9,7 @@ import { Avatar, Button, cx, deptDot, Modal } from './ui'
 
 const toneToPref = { morning: 'Mornings', day: 'Days', evening: 'Evenings', night: 'Nights' } as const
 
-export const conflictIcon: Record<ConflictKind, typeof Ban> = { unavailable: CalendarX2, overlap: Ban, maxHours: Timer, elsewhere: Users }
+export const conflictIcon: Record<ConflictKind, typeof Ban> = { unavailable: CalendarX2, overlap: Ban, maxHours: Timer, elsewhere: Users, rest: BedDouble, dayMax: Hourglass }
 
 export type Slot = { date: string; templateId: string; dept: Dept }
 
