@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
+import type { Backend } from '../data'
 import { addDays, dayShort, fmtRange, daysInclusive, todayKey, toMin, weekDays } from './date'
 import { tr } from '../i18n/core'
 import type { MsgKey } from '../i18n/core'
@@ -9,23 +10,9 @@ import type { Assignment, Company, Data, Dept, Task, Branch, Employee, HistoryEn
 import { checkAssignment, isActive, needFor, weekHours } from './validation'
 import type { AssignRequest, Conflict } from './validation'
 
-const KEY = 'rota-state-v8'
 const uid = () => Math.random().toString(36).slice(2, 10)
 
 export const DEFAULT_PERMS: Record<Perm, boolean> = { createEmployees: true, editShifts: true, publish: true, approveLeave: true, manageBranches: false }
-
-function load(): Data {
-  try {
-    const raw = localStorage.getItem(KEY)
-    if (raw) {
-      const s = JSON.parse(raw) as Data
-      if (s.version === 8) return s
-    }
-  } catch {
-    /* fall through to seed */
-  }
-  return createSeed()
-}
 
 export type Change =
   | { kind: 'added'; a: Assignment }
@@ -482,23 +469,48 @@ type Ctx = {
 const StoreCtx = createContext<Ctx | null>(null)
 const ToastCtx = createContext<{ toasts: Toast[]; dismiss: (id: string) => void }>({ toasts: [], dismiss: () => {} })
 
-export function StoreProvider({ children }: { children: ReactNode }) {
-  const [s, setS] = useState<Data>(load)
-  const ref = useRef(s)
+type Boot = { status: 'loading' } | { status: 'error'; message: string; retry: () => void }
+
+export function StoreProvider({
+  backend,
+  fallback,
+  children,
+}: {
+  backend: Backend
+  /** Shown until data has loaded, or when loading fails. */
+  fallback: (boot: Boot) => ReactNode
+  children: ReactNode
+}) {
+  const [s, setS] = useState<Data | null>(null)
+  const [failure, setFailure] = useState<string | null>(null)
+  const [attempt, setAttempt] = useState(0)
+  const ref = useRef<Data | null>(null)
   const [toasts, setToasts] = useState<Toast[]>([])
 
   useEffect(() => {
-    try {
-      localStorage.setItem(KEY, JSON.stringify(s))
-    } catch {
-      /* storage may be full or blocked; the app still works in memory */
+    let live = true
+    setFailure(null)
+    backend
+      .load()
+      .then((d) => {
+        if (!live) return
+        ref.current = d
+        setS(d)
+      })
+      .catch((e: unknown) => live && setFailure(e instanceof Error ? e.message : String(e)))
+    return () => {
+      live = false
     }
-  }, [s])
+  }, [backend, attempt])
+
+  useEffect(() => {
+    if (s) backend.save(s)
+  }, [s, backend])
 
   const a = useMemo(
     () =>
       makeActions(
-        () => ref.current,
+        () => ref.current!,
         (next) => {
           ref.current = next
           setS(next)
@@ -517,7 +529,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     [dismiss],
   )
 
-  const value = useMemo<Ctx>(() => {
+  const value = useMemo<Ctx | null>(() => {
+    if (!s) return null
     const me = s.managers.find((m) => m.id === s.session.userId) ?? null
     const isOwner = me?.role === 'owner'
     const view = scope(s, s.session.companyId)
@@ -549,6 +562,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       pendingLeave: view.leaves.filter((l) => l.status === 'pending' && branchEmp.has(l.employeeId)),
     }
   }, [s, a, toast])
+
+  if (!value) return <>{fallback(failure ? { status: 'error', message: failure, retry: () => setAttempt((n) => n + 1) } : { status: 'loading' })}</>
 
   return (
     <StoreCtx.Provider value={value}>

@@ -7,6 +7,7 @@ import { fmtDayHeading, fmtStamp, fmtTime, relTime } from '../lib/date'
 import { useT } from '../i18n'
 import { deptName, historyText } from '../i18n/format'
 import { LanguageToggle } from '../components/LanguageSwitch'
+import { backend } from '../data'
 import { DEPTS, PERMS } from '../lib/types'
 import type { HistoryAction } from '../lib/types'
 import { NoAccess } from '../components/Shell'
@@ -328,6 +329,7 @@ export function Settings({ tab: initial }: { tab: string | null }) {
             <div className="mb-3 text-[13px] text-muted">{t('settings.languageHint')}</div>
             <LanguageToggle />
           </div>
+          {backend.kind === 'mock' && (
           <div className="panel flex flex-wrap items-center justify-between gap-3 p-6">
             <div>
               <div className="text-sm font-medium">{t('settings.resetTitle')}</div>
@@ -337,6 +339,7 @@ export function Settings({ tab: initial }: { tab: string | null }) {
               <RotateCcw className="h-4 w-4" /> {t('settings.reset')}
             </Button>
           </div>
+          )}
         </div>
       )}
 

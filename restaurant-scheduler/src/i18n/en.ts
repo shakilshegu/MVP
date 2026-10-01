@@ -26,6 +26,10 @@ export const en = {
     openSchedule: 'Open schedule',
     list: '{a}, {b}',
   },
+  boot: {
+    loading: 'Loading…',
+    errorTitle: 'Couldn’t connect to the server',
+  },
   errors: {
     couldNotLoad: 'Couldn’t load {what}',
     noConnection: 'There’s no connection to the server. Check your internet connection, then try again.',

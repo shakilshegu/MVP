@@ -28,6 +28,10 @@ export const de: Shape<typeof en> = {
     openSchedule: 'Dienstplan öffnen',
     list: '{a}, {b}',
   },
+  boot: {
+    loading: 'Wird geladen …',
+    errorTitle: 'Keine Verbindung zum Server',
+  },
   errors: {
     couldNotLoad: '{what} konnte nicht geladen werden',
     noConnection: 'Keine Verbindung zum Server. Prüfe deine Internetverbindung und versuche es erneut.',
