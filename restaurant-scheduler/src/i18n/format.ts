@@ -1,7 +1,7 @@
 import { dayLong, fmtDay, fmtDuration, fmtRange } from '../lib/date'
 import { MIN_REST_HOURS } from '../lib/validation'
 import type { Conflict, WeekIssue } from '../lib/validation'
-import type { Assignment, ConflictKind, Dept, HistoryEntry, Notice, State } from '../lib/types'
+import type { Assignment, ConflictKind, Data, Dept, HistoryEntry, Notice } from '../lib/types'
 import type { MsgKey, Params } from './core'
 
 /** A bound translator, e.g. `useT().t` or `tr`. */
@@ -9,7 +9,7 @@ export type T = (key: MsgKey, params?: Params) => string
 
 export const deptName = (t: T, d: Dept) => t(`dept.${d}`)
 
-export function describeSlot(t: T, s: State, a: Pick<Assignment, 'templateId' | 'date' | 'dept'>) {
+export function describeSlot(t: T, s: Data, a: Pick<Assignment, 'templateId' | 'date' | 'dept'>) {
   const tpl = s.templates.find((x) => x.id === a.templateId)
   return t('schedule.describe', { shift: tpl?.name ?? '', start: tpl?.start ?? '', end: tpl?.end ?? '', date: fmtDay(a.date), dept: deptName(t, a.dept) })
 }

@@ -1,7 +1,7 @@
 import { addDays, dayLong, fromKey, pad, toMin, weekdayIndex } from './date'
 import { intlLocale, tr } from '../i18n/core'
 import { isActive, leaveOn } from './validation'
-import type { Branch, Dept, Manager, State } from './types'
+import type { Branch, Data, Dept, Manager } from './types'
 import { DEPTS } from './types'
 
 const ddmm = (k: string) => `${k.slice(8, 10)}.${k.slice(5, 7)}`
@@ -19,7 +19,7 @@ const startLabel = (t: string) => (toMin(t) % 60 === 0 ? pad(Math.floor(toMin(t)
 
 type Cell = { text: string; kind: 'shift' | 'off' | 'leave' | 'empty'; draft: boolean }
 
-export function buildRota(s: State, branchId: string, weekStart: string, depts: Dept[]) {
+export function buildRota(s: Data, branchId: string, weekStart: string, depts: Dept[]) {
   const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i))
   const team = s.employees
     .filter((e) => e.branchId === branchId && depts.includes(e.dept))
@@ -51,7 +51,7 @@ export function buildRota(s: State, branchId: string, weekStart: string, depts: 
   return { days, rows, hasDraft, notes }
 }
 
-export async function downloadRotaPdf(opts: { s: State; branch: Branch; me: Manager | null; weekStart: string; depts: Dept[] }) {
+export async function downloadRotaPdf(opts: { s: Data; branch: Branch; me: Manager | null; weekStart: string; depts: Dept[] }) {
   const [{ jsPDF }, { default: autoTable }] = await Promise.all([import('jspdf'), import('jspdf-autotable')])
   const { s, branch, me, weekStart, depts } = opts
   const { days, rows, hasDraft, notes } = buildRota(s, branch.id, weekStart, depts)

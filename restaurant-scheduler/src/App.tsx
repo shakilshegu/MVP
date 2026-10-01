@@ -10,13 +10,15 @@ import { EmployeeProfile, Team } from './screens/Team'
 import { Dashboard, MonthlySchedule, ShiftTemplates } from './screens/Planning'
 import { Availability, LeaveRequests } from './screens/People'
 import { History, Permissions, Settings } from './screens/Admin'
+import { Platform } from './screens/Platform'
 
 function Screen() {
-  const { s, branch } = useStore()
+  const { s, branch, isOwner, company } = useStore()
   const { t } = useT()
   const { path, parts, query } = useRoute()
 
   if (!s.session.userId) return <Login />
+  if (isOwner && !company) return <Platform />
   if (!branch || path === '/branches') return <SelectBranch />
 
   const key = branch.id

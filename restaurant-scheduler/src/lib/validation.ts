@@ -1,5 +1,5 @@
 import { addDays, dayNumber, hoursBetween, startOfWeek, toMin, weekdayIndex } from './date'
-import type { Assignment, ConflictKind, Dept, Leave, ShiftTemplate, State } from './types'
+import type { Assignment, ConflictKind, Data, Dept, Leave, ShiftTemplate } from './types'
 
 export type { ConflictKind } from './types'
 
@@ -55,24 +55,24 @@ function interval(date: string, t: ShiftTemplate): [number, number] {
   return [s, e]
 }
 
-export function shiftHours(s: State, a: Pick<Assignment, 'templateId'>) {
+export function shiftHours(s: Data, a: Pick<Assignment, 'templateId'>) {
   const t = s.templates.find((x) => x.id === a.templateId)
   return t ? hoursBetween(t.start, t.end) : 0
 }
 
-export function weekHours(s: State, employeeId: string, weekStart: string, ignoreId?: string) {
+export function weekHours(s: Data, employeeId: string, weekStart: string, ignoreId?: string) {
   const end = addDays(weekStart, 6)
   return s.assignments
     .filter((a) => a.employeeId === employeeId && isActive(a) && a.id !== ignoreId && a.date >= weekStart && a.date <= end)
     .reduce((sum, a) => sum + shiftHours(s, a), 0)
 }
 
-export function leaveOn(s: State, employeeId: string, date: string) {
+export function leaveOn(s: Data, employeeId: string, date: string) {
   return s.leaves.find((l) => l.employeeId === employeeId && l.status === 'approved' && l.from <= date && l.to >= date)
 }
 
 /** Scheduling checks: availability, overlap, rest time, daily and weekly hours, assigned elsewhere. */
-export function checkAssignment(s: State, req: AssignRequest): Conflict[] {
+export function checkAssignment(s: Data, req: AssignRequest): Conflict[] {
   const emp = s.employees.find((e) => e.id === req.employeeId)
   const tpl = s.templates.find((t) => t.id === req.templateId)
   if (!emp || !tpl) return []
@@ -121,7 +121,7 @@ export type WeekIssue =
   | { kind: 'maxHours'; total: number; max: number }
 
 /** Working-time problems already on the schedule for one person in one week. */
-export function weekIssues(s: State, employeeId: string, weekStart: string): WeekIssue[] {
+export function weekIssues(s: Data, employeeId: string, weekStart: string): WeekIssue[] {
   const emp = s.employees.find((e) => e.id === employeeId)
   if (!emp) return []
   const end = addDays(weekStart, 6)

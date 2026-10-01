@@ -4,20 +4,22 @@ import { addDays, dayShort, fmtRange, daysInclusive, todayKey, toMin, weekDays }
 import { tr } from '../i18n/core'
 import type { MsgKey } from '../i18n/core'
 import { conflictTitles, deptName, describeSlot } from '../i18n/format'
-import { createSeed } from './seed'
-import type { Assignment, Dept, Task, Branch, Employee, HistoryEntry, Leave, Manager, Perm, ShiftTemplate, State } from './types'
+import { createSeed, defaultTemplates } from './seed'
+import type { Assignment, Company, Data, Dept, Task, Branch, Employee, HistoryEntry, Leave, Manager, Perm, ShiftTemplate, State } from './types'
 import { checkAssignment, isActive, needFor, weekHours } from './validation'
 import type { AssignRequest, Conflict } from './validation'
 
-const KEY = 'rota-state-v7'
+const KEY = 'rota-state-v8'
 const uid = () => Math.random().toString(36).slice(2, 10)
 
-function load(): State {
+export const DEFAULT_PERMS: Record<Perm, boolean> = { createEmployees: true, editShifts: true, publish: true, approveLeave: true, manageBranches: false }
+
+function load(): Data {
   try {
     const raw = localStorage.getItem(KEY)
     if (raw) {
-      const s = JSON.parse(raw) as State
-      if (s.version === 7) return s
+      const s = JSON.parse(raw) as Data
+      if (s.version === 8) return s
     }
   } catch {
     /* fall through to seed */
@@ -37,7 +39,31 @@ export function taskDiff(a: Assignment) {
   return { added: cur.filter((t) => !pub.some((p) => p.id === t.id)), removed: pub.filter((p) => !cur.some((t) => t.id === p.id)) }
 }
 
-export function branchChanges(s: State, branchId: string): Change[] {
+/**
+ * Narrows all data to one company. Screens only ever receive this view, so data from
+ * another company cannot leak into the UI by accident.
+ */
+export function scope(d: Data, companyId: string | null): State {
+  const branches = d.branches.filter((b) => b.companyId === companyId)
+  const branchIds = new Set(branches.map((b) => b.id))
+  const employees = d.employees.filter((e) => branchIds.has(e.branchId))
+  const employeeIds = new Set(employees.map((e) => e.id))
+  return {
+    ...d,
+    companies: d.companies.filter((c) => c.id === companyId),
+    branches,
+    employees,
+    managers: d.managers.filter((m) => m.companyId === companyId),
+    templates: d.templates.filter((t) => t.companyId === companyId),
+    assignments: d.assignments.filter((a) => branchIds.has(a.branchId)),
+    leaves: d.leaves.filter((l) => employeeIds.has(l.employeeId)),
+    history: d.history.filter((h) => branchIds.has(h.branchId)),
+    notices: d.notices.filter((n) => n.companyId === companyId),
+    perms: (companyId && d.companyPerms[companyId]) || DEFAULT_PERMS,
+  }
+}
+
+export function branchChanges(s: Data, branchId: string): Change[] {
   const list = s.assignments.filter((a) => a.branchId === branchId && a.state !== 'published')
   const out: Change[] = []
   for (const a of s.assignments) {
@@ -55,14 +81,15 @@ export function branchChanges(s: State, branchId: string): Change[] {
   return out.sort((x, y) => x.a.date.localeCompare(y.a.date))
 }
 
-const describe = (s: State, a: Pick<Assignment, 'templateId' | 'date' | 'dept'>) => describeSlot(tr, s, a)
+const describe = (s: Data, a: Pick<Assignment, 'templateId' | 'date' | 'dept'>) => describeSlot(tr, s, a)
 
 type ToastAction = { label: string; run: () => void }
 type Toast = { id: string; msg: string; action?: ToastAction; action2?: ToastAction }
 
-function makeActions(get: () => State, set: (s: State) => void) {
+function makeActions(get: () => Data, set: (s: Data) => void) {
   const me = () => get().managers.find((m) => m.id === get().session.userId)
   const bid = () => get().session.branchId ?? ''
+  const cid = () => get().session.companyId ?? ''
   const empName = (id: string) => get().employees.find((e) => e.id === id)?.name ?? '—'
   const entry = (e: Omit<HistoryEntry, 'id' | 'at' | 'by' | 'branchId'>, branchId = bid()): HistoryEntry => ({
     id: uid(),
@@ -71,7 +98,7 @@ function makeActions(get: () => State, set: (s: State) => void) {
     branchId,
     ...e,
   })
-  const patch = (fn: (s: State) => Partial<State>) => {
+  const patch = (fn: (s: Data) => Partial<Data>) => {
     const s = get()
     set({ ...s, ...fn(s) })
   }
@@ -82,12 +109,41 @@ function makeActions(get: () => State, set: (s: State) => void) {
     login(email: string): MsgKey | null {
       const m = get().managers.find((x) => x.email.toLowerCase() === email.trim().toLowerCase())
       if (!m) return 'auth.notFound'
-      const branches = m.role === 'super' ? get().branches : get().branches.filter((b) => m.branchIds.includes(b.id))
-      patch(() => ({ session: { userId: m.id, branchId: branches.length === 1 ? branches[0].id : null } }))
+      if (m.role === 'owner') {
+        patch(() => ({ session: { userId: m.id, companyId: null, branchId: null } }))
+        return null
+      }
+      const inCompany = get().branches.filter((b) => b.companyId === m.companyId)
+      const branches = m.role === 'super' ? inCompany : inCompany.filter((b) => m.branchIds.includes(b.id))
+      patch(() => ({ session: { userId: m.id, companyId: m.companyId, branchId: branches.length === 1 ? branches[0].id : null } }))
       return null
     },
-    logout: () => patch(() => ({ session: { userId: null, branchId: null } })),
+    logout: () => patch(() => ({ session: { userId: null, companyId: null, branchId: null } })),
     selectBranch: (id: string | null) => patch((s) => ({ session: { ...s.session, branchId: id } })),
+    /** Platform owner only: open a company in support view, or return to the platform (null). */
+    selectCompany(id: string | null) {
+      if (me()?.role !== 'owner') return
+      const branches = get().branches.filter((b) => b.companyId === id)
+      patch((s) => ({ session: { ...s.session, companyId: id, branchId: branches.length === 1 ? branches[0].id : null } }))
+    },
+    /** Platform owner only: a new company with its first branch and super admin. Returns an error key on failure. */
+    addCompany(input: { name: string; branch: string; city: string; adminName: string; adminEmail: string }): Company | MsgKey {
+      const s = get()
+      if (me()?.role !== 'owner') return 'shell.noAccessBody'
+      if (s.managers.some((m) => m.email.toLowerCase() === input.adminEmail.trim().toLowerCase())) return 'platform.errEmailTaken'
+      const company: Company = { id: uid(), name: input.name.trim(), createdAt: new Date().toISOString() }
+      const branch: Branch = { id: uid(), companyId: company.id, name: input.branch.trim(), address: '', city: input.city, opens: '10:00', closes: '23:00' }
+      const admin: Manager = { id: uid(), companyId: company.id, name: input.adminName.trim(), email: input.adminEmail.trim(), role: 'super', branchIds: [branch.id] }
+      set({
+        ...s,
+        companies: [...s.companies, company],
+        branches: [...s.branches, branch],
+        managers: [...s.managers, admin],
+        templates: [...s.templates, ...defaultTemplates(company.id, uid)],
+        companyPerms: { ...s.companyPerms, [company.id]: { ...DEFAULT_PERMS } },
+      })
+      return company
+    },
 
     assign(req: AssignRequest, override?: Conflict[]): string {
       const s = get()
@@ -160,7 +216,7 @@ function makeActions(get: () => State, set: (s: State) => void) {
     copyWeek(fromStart: string, toStart: string) {
       const s = get()
       const b = bid()
-      const draft: State = { ...s, assignments: [...s.assignments] }
+      const draft: Data = { ...s, assignments: [...s.assignments] }
       let added = 0
       let skipped = 0
       const source = s.assignments.filter((a) => a.branchId === b && isActive(a) && a.date >= fromStart && a.date <= addDays(fromStart, 6))
@@ -186,7 +242,7 @@ function makeActions(get: () => State, set: (s: State) => void) {
       const b = bid()
       const today = todayKey()
       const pref = { morning: 'Mornings', day: 'Days', evening: 'Evenings', night: 'Nights' } as const
-      const draft: State = { ...s, assignments: [...s.assignments] }
+      const draft: Data = { ...s, assignments: [...s.assignments] }
       const ids: string[] = []
       let open = 0
       const tpls = [...s.templates].sort((x, y) => toMin(x.start) - toMin(y.start))
@@ -224,7 +280,7 @@ function makeActions(get: () => State, set: (s: State) => void) {
       patch((s) => ({
         pendingApproval: { ...s.pendingApproval, [b]: true },
         notices: [
-          { id: uid(), at: new Date().toISOString(), kind: 'approvalRequested', params: { name: me()?.name ?? '', branch: branch?.name ?? '', changes: branchChanges(s, b).length }, read: false, href: '/review' },
+          { id: uid(), companyId: cid(), at: new Date().toISOString(), kind: 'approvalRequested', params: { name: me()?.name ?? '', branch: branch?.name ?? '', changes: branchChanges(s, b).length }, read: false, href: '/review' },
           ...s.notices,
         ],
       }))
@@ -258,7 +314,7 @@ function makeActions(get: () => State, set: (s: State) => void) {
         pendingApproval: { ...s.pendingApproval, [b]: false },
         lastPublish: { branchId: b, at, count: changes.length, notified },
         notices: [
-          { id: uid(), at, kind: 'published', params: { changes: changes.length, people: notified.length }, read: true, href: '/history' },
+          { id: uid(), companyId: cid(), at, kind: 'published', params: { changes: changes.length, people: notified.length }, read: true, href: '/history' },
           ...s.notices,
         ],
       })
@@ -316,9 +372,10 @@ function makeActions(get: () => State, set: (s: State) => void) {
       }))
     },
 
-    saveTemplate(t: ShiftTemplate) {
+    saveTemplate(input: ShiftTemplate) {
       const s = get()
-      const old = s.templates.find((x) => x.id === t.id)
+      const old = s.templates.find((x) => x.id === input.id)
+      const t = { ...input, companyId: old?.companyId ?? cid() }
       set({
         ...s,
         templates: old ? s.templates.map((x) => (x.id === t.id ? t : x)) : [...s.templates, t],
@@ -330,7 +387,12 @@ function makeActions(get: () => State, set: (s: State) => void) {
         ],
       })
     },
-    deleteTemplate: (id: string) => patch((s) => ({ templates: s.templates.filter((t) => t.id !== id), assignments: s.assignments.filter((a) => a.templateId !== id) })),
+    deleteTemplate: (id: string) =>
+      patch((s) =>
+        s.templates.find((t) => t.id === id)?.companyId === cid()
+          ? { templates: s.templates.filter((t) => t.id !== id), assignments: s.assignments.filter((a) => a.templateId !== id) }
+          : {},
+      ),
 
     addTask(assignmentId: string, text: string) {
       const t = text.trim()
@@ -368,7 +430,7 @@ function makeActions(get: () => State, set: (s: State) => void) {
     markRead: (id?: string) => patch((s) => ({ notices: s.notices.map((n) => (!id || n.id === id ? { ...n, read: true } : n)) })),
 
     setPerm(p: Perm, v: boolean) {
-      patch((s) => ({ perms: { ...s.perms, [p]: v } }))
+      patch((s) => ({ companyPerms: { ...s.companyPerms, [cid()]: { ...(s.companyPerms[cid()] ?? DEFAULT_PERMS), [p]: v } } }))
       log({ action: 'permissions', subject: tr('history.detail.managers'), to: tr(v ? 'history.detail.permOn' : 'history.detail.permOff', { perm: tr(`perm.${p}.label`) }) })
     },
     setManagerBranch(managerId: string, branchId: string, on: boolean) {
@@ -378,13 +440,13 @@ function makeActions(get: () => State, set: (s: State) => void) {
         ),
       }))
     },
-    saveBranch(b: Omit<Branch, 'id'> & { id?: string }) {
+    saveBranch(b: Omit<Branch, 'id' | 'companyId'> & { id?: string }) {
       const s = get()
       if (b.id) {
-        set({ ...s, branches: s.branches.map((x) => (x.id === b.id ? { ...x, ...b } : x)) })
+        set({ ...s, branches: s.branches.map((x) => (x.id === b.id && x.companyId === cid() ? { ...x, ...b } : x)) })
         return
       }
-      const nb = { ...b, id: uid() }
+      const nb: Branch = { ...b, id: uid(), companyId: cid() }
       set({ ...s, branches: [...s.branches, nb], history: [entry({ action: 'branch', subject: nb.name, to: tr('history.detail.branchAdded') }, nb.id), ...s.history] })
     },
     saveManager(m: Manager) {
@@ -399,10 +461,17 @@ function makeActions(get: () => State, set: (s: State) => void) {
 
 export type Actions = ReturnType<typeof makeActions>
 
+export type CompanySummary = { company: Company; branches: number; staff: number; admins: Manager[] }
+
 type Ctx = {
+  /** The current company's data only. */
   s: State
   a: Actions
   me: Manager | null
+  company: Company | null
+  isOwner: boolean
+  /** Platform owner only: every company with headline numbers. Empty for everyone else. */
+  platform: CompanySummary[]
   branch: Branch | null
   myBranches: Branch[]
   can: (p: Perm) => boolean
@@ -414,7 +483,7 @@ const StoreCtx = createContext<Ctx | null>(null)
 const ToastCtx = createContext<{ toasts: Toast[]; dismiss: (id: string) => void }>({ toasts: [], dismiss: () => {} })
 
 export function StoreProvider({ children }: { children: ReactNode }) {
-  const [s, setS] = useState<State>(load)
+  const [s, setS] = useState<Data>(load)
   const ref = useRef(s)
   const [toasts, setToasts] = useState<Toast[]>([])
 
@@ -450,18 +519,34 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<Ctx>(() => {
     const me = s.managers.find((m) => m.id === s.session.userId) ?? null
-    const myBranches = me ? (me.role === 'super' ? s.branches : s.branches.filter((b) => me.branchIds.includes(b.id))) : []
-    const branch = s.branches.find((b) => b.id === s.session.branchId) ?? null
-    const branchEmp = new Set(s.employees.filter((e) => e.branchId === branch?.id).map((e) => e.id))
+    const isOwner = me?.role === 'owner'
+    const view = scope(s, s.session.companyId)
+    const myBranches = me ? (me.role === 'manager' ? view.branches.filter((b) => me.branchIds.includes(b.id)) : view.branches) : []
+    const branch = myBranches.find((b) => b.id === s.session.branchId) ?? null
+    const branchEmp = new Set(view.employees.filter((e) => e.branchId === branch?.id).map((e) => e.id))
+    const platform: CompanySummary[] = isOwner
+      ? s.companies.map((company) => {
+          const ids = new Set(s.branches.filter((b) => b.companyId === company.id).map((b) => b.id))
+          return {
+            company,
+            branches: ids.size,
+            staff: s.employees.filter((e) => ids.has(e.branchId)).length,
+            admins: s.managers.filter((m) => m.companyId === company.id && m.role === 'super'),
+          }
+        })
+      : []
     return {
-      s,
+      s: view,
       a,
       me,
+      company: view.companies[0] ?? null,
+      isOwner,
+      platform,
       branch,
       myBranches,
-      can: (p) => me?.role === 'super' || s.perms[p],
+      can: (p) => (me != null && me.role !== 'manager') || view.perms[p],
       toast,
-      pendingLeave: s.leaves.filter((l) => l.status === 'pending' && branchEmp.has(l.employeeId)),
+      pendingLeave: view.leaves.filter((l) => l.status === 'pending' && branchEmp.has(l.employeeId)),
     }
   }, [s, a, toast])
 

@@ -106,7 +106,8 @@ export function History() {
 export function Permissions() {
   const { s, a, me, toast } = useStore()
   const { t } = useT()
-  if (me?.role !== 'super') return <NoAccess what={t('permissions.what')} />
+  const isAdmin = me != null && me.role !== 'manager'
+  if (!isAdmin) return <NoAccess what={t('permissions.what')} />
   const managers = s.managers.filter((m) => m.role === 'manager')
   return (
     <div className="mx-auto max-w-4xl">

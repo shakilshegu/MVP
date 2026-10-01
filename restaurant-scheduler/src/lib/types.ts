@@ -1,14 +1,19 @@
 export type Dept = 'Bar' | 'Service' | 'Kitchen'
 export const DEPTS: Dept[] = ['Bar', 'Service', 'Kitchen']
 
-export type Role = 'manager' | 'super'
+/** owner = runs the platform; super = a company's admin; manager = runs assigned branches. */
+export type Role = 'manager' | 'super' | 'owner'
 export type Tone = 'morning' | 'day' | 'evening' | 'night'
 export type Preferred = 'Mornings' | 'Days' | 'Evenings' | 'Nights' | 'Flexible'
 export const PREFERRED: Preferred[] = ['Flexible', 'Mornings', 'Days', 'Evenings', 'Nights']
 
-export type Branch = { id: string; name: string; address: string; city: string; opens: string; closes: string }
+/** A restaurant business (tenant). Everything else belongs to exactly one company. */
+export type Company = { id: string; name: string; createdAt: string }
 
-export type Manager = { id: string; name: string; email: string; role: Role; branchIds: string[] }
+export type Branch = { id: string; companyId: string; name: string; address: string; city: string; opens: string; closes: string }
+
+/** `companyId` is null only for the platform owner. */
+export type Manager = { id: string; companyId: string | null; name: string; email: string; role: Role; branchIds: string[] }
 
 export type Employee = {
   id: string
@@ -28,6 +33,7 @@ export type Employee = {
 
 export type ShiftTemplate = {
   id: string
+  companyId: string
   name: string
   start: string
   end: string
@@ -101,14 +107,17 @@ export type HistoryEntry = {
 
 export type NoticeKind = 'leaveRequested' | 'inviteNotAccepted' | 'availabilityUpdated' | 'published' | 'approvalRequested'
 /** Stored as a kind plus raw values so it renders in whichever language is active. */
-export type Notice = { id: string; at: string; kind: NoticeKind; params: Record<string, string | number>; read: boolean; href?: string }
+export type Notice = { id: string; companyId: string; at: string; kind: NoticeKind; params: Record<string, string | number>; read: boolean; href?: string }
 
 export const PERMS = ['createEmployees', 'editShifts', 'publish', 'approveLeave', 'manageBranches'] as const
 export type Perm = (typeof PERMS)[number]
 
-export type State = {
+/** Everything persisted, across all companies. Only the store touches this directly. */
+export type Data = {
   version: number
-  session: { userId: string | null; branchId: string | null }
+  /** `companyId` is the company being viewed; for the platform owner it is chosen, for everyone else it is theirs. */
+  session: { userId: string | null; companyId: string | null; branchId: string | null }
+  companies: Company[]
   branches: Branch[]
   managers: Manager[]
   employees: Employee[]
@@ -117,10 +126,13 @@ export type State = {
   leaves: Leave[]
   history: HistoryEntry[]
   notices: Notice[]
-  /** What managers may do. Super admins can always do everything. */
-  perms: Record<Perm, boolean>
+  /** What managers may do, per company. Super admins can always do everything. */
+  companyPerms: Record<string, Record<Perm, boolean>>
   pendingApproval: Record<string, boolean>
   /** Keyed by `${branchId}|${date}` */
   dayNotes: Record<string, string>
   lastPublish: { branchId: string; at: string; count: number; notified: string[] } | null
 }
+
+/** One company's slice of the data — the only shape screens ever receive. */
+export type State = Data & { perms: Record<Perm, boolean> }

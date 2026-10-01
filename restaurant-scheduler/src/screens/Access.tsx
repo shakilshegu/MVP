@@ -36,7 +36,7 @@ export function Login() {
     }
     const err = a.login(email)
     setError(err)
-    if (!err) navigate('/schedule')
+    if (!err) navigate('/')
   }
 
   const demo = (addr: string) => {
@@ -106,6 +106,12 @@ export function Login() {
               <button onClick={() => demo('daniel@harborhouse.co')} className="rounded-lg bg-white px-3 py-2 text-left text-sm ring-1 ring-line hover:ring-forest/40">
                 <span className="font-medium">Daniel Okafor</span> <span className="text-muted">· {t('auth.demoSuper')}</span>
               </button>
+              <button onClick={() => demo('lena@cafe-mueller.de')} className="rounded-lg bg-white px-3 py-2 text-left text-sm ring-1 ring-line hover:ring-forest/40">
+                <span className="font-medium">Lena Hoffmann</span> <span className="text-muted">· {t('auth.demoCafe')}</span>
+              </button>
+              <button onClick={() => demo('owner@rota.app')} className="rounded-lg bg-white px-3 py-2 text-left text-sm ring-1 ring-line hover:ring-forest/40">
+                <span className="font-medium">Alex Morgan</span> <span className="text-muted">· {t('auth.demoOwner')}</span>
+              </button>
             </div>
           </div>
         </div>
@@ -115,15 +121,23 @@ export function Login() {
 }
 
 export function SelectBranch() {
-  const { s, a, me, myBranches } = useStore()
+  const { s, a, me, myBranches, company, isOwner } = useStore()
   const { t } = useT()
   const today = todayKey()
   return (
     <div className="min-h-full bg-paper px-6 py-12">
       <div className="mx-auto max-w-2xl">
         <div className="flex items-center justify-between">
-          <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-forest font-serif text-2xl leading-none text-white">R</span>
+          <span className="flex items-center gap-2.5">
+            <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-forest font-serif text-2xl leading-none text-white">R</span>
+            <span className="text-sm font-semibold text-forest">{company?.name}</span>
+          </span>
           <div className="flex items-center gap-1">
+            {isOwner && (
+              <Button variant="ghost" size="sm" onClick={() => a.selectCompany(null)}>
+                {t('shell.backToPlatform')}
+              </Button>
+            )}
             <LanguageMenu />
             <Button
               variant="ghost"

@@ -372,7 +372,7 @@ export function ShiftTemplates() {
 function ShiftDrawer({ t, onClose }: { t: ShiftTemplate | null; onClose: () => void }) {
   const { s, a, toast } = useStore()
   const { t: tt } = useT()
-  const [f, setF] = useState<ShiftTemplate>(() => t ?? { id: Math.random().toString(36).slice(2, 9), name: '', start: '12:00', end: '20:00', tone: 'day', needed: { Bar: 0, Service: 1, Kitchen: 1 } })
+  const [f, setF] = useState<ShiftTemplate>(() => t ?? { id: Math.random().toString(36).slice(2, 9), companyId: '', name: '', start: '12:00', end: '20:00', tone: 'day', needed: { Bar: 0, Service: 1, Kitchen: 1 } })
   const [error, setError] = useState('')
   const [confirmDelete, setConfirmDelete] = useState(false)
   const upcoming = t ? s.assignments.filter((x) => x.templateId === t.id && isActive(x) && x.date >= todayKey()).length : 0

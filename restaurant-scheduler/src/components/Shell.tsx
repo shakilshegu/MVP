@@ -31,7 +31,8 @@ import { Badge, cx, IconButton, Popover } from './ui'
 type Item = { to: string; label: string; icon: ReactNode; match: (p: string) => boolean; badge?: number; superOnly?: boolean }
 
 export default function Shell({ path, children }: { path: string; children: ReactNode }) {
-  const { s, me, branch, pendingLeave } = useStore()
+  const { s, me, branch, pendingLeave, company, isOwner, a } = useStore()
+  const isAdmin = me != null && me.role !== 'manager'
   const { t } = useT()
   const online = useOnline()
   const [navOpen, setNavOpen] = useState(false)
@@ -66,8 +67,11 @@ export default function Shell({ path, children }: { path: string; children: Reac
   const nav = (
     <nav aria-label={t('nav.main')} className="flex h-full flex-col">
       <div className="flex items-center gap-2.5 px-5 pb-6 pt-5">
-        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-forest font-serif text-xl leading-none text-white">R</span>
-        <span className="text-[15px] font-semibold text-forest">Rota</span>
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-forest font-serif text-xl leading-none text-white">R</span>
+        <span className="min-w-0">
+          <span className="block text-[15px] font-semibold leading-tight text-forest">Rota</span>
+          <span className="block truncate text-xs text-muted">{company?.name}</span>
+        </span>
       </div>
       <div className="flex-1 space-y-6 overflow-y-auto px-3">
         {items.map((g, i) => (
@@ -75,7 +79,7 @@ export default function Shell({ path, children }: { path: string; children: Reac
             {g.group && <div className="px-3 pb-1.5 text-xs font-medium text-muted">{g.group}</div>}
             <ul className="space-y-0.5">
               {g.items
-                .filter((it) => !it.superOnly || me?.role === 'super')
+                .filter((it) => !it.superOnly || isAdmin)
                 .map((it) => {
                   const active = it.match(path)
                   return (
@@ -133,6 +137,20 @@ export default function Shell({ path, children }: { path: string; children: Reac
         </div>
       )}
       <div className="flex min-w-0 flex-1 flex-col">
+        {isOwner && company && (
+          <div role="status" className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 bg-forest px-4 py-2 text-center text-[13px] text-white">
+            {t('shell.support', { company: company.name })}
+            <button
+              onClick={() => {
+                a.selectCompany(null)
+                navigate('/')
+              }}
+              className="font-semibold underline underline-offset-2 hover:text-forest-100"
+            >
+              {t('shell.backToPlatform')}
+            </button>
+          </div>
+        )}
         {!online && (
           <div role="status" className="flex items-center justify-center gap-2 bg-bark px-4 py-2 text-center text-[13px] text-white">
             <WifiOff className="h-4 w-4 shrink-0" />
@@ -181,6 +199,7 @@ function SignOut() {
 function BranchSwitcher() {
   const { branch, myBranches, a, me } = useStore()
   const { t } = useT()
+  const isAdmin = me != null && me.role !== 'manager'
   const btn = useRef<HTMLButtonElement>(null)
   const [rect, setRect] = useState<DOMRect | null>(null)
   const multi = myBranches.length > 1
@@ -188,14 +207,14 @@ function BranchSwitcher() {
     <>
       <button
         ref={btn}
-        disabled={!multi && me?.role !== 'super'}
+        disabled={!multi && !isAdmin}
         onClick={() => setRect(btn.current!.getBoundingClientRect())}
         className="flex min-w-0 items-center gap-2 rounded-lg px-2 py-1.5 text-left hover:bg-white/50 disabled:hover:bg-transparent"
         aria-haspopup="dialog"
       >
         <Store className="h-4 w-4 shrink-0 text-forest" />
         <span className="truncate text-[15px] font-semibold text-forest">{branch?.name}</span>
-        {(multi || me?.role === 'super') && <ChevronDown className="h-4 w-4 shrink-0 text-muted" />}
+        {(multi || isAdmin) && <ChevronDown className="h-4 w-4 shrink-0 text-muted" />}
       </button>
       {rect && (
         <Popover anchor={rect} onClose={() => setRect(null)} width={280}>
@@ -217,7 +236,7 @@ function BranchSwitcher() {
                 {b.id === branch?.id && <Check className="h-4 w-4 text-forest" />}
               </button>
             ))}
-            {me?.role === 'super' && (
+            {isAdmin && (
               <a href="#/settings?tab=branches" onClick={() => setRect(null)} className="mt-1 block rounded-lg border-t border-line px-3 py-2.5 text-sm font-medium text-forest hover:bg-paper">
                 {t('shell.manageBranches')}
               </a>
