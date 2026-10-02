@@ -232,7 +232,7 @@ function makeActions(get: () => Data, set: (s: Data) => void) {
       const draft: Data = { ...s, assignments: [...s.assignments] }
       const ids: string[] = []
       let open = 0
-      const tpls = [...s.templates].sort((x, y) => toMin(x.start) - toMin(y.start))
+      const tpls = s.templates.filter((t) => t.companyId === cid()).sort((x, y) => toMin(x.start) - toMin(y.start))
       for (const date of weekDays(weekStart)) {
         if (date < today) continue
         for (const t of tpls)
