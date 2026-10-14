@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
-import { AlertTriangle, CalendarRange, ClipboardList, Crown, Download, Scale, StickyNote, Wand2, Loader2, MapPin, MoreHorizontal, ChevronLeft, ChevronRight, Copy, Eye, Plus, Undo2, UserPlus, Users } from 'lucide-react'
+import { AlertTriangle, CalendarRange, ClipboardList, Clock3, Crown, Download, Scale, StickyNote, Wand2, Loader2, MapPin, MoreHorizontal, ChevronLeft, ChevronRight, Copy, Eye, Plus, Undo2, UserPlus, Users } from 'lucide-react'
 import { branchChanges, useStore } from '../lib/store'
 import { useT } from '../i18n'
 import { conflictTitles, deptName, describeSlot } from '../i18n/format'
@@ -71,7 +71,15 @@ export default function WeeklySchedule({ week }: { week: string | null }) {
       const t = s.templates.find((y) => y.id === x.templateId)
       return sum + (t ? hoursBetween(t.start, t.end) : 0)
     }, 0)
-    return { coverage: needed ? Math.round((filled / needed) * 100) : 100, open, shifts: active.length, hours }
+    const total = (list: Assignment[]) => ({
+      people: new Set(list.map((x) => x.employeeId)).size,
+      hours: list.reduce((sum, x) => {
+        const t = s.templates.find((y) => y.id === x.templateId)
+        return sum + (t ? hoursBetween(t.start, t.end) : 0)
+      }, 0),
+    })
+    const perDay = days.map((d) => total(active.filter((x) => x.date === d)))
+    return { coverage: needed ? Math.round((filled / needed) * 100) : 100, open, shifts: active.length, hours, people: total(active).people, perDay }
   }, [days, s.templates, visibleDepts, inWeek])
 
   const openMenuById = (id: string) => {
@@ -139,7 +147,7 @@ export default function WeeklySchedule({ week }: { week: string | null }) {
                 {' '}
                 · <span className="text-ink">{t('schedule.covered', { pct: stats.coverage })}</span> ·{' '}
                 <span className={stats.open ? 'text-bark' : ''}>{t('schedule.openSlots', { count: stats.open })}</span> ·{' '}
-                {t('schedule.shiftsHours', { shifts: stats.shifts, hours: stats.hours })}
+                {t('common.people', { count: stats.people })} · {t('schedule.shiftsHours', { shifts: stats.shifts, hours: stats.hours })}
               </>
             )}
             {city && (
@@ -301,10 +309,35 @@ export default function WeeklySchedule({ week }: { week: string | null }) {
                   ))}
                 </DeptBand>
               ))}
+              <div className="sticky left-0 z-10 border-t-2 border-line bg-paper px-4 py-3">
+                <div className="text-sm font-semibold">{t('schedule.totals')}</div>
+                <div className="text-xs text-muted">
+                  {t('schedule.weekTotal')}: {t('common.people', { count: stats.people })}
+                </div>
+                <div className="text-xs text-muted">{t('schedule.hoursTotal', { hours: stats.hours })}</div>
+              </div>
+              {days.map((d, i) => (
+                <div key={d} className={cx('border-l border-t-2 border-line bg-paper px-3 py-3', d < today && 'text-muted')}>
+                  <div className="flex items-center gap-1.5 text-sm font-semibold">
+                    <Users className="h-3.5 w-3.5 text-muted" aria-hidden />
+                    {t('common.people', { count: stats.perDay[i].people })}
+                  </div>
+                  <div className="mt-0.5 flex items-center gap-1.5 text-xs text-muted">
+                    <Clock3 className="h-3.5 w-3.5" aria-hidden />
+                    {t('schedule.hoursTotal', { hours: stats.perDay[i].hours })}
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
 
           <MobileDay days={days} active={mobileDay} setActive={setMobileDay} weather={weather.data}>
+            <div className="flex items-center justify-between rounded-xl bg-white/70 px-4 py-2.5 text-sm ring-1 ring-line">
+              <span className="font-medium">{t('schedule.totals')}</span>
+              <span className="text-muted">
+                {t('common.people', { count: stats.perDay[mobileDay].people })} · {t('schedule.hoursTotal', { hours: stats.perDay[mobileDay].hours })}
+              </span>
+            </div>
             {(s.dayNotes[`${branch!.id}|${days[mobileDay]}`] || (editable && days[mobileDay] >= today)) && (
               <button
                 disabled={!editable || days[mobileDay] < today}
