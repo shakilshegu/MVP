@@ -10,6 +10,7 @@ import { checkAssignment, isActive, needFor, weekHours } from '../lib/validation
 import type { Conflict } from '../lib/validation'
 import type { Assignment, Dept, Employee, ShiftTemplate } from '../lib/types'
 import { AssignPanel, ConflictDialog, Hours } from '../components/assign'
+import { AnnouncementPill } from './Announcements'
 import { DayWeatherLine, DayWeatherMini } from '../components/weather'
 import { TaskList } from '../components/tasks'
 import { DayNote, NoteEditor } from '../components/notes'
@@ -295,6 +296,11 @@ export default function WeeklySchedule({ week }: { week: string | null }) {
                       </span>
                     </div>
                     <DayWeatherLine w={weather.data[d]} status={weather.status} />
+                    {s.announcements
+                      .filter((x) => x.branchId === branch!.id && x.date === d)
+                      .map((x) => (
+                        <AnnouncementPill key={x.id} x={x} />
+                      ))}
                     <DayNote note={s.dayNotes[`${branch!.id}|${d}`]} editable={editable && d >= today} onEdit={(el) => setNoteAt({ date: d, rect: el.getBoundingClientRect() })} />
                   </div>
                 )

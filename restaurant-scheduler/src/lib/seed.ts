@@ -181,7 +181,7 @@ export function createSeed(): Data {
   const cafeTemplates = defaultTemplates('c2', () => `t${tid++}`)
 
   const s: Data = {
-    version: 12,
+    version: 13,
     session: { userId: null, companyId: null, branchId: null },
     companies: [
       { id: 'c1', name: 'Harbor Group', createdAt: daysAgoIso(220), currency: 'EUR' },
@@ -231,9 +231,12 @@ export function createSeed(): Data {
     },
     pendingApproval: {},
     dayNotes: {
-      [`b1|${addDays(startOfWeek(today), 4)}`]: tr('seed.note.party'),
       [`b1|${addDays(startOfWeek(today), 6)}`]: tr('seed.note.terrace'),
     },
+    announcements: [
+      { id: 'an1', branchId: 'b1', date: addDays(startOfWeek(today), 4), start: '19:00', end: '23:30', title: tr('seed.ann.partyTitle'), body: tr('seed.ann.partyBody'), extraStaff: 2, dept: 'c1-service', by: 'Daniel Okafor', at: daysAgoIso(3), sentTo: 18 },
+      { id: 'an2', branchId: 'b1', date: addDays(startOfWeek(today), 10), start: '18:00', end: '21:00', title: tr('seed.ann.wineTitle'), body: tr('seed.ann.wineBody'), extraStaff: 1, dept: 'c1-bar', by: 'Priya Raman', at: daysAgoIso(1), sentTo: 18 },
+    ],
     weekAvailability: {},
     lastPublish: null,
   }

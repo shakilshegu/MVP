@@ -6,7 +6,7 @@ import { tr } from '../i18n/core'
 import type { MsgKey } from '../i18n/core'
 import { conflictTitles, deptName, describeSlot } from '../i18n/format'
 import { createSeed, defaultChecklists, defaultDepartments, defaultTemplates } from './seed'
-import type { Assignment, Company, Data, Department, Dept, Task, Branch, Employee, HistoryEntry, Leave, Manager, Perm, ShiftTemplate, State } from './types'
+import type { Announcement, Assignment, Company, Data, Department, Dept, Task, Branch, Employee, HistoryEntry, Leave, Manager, Perm, ShiftTemplate, State } from './types'
 import { checkAssignment, isActive, needFor, weekHours } from './validation'
 import type { AssignRequest, Conflict } from './validation'
 
@@ -69,6 +69,7 @@ export function scope(d: Data, companyId: string | null): State {
     assignments: d.assignments.filter((a) => branchIds.has(a.branchId)),
     leaves: d.leaves.filter((l) => employeeIds.has(l.employeeId)),
     history: d.history.filter((h) => branchIds.has(h.branchId)),
+    announcements: d.announcements.filter((x) => branchIds.has(x.branchId)),
     notices: d.notices.filter((n) => n.companyId === companyId),
     perms: (companyId && d.companyPerms[companyId]) || DEFAULT_PERMS,
   }
@@ -483,6 +484,24 @@ function makeActions(get: () => Data, set: (s: Data) => void) {
       patch((s) => ({
         assignments: s.assignments.map((x) => (x.id === assignmentId ? { ...x, tasks: x.tasks?.filter((t) => t.id !== taskId) } : x)),
       }))
+    },
+
+    /** Creates or updates an announcement and "sends" it to the branch's active staff. Returns how many were told. */
+    saveAnnouncement(input: Omit<Announcement, 'id' | 'branchId' | 'by' | 'at' | 'sentTo'> & { id?: string }) {
+      const s = get()
+      const sentTo = s.employees.filter((e) => e.branchId === bid() && e.status === 'active').length
+      const by = s.managers.find((m) => m.id === s.session.userId)?.name ?? '—'
+      const prev = input.id ? s.announcements.find((x) => x.id === input.id) : undefined
+      const next: Announcement = { ...input, id: prev?.id ?? uid(), branchId: prev?.branchId ?? bid(), by, at: new Date().toISOString(), sentTo }
+      patch((d) => ({
+        announcements: prev ? d.announcements.map((x) => (x.id === prev.id ? next : x)) : [...d.announcements, next],
+        history: [entry({ action: 'announcement', subject: next.title, from: prev ? prev.title : undefined, to: fmtDay(next.date) }), ...d.history],
+      }))
+      return sentTo
+    },
+
+    deleteAnnouncement(id: string) {
+      patch((d) => ({ announcements: d.announcements.filter((x) => x.id !== id) }))
     },
 
     setDayNote(date: string, text: string) {

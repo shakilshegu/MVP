@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ChevronLeft, ChevronRight, Clock3, Hourglass, Plus, Send, Trash2 } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Clock3, Hourglass, Megaphone, Plus, Send, Trash2 } from 'lucide-react'
 import { branchChanges, useStore } from '../lib/store'
 import { navigate } from '../lib/hooks'
 import { addDays, dayShort, daysInclusive, fmtLong, fmtMonthYear, fmtRange, fromKey, hoursBetween, pad, startOfWeek, todayKey, toKey, toMin, WEEK, weekdayIndex } from '../lib/date'
@@ -39,6 +39,10 @@ export function Dashboard() {
     .filter((r) => r.e && r.tpl)
     .sort((p, q) => s.departments.findIndex((d) => d.id === p.x.dept) - s.departments.findIndex((d) => d.id === q.x.dept) || toMin(p.tpl.start) - toMin(q.tpl.start))
   const nowMin = hour * 60 + new Date().getMinutes()
+  const soon = s.announcements
+    .filter((x) => x.branchId === branch!.id && x.date >= today && x.date <= addDays(today, 13))
+    .sort((x, y) => x.date.localeCompare(y.date))
+    .slice(0, 3)
   const axisStart = 5 * 60
   const axisLen = 22 * 60
   const pos = (m: number) => `${(Math.max(0, Math.min(axisLen, m - axisStart)) / axisLen) * 100}%`
@@ -125,6 +129,30 @@ export function Dashboard() {
         </section>
 
         <div className="space-y-6">
+          {soon.length > 0 && (
+            <section className="panel">
+              <div className="flex items-center justify-between border-b border-line px-5 py-3.5">
+                <h2 className="flex items-center gap-2 text-sm font-semibold">
+                  <Megaphone className="h-4 w-4 text-bar" /> {t('dashboard.comingUp')}
+                </h2>
+                <a href="#/announcements" className="text-[13px] font-medium text-forest hover:underline">
+                  {t('dashboard.allAnnouncements')}
+                </a>
+              </div>
+              <ul className="divide-y divide-line">
+                {soon.map((x) => (
+                  <li key={x.id} className="px-5 py-3">
+                    <div className="text-sm font-medium">{x.title}</div>
+                    <div className="text-[13px] text-muted">
+                      {fmtLong(x.date)}
+                      {x.start && ` · ${x.start}`}
+                      {!!x.extraStaff && ` · +${x.extraStaff}${x.dept ? ` ${deptName(s, x.dept)}` : ''}`}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
           <section className="panel">
             <div className="flex items-center justify-between border-b border-line px-5 py-3.5">
               <h2 className="text-sm font-semibold">{t('dashboard.pending')}</h2>

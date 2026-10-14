@@ -16,7 +16,7 @@ import { cityLabel, GERMAN_CITIES } from '../lib/weather'
 import { Badge, Button, EmptyState, Field, Modal, PageHeader, Segmented, Switch } from '../components/ui'
 
 const GROUPS = {
-  Schedule: ['assigned', 'removed', 'tasksUpdated', 'moved', 'published', 'shiftEdited', 'shiftCreated'],
+  Schedule: ['assigned', 'removed', 'tasksUpdated', 'moved', 'published', 'shiftEdited', 'shiftCreated', 'announcement'],
   Team: ['employeeAdded', 'employeeEdited', 'availability'],
   Leave: ['leaveApproved', 'leaveDeclined'],
   Admin: ['permissions', 'branch'],

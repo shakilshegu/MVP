@@ -107,6 +107,7 @@ export type HistoryAction =
   | 'leaveDeclined'
   | 'permissions'
   | 'branch'
+  | 'announcement'
 
 export type HistoryEntry = {
   id: string
@@ -121,6 +122,25 @@ export type HistoryEntry = {
   /** For 'published': counts rendered in the viewer's language. */
   count?: number
   people?: number
+}
+
+/** A special occasion staff should know about, e.g. a private party (CR-05). */
+export type Announcement = {
+  id: string
+  branchId: string
+  date: string
+  /** Optional time window, 'HH:MM'. */
+  start?: string
+  end?: string
+  title: string
+  body: string
+  /** Extra people needed on top of the usual staffing, optionally for one department. */
+  extraStaff?: number
+  dept?: Dept
+  by: string
+  at: string
+  /** How many people were told when it was last sent. */
+  sentTo: number
 }
 
 export type NoticeKind = 'leaveRequested' | 'inviteNotAccepted' | 'availabilityUpdated' | 'published' | 'approvalRequested'
@@ -151,6 +171,7 @@ export type Data = {
   pendingApproval: Record<string, boolean>
   /** Keyed by `${branchId}|${date}` */
   dayNotes: Record<string, string>
+  announcements: Announcement[]
   /** Availability for one specific week, overriding the usual pattern: employeeId → weekStart → Mon..Sun. */
   weekAvailability: Record<string, Record<string, boolean[]>>
   lastPublish: { branchId: string; at: string; count: number; notified: string[] } | null

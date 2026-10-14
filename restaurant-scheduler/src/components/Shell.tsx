@@ -19,6 +19,7 @@ import {
   UserRoundCheck,
   WifiOff,
   X,
+  Megaphone,
 } from 'lucide-react'
 import { branchChanges, useStore } from '../lib/store'
 import { navigate, useOnline } from '../lib/hooks'
@@ -52,6 +53,7 @@ export default function Shell({ path, children }: { path: string; children: Reac
         { to: '/team', label: t('nav.team'), icon: <Users />, match: (p) => p.startsWith('/team') },
         { to: '/availability', label: t('nav.availability'), icon: <UserRoundCheck />, match: (p) => p === '/availability' },
         { to: '/leave', label: t('nav.leave'), icon: <Plane />, match: (p) => p === '/leave', badge: pendingLeave.length },
+        { to: '/announcements', label: t('nav.announcements'), icon: <Megaphone />, match: (p) => p === '/announcements' },
       ],
     },
     {

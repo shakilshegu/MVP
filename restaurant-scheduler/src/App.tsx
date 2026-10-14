@@ -9,6 +9,7 @@ import { Published, ReviewPublish } from './screens/Publish'
 import { EmployeeProfile, Team } from './screens/Team'
 import { Dashboard, MonthlySchedule, ShiftTemplates } from './screens/Planning'
 import { Availability, LeaveRequests } from './screens/People'
+import { Announcements } from './screens/Announcements'
 import { History, Permissions, Settings } from './screens/Admin'
 import { Platform } from './screens/Platform'
 
@@ -44,6 +45,9 @@ function Screen() {
       break
     case 'leave':
       page = <LeaveRequests />
+      break
+    case 'announcements':
+      page = <Announcements />
       break
     case 'review':
       page = <ReviewPublish key={key} />
