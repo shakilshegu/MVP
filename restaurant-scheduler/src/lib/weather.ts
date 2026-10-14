@@ -20,7 +20,10 @@ export const GERMAN_CITIES: City[] = [
   { name: 'Bremen', lat: 53.079, lon: 8.802 },
 ]
 
-export type DayWeather = { code: number; max: number; min: number; rain: number }
+export type HourWeather = { code: number; temp: number; rain: number }
+/** `hours` holds 24 hourly values, 00:00–23:00 local time. */
+export type DayWeather = { code: number; max: number; min: number; rain: number; hours?: HourWeather[] }
+export type SpanWeather = { code: number; min: number; max: number; rain: number }
 
 type Kind = { key: 'clear' | 'partlyCloudy' | 'overcast' | 'fog' | 'drizzle' | 'rain' | 'snow' | 'thunder'; Icon: typeof Sun; tint: string }
 
@@ -49,19 +52,27 @@ function fetchRange(city: City, from: string, to: string) {
     const url =
       `https://api.open-meteo.com/v1/forecast?latitude=${city.lat}&longitude=${city.lon}` +
       `&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max` +
+      `&hourly=weather_code,temperature_2m,precipitation_probability` +
       `&timezone=Europe%2FBerlin&start_date=${from}&end_date=${to}`
     p = fetch(url)
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
       .then((j) => {
         const d = j.daily
         const out: Record<string, DayWeather> = {}
+        const h = j.hourly
         d.time.forEach((t: string, i: number) => {
           if (d.temperature_2m_max[i] == null) return
+          const hours: HourWeather[] = []
+          for (let k = i * 24; k < i * 24 + 24 && h; k++) {
+            if (h.temperature_2m[k] == null) break
+            hours.push({ code: h.weather_code[k], temp: Math.round(h.temperature_2m[k]), rain: h.precipitation_probability[k] ?? 0 })
+          }
           out[t] = {
             code: d.weather_code[i],
             max: Math.round(d.temperature_2m_max[i]),
             min: Math.round(d.temperature_2m_min[i]),
             rain: d.precipitation_probability_max[i] ?? 0,
+            hours: hours.length === 24 ? hours : undefined,
           }
         })
         return out
@@ -102,6 +113,29 @@ export function useWeather(city: City | undefined, days: string[]) {
   }, [cityKey, from, to])
 
   return { data, status }
+}
+
+/**
+ * Weather across a shift's hours (CR-10): temperature range, the roughest conditions and the highest
+ * chance of rain. Shifts past midnight continue into the next day's hours.
+ */
+export function shiftWeather(data: Record<string, DayWeather>, date: string, start: string, end: string): SpanWeather | undefined {
+  const from = Number(start.slice(0, 2))
+  let to = Number(end.slice(0, 2)) + (Number(end.slice(3, 5)) > 0 ? 1 : 0)
+  if (to <= from) to += 24
+  const slice: HourWeather[] = []
+  for (let hr = from; hr < to; hr++) {
+    const day = data[hr < 24 ? date : addDays(date, 1)]
+    const w = day?.hours?.[hr % 24]
+    if (w) slice.push(w)
+  }
+  if (!slice.length) return undefined
+  return {
+    code: Math.max(...slice.map((w) => w.code)),
+    min: Math.min(...slice.map((w) => w.temp)),
+    max: Math.max(...slice.map((w) => w.temp)),
+    rain: Math.max(...slice.map((w) => w.rain)),
+  }
 }
 
 export const cityOf = (name: string | undefined) => GERMAN_CITIES.find((c) => c.name === name)

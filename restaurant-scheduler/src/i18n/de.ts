@@ -89,6 +89,9 @@ export const de: Shape<typeof en> = {
     describe: '{label} · max. {max} °C, min. {min} °C · {rain} % Regenwahrscheinlichkeit',
     noForecast: 'Vorhersagen gibt es bis zu 16 Tage im Voraus',
     unavailable: 'Wetter nicht verfügbar',
+    byShift: 'Wetter pro Schicht',
+    duringShift: 'Wetter während der Schicht',
+    describeShift: '{label} · {temp} °C · {rain} % Regenwahrscheinlichkeit',
   },
   auth: {
     title: 'Anmelden',

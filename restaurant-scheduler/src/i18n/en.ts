@@ -87,6 +87,9 @@ export const en = {
     describe: '{label} · high {max}°C, low {min}°C · {rain}% chance of rain',
     noForecast: 'Forecasts are available up to 16 days ahead',
     unavailable: 'Weather unavailable',
+    byShift: 'Weather by shift',
+    duringShift: 'Weather during shift',
+    describeShift: '{label} · {temp}°C · {rain}% chance of rain',
   },
   auth: {
     title: 'Sign in',

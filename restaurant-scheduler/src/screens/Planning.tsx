@@ -6,6 +6,8 @@ import { addDays, dayShort, daysInclusive, fmtLong, fmtMonthYear, fmtRange, from
 import { useT } from '../i18n'
 import { deptName } from '../i18n/format'
 import { breakMinutes, isActive, needFor } from '../lib/validation'
+import { cityOf, shiftWeather, useWeather } from '../lib/weather'
+import { ShiftWeatherTag } from '../components/weather'
 import type { Dept, ShiftTemplate, Tone } from '../lib/types'
 import { Avatar, Badge, Button, cx, DeptDot, Drawer, EmptyState, Field, PageHeader, toneCls } from '../components/ui'
 
@@ -39,6 +41,11 @@ export function Dashboard() {
     .filter((r) => r.e && r.tpl)
     .sort((p, q) => s.departments.findIndex((d) => d.id === p.x.dept) - s.departments.findIndex((d) => d.id === q.x.dept) || toMin(p.tpl.start) - toMin(q.tpl.start))
   const nowMin = hour * 60 + new Date().getMinutes()
+  const weather = useWeather(cityOf(branch!.city), [today, addDays(today, 1)])
+  const shiftsToday = [...s.templates]
+    .filter((tpl) => todays.some((r) => r.tpl.id === tpl.id))
+    .sort((p, q) => toMin(p.start) - toMin(q.start))
+    .map((tpl) => ({ tpl, w: shiftWeather(weather.data, today, tpl.start, tpl.end) }))
   const soon = s.announcements
     .filter((x) => x.branchId === branch!.id && x.date >= today && x.date <= addDays(today, 13))
     .sort((x, y) => x.date.localeCompare(y.date))
@@ -85,6 +92,19 @@ export function Dashboard() {
               {t('common.openSchedule')}
             </a>
           </div>
+          {shiftsToday.some((x) => x.w) && (
+            <ul aria-label={t('weather.byShift')} className="flex flex-wrap gap-x-5 gap-y-2 border-b border-line bg-paper/60 px-5 py-2.5">
+              {shiftsToday.map(({ tpl, w }) => (
+                <li key={tpl.id} className="flex items-center gap-2 text-xs">
+                  <span className={cx('h-2.5 w-1 rounded-full', toneCls[tpl.tone].split(' ')[0])} />
+                  <span className="text-muted">
+                    {tpl.name} {tpl.start}
+                  </span>
+                  <ShiftWeatherTag w={w} className="text-xs" />
+                </li>
+              ))}
+            </ul>
+          )}
           {todays.length === 0 ? (
             <EmptyState icon={<Clock3 className="h-5 w-5" />} title={t('dashboard.emptyTitle')} body={t('dashboard.emptyBody')} action={<Button onClick={() => navigate('/schedule')}>{t('common.openSchedule')}</Button>} />
           ) : (

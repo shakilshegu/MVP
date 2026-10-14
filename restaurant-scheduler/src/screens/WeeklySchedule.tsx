@@ -11,11 +11,11 @@ import type { Conflict } from '../lib/validation'
 import type { Assignment, Dept, Employee, ShiftTemplate } from '../lib/types'
 import { AssignPanel, ConflictDialog, Hours } from '../components/assign'
 import { AnnouncementPill } from './Announcements'
-import { DayWeatherLine, DayWeatherMini } from '../components/weather'
+import { DayWeatherLine, DayWeatherMini, ShiftWeatherPopover, ShiftWeatherTag } from '../components/weather'
 import { TaskList } from '../components/tasks'
 import { DayNote, NoteEditor } from '../components/notes'
 import { HoursDrawer } from '../components/hours'
-import { cityLabel, cityOf, useWeather } from '../lib/weather'
+import { cityLabel, cityOf, shiftWeather, useWeather } from '../lib/weather'
 import { downloadRotaPdf } from '../lib/pdf'
 import type { DayWeather } from '../lib/weather'
 import type { Slot } from '../components/assign'
@@ -36,6 +36,7 @@ export default function WeeklySchedule({ week }: { week: string | null }) {
   const [pending, setPending] = useState<Pending | null>(null)
   const [noteAt, setNoteAt] = useState<{ date: string; rect: DOMRect } | null>(null)
   const [showHours, setShowHours] = useState(false)
+  const [weatherAt, setWeatherAt] = useState<{ date: string; rect: DOMRect } | null>(null)
   const [confirmDiscard, setConfirmDiscard] = useState(false)
   const [dragOver, setDragOver] = useState<string | null>(null)
   const [mobileDay, setMobileDay] = useState(() => Math.max(0, days.indexOf(today)))
@@ -295,7 +296,7 @@ export default function WeeklySchedule({ week }: { week: string | null }) {
                         {got}/{need}
                       </span>
                     </div>
-                    <DayWeatherLine w={weather.data[d]} status={weather.status} />
+                    <DayWeatherLine w={weather.data[d]} status={weather.status} onOpen={(el) => setWeatherAt({ date: d, rect: el.getBoundingClientRect() })} />
                     {s.announcements
                       .filter((x) => x.branchId === branch!.id && x.date === d)
                       .map((x) => (
@@ -373,6 +374,7 @@ export default function WeeklySchedule({ week }: { week: string | null }) {
                         <div className="text-xs text-muted">
                           {tpl.start}–{tpl.end}
                         </div>
+                        <ShiftWeatherTag w={shiftWeather(weather.data, days[mobileDay], tpl.start, tpl.end)} className="mt-1 text-xs" />
                       </div>
                       <div className="flex-1">
                         <Cell
@@ -420,7 +422,8 @@ export default function WeeklySchedule({ week }: { week: string | null }) {
           <AssignPanel slot={assignAt.slot} onPick={(e, c) => tryAssign(e, c, assignAt.slot)} />
         </Popover>
       )}
-      {menuItem && <ChipMenu x={menuItem} rect={menu!.rect} onClose={() => setMenu(null)} editable={editable && menuItem.date >= today} />}
+      {menuItem && <ChipMenu x={menuItem} rect={menu!.rect} onClose={() => setMenu(null)} editable={editable && menuItem.date >= today} weather={weather.data} />}
+      {weatherAt && <ShiftWeatherPopover date={weatherAt.date} data={weather.data} city={cityLabel(branch!.city, locale)} anchor={weatherAt.rect} onClose={() => setWeatherAt(null)} />}
       {noteAt && <NoteEditor date={noteAt.date} rect={noteAt.rect} onClose={() => setNoteAt(null)} />}
       {showHours && <HoursDrawer weekStart={weekStart} depts={visibleDepts} onClose={() => setShowHours(false)} />}
       {pending && (
@@ -702,10 +705,12 @@ function Cell({ slot, list, needed, tone, today, editable, dragOver, setDragOver
   )
 }
 
-function ChipMenu({ x, rect, onClose, editable }: { x: Assignment; rect: DOMRect; onClose: () => void; editable: boolean }) {
+function ChipMenu({ x, rect, onClose, editable, weather }: { x: Assignment; rect: DOMRect; onClose: () => void; editable: boolean; weather: Record<string, DayWeather> }) {
   const { s, a, toast } = useStore()
   const { t } = useT()
   const e = s.employees.find((y) => y.id === x.employeeId)!
+  const tpl = s.templates.find((y) => y.id === x.templateId)
+  const sw = tpl && shiftWeather(weather, x.date, tpl.start, tpl.end)
   const hours = weekHours(s, e.id, startOfWeek(x.date))
   return (
     <Popover anchor={rect} onClose={onClose} width={320}>
@@ -722,6 +727,12 @@ function ChipMenu({ x, rect, onClose, editable }: { x: Assignment; rect: DOMRect
         {x.state === 'added' && <div className="mt-1 font-medium text-forest">{t(x.movedFrom ? 'schedule.chipMoved' : 'schedule.chipNew')}</div>}
         {x.state === 'removed' && <div className="mt-1 font-medium text-bark">{t('schedule.chipRemoved')}</div>}
         {x.overridden && <div className="mt-1 text-warn">{t('schedule.despite', { list: conflictTitles(t, x.overridden) })}</div>}
+        {sw && (
+          <div className="mt-2 flex items-center justify-between gap-2">
+            <span>{t('weather.duringShift')}</span>
+            <ShiftWeatherTag w={sw} />
+          </div>
+        )}
       </div>
       {x.state !== 'removed' && <TaskList x={x} editable={editable} />}
       <div className="flex flex-col gap-1 border-t border-line p-2">
