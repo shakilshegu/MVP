@@ -5,7 +5,8 @@ import { useStore } from '../lib/store'
 import { navigate, useLoad } from '../lib/hooks'
 import { addDays, dayShort, fmtDay, fmtRange, startOfWeek, todayKey, WEEK } from '../lib/date'
 import { useT } from '../i18n'
-import { deptName } from '../i18n/format'
+import { deptName, money } from '../i18n/format'
+import { EarningsHistory } from '../components/earnings'
 import { isActive, weekHours } from '../lib/validation'
 import { PREFERRED } from '../lib/types'
 import { EMPLOYEE_COLORS } from '../lib/seed'
@@ -375,7 +376,7 @@ export function EmployeeForm({ employee, onClose }: { employee?: Employee; onClo
 
 export function EmployeeProfile({ id }: { id: string }) {
   const { s, can, toast, a, canSeePay, company } = useStore()
-  const { t, locale } = useT()
+  const { t } = useT()
   const [editing, setEditing] = useState(false)
   const e = s.employees.find((x) => x.id === id)
   if (!e) {
@@ -462,7 +463,7 @@ export function EmployeeProfile({ id }: { id: string }) {
           )}
         </section>
 
-        <div className="space-y-6">
+        <div className="space-y-6 md:row-span-2">
           <section className="panel p-5">
             <h2 className="text-sm font-semibold">{t('profile.skills')}</h2>
             <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2">
@@ -474,7 +475,7 @@ export function EmployeeProfile({ id }: { id: string }) {
               <div className="mt-4 flex items-baseline justify-between border-t border-line pt-3 text-sm">
                 <span className="text-muted">{t('profile.pay')}</span>
                 <span className="font-semibold">
-                  {new Intl.NumberFormat(locale === 'de' ? 'de-DE' : 'en-GB', { style: 'currency', currency: company?.currency ?? 'EUR' }).format(e.hourlyRate)}
+                  {money(e.hourlyRate, company?.currency ?? 'EUR')}
                 </span>
               </div>
             )}
@@ -549,6 +550,7 @@ export function EmployeeProfile({ id }: { id: string }) {
             )}
           </section>
         </div>
+        <EarningsHistory e={e} />
       </div>
       {editing && <EmployeeForm employee={e} onClose={() => setEditing(false)} />}
     </div>

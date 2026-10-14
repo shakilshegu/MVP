@@ -2,10 +2,15 @@ import { dayLong, fmtDay, fmtDuration, fmtRange } from '../lib/date'
 import { MIN_REST_HOURS } from '../lib/validation'
 import type { Conflict, WeekIssue } from '../lib/validation'
 import type { Assignment, ConflictKind, Data, Dept, HistoryEntry, Notice } from '../lib/types'
+import { intlLocale } from './core'
 import type { MsgKey, Params } from './core'
 
 /** A bound translator, e.g. `useT().t` or `tr`. */
 export type T = (key: MsgKey, params?: Params) => string
+
+/** An amount in the company's currency, e.g. €1,092.50. */
+export const money = (amount: number, currency: string) =>
+  new Intl.NumberFormat(intlLocale(), { style: 'currency', currency, maximumFractionDigits: amount % 1 ? 2 : 0 }).format(amount)
 
 /** A department's display name; departments are company data, so this needs the state. */
 export const deptName = (s: Pick<Data, 'departments'>, d: Dept) => s.departments.find((x) => x.id === d)?.name ?? d

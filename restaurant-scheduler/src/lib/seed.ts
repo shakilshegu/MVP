@@ -181,7 +181,7 @@ export function createSeed(): Data {
   const cafeTemplates = defaultTemplates('c2', () => `t${tid++}`)
 
   const s: Data = {
-    version: 11,
+    version: 12,
     session: { userId: null, companyId: null, branchId: null },
     companies: [
       { id: 'c1', name: 'Harbor Group', createdAt: daysAgoIso(220), currency: 'EUR' },
@@ -250,7 +250,7 @@ export function createSeed(): Data {
   let n = 0
   for (const branchId of ['b1', 'b2', 'b4', 'b5']) {
     const companyId = s.branches.find((b) => b.id === branchId)!.companyId
-    for (const offset of [-14, -7, 0]) {
+    for (const offset of [-35, -28, -21, -14, -7, 0]) {
       for (const date of weekDays(addDays(thisWeek, offset))) {
         for (const t of s.templates.filter((x) => x.companyId === companyId)) {
           for (const dept of s.departments.filter((d) => d.companyId === companyId).map((d) => d.id)) {
