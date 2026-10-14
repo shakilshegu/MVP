@@ -5,14 +5,15 @@ import { useStore } from '../lib/store'
 import { navigate } from '../lib/hooks'
 import { fmtDayHeading, fmtStamp, fmtTime, relTime } from '../lib/date'
 import { useT } from '../i18n'
-import { deptName, historyText } from '../i18n/format'
+import { historyText } from '../i18n/format'
+import { DepartmentsPanel } from '../components/departments'
 import { LanguageToggle } from '../components/LanguageSwitch'
 import { backend } from '../data'
-import { DEPTS, PERMS } from '../lib/types'
+import { PERMS } from '../lib/types'
 import type { HistoryAction } from '../lib/types'
 import { NoAccess } from '../components/Shell'
 import { cityLabel, GERMAN_CITIES } from '../lib/weather'
-import { Badge, Button, cx, deptDot, EmptyState, Field, Modal, PageHeader, Segmented, Switch } from '../components/ui'
+import { Badge, Button, EmptyState, Field, Modal, PageHeader, Segmented, Switch } from '../components/ui'
 
 const GROUPS = {
   Schedule: ['assigned', 'removed', 'tasksUpdated', 'moved', 'published', 'shiftEdited', 'shiftCreated'],
@@ -263,23 +264,7 @@ export function Settings({ tab: initial }: { tab: string | null }) {
         </form>
       )}
 
-      {tab === 'departments' && (
-        <div className="panel">
-          <ul className="divide-y divide-line">
-            {DEPTS.map((d) => {
-              const n = s.employees.filter((e) => e.branchId === branch!.id && e.dept === d).length
-              return (
-                <li key={d} className="flex items-center gap-3 px-5 py-4">
-                  <span className={cx('h-2.5 w-2.5 rounded-full', deptDot[d])} />
-                  <span className="flex-1 text-sm font-medium">{deptName(t, d)}</span>
-                  <span className="text-[13px] text-muted">{t('common.people', { count: n })}</span>
-                </li>
-              )
-            })}
-          </ul>
-          <p className="border-t border-line px-5 py-3 text-[13px] text-muted">{t('settings.deptOrder', { list: DEPTS.map((d) => deptName(t, d)).join(', ') })}</p>
-        </div>
-      )}
+      {tab === 'departments' && <DepartmentsPanel />}
 
       {tab === 'branches' && (
         <div className="space-y-3">

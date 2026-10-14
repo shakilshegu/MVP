@@ -9,7 +9,6 @@ import { addDays, dayShort, fmtDay, fmtRangeYear, fmtShort, fromKey, hoursBetwee
 import { checkAssignment, isActive, needFor, weekHours } from '../lib/validation'
 import type { Conflict } from '../lib/validation'
 import type { Assignment, Dept, Employee, ShiftTemplate } from '../lib/types'
-import { DEPTS } from '../lib/types'
 import { AssignPanel, ConflictDialog, Hours } from '../components/assign'
 import { DayWeatherLine, DayWeatherMini } from '../components/weather'
 import { TaskList } from '../components/tasks'
@@ -19,12 +18,12 @@ import { cityLabel, cityOf, useWeather } from '../lib/weather'
 import { downloadRotaPdf } from '../lib/pdf'
 import type { DayWeather } from '../lib/weather'
 import type { Slot } from '../components/assign'
-import { Avatar, Button, cx, deptDot, EmptyState, ErrorState, IconButton, Modal, Popover, Segmented, Skeleton, toneCls } from '../components/ui'
+import { Avatar, Button, cx, DeptDot, EmptyState, ErrorState, IconButton, Modal, Popover, Segmented, Skeleton, toneCls } from '../components/ui'
 
 type Pending = { employee: Employee; conflicts: Conflict[]; slot: Slot; run: () => void }
 
 export default function WeeklySchedule({ week }: { week: string | null }) {
-  const { s, a, branch, can, toast, me } = useStore()
+  const { s, a, branch, can, toast, me, depts } = useStore()
   const { t, locale } = useT()
   const [exporting, setExporting] = useState(false)
   const today = todayKey()
@@ -49,7 +48,7 @@ export default function WeeklySchedule({ week }: { week: string | null }) {
     () => s.assignments.filter((x) => x.branchId === branch!.id && x.date >= weekStart && x.date <= days[6]),
     [s.assignments, branch, weekStart, days],
   )
-  const visibleDepts = useMemo(() => (dept === 'All' ? DEPTS : [dept]), [dept])
+  const visibleDepts = useMemo(() => (dept === 'All' ? depts.map((d) => d.id) : [dept]), [dept, depts])
   const changes = branchChanges(s, branch!.id)
   const affected = new Set(changes.map((c) => c.a.employeeId)).size
 
@@ -171,7 +170,7 @@ export default function WeeklySchedule({ week }: { week: string | null }) {
             label={t('common.department')}
             value={dept}
             onChange={setDept}
-            options={[{ value: 'All', label: t('common.all') }, ...DEPTS.map((d) => ({ value: d, label: <><span className={cx('h-1.5 w-1.5 rounded-full', deptDot[d])} />{deptName(t, d)}</> }))]}
+            options={[{ value: 'All', label: t('common.all') }, ...depts.map((d) => ({ value: d.id, label: <><DeptDot id={d.id} className="h-1.5 w-1.5" />{d.name}</> }))]}
           />
           <MoreMenu
             exporting={exporting}
@@ -322,8 +321,8 @@ export default function WeeklySchedule({ week }: { week: string | null }) {
             {visibleDepts.map((dp) => (
               <section key={dp} className="panel overflow-hidden">
                 <h2 className="flex items-center gap-2 border-b border-line bg-paper px-4 py-2.5 text-sm font-semibold">
-                  <span className={cx('h-2 w-2 rounded-full', deptDot[dp])} />
-                  {deptName(t, dp)}
+                  <DeptDot id={dp} />
+                  {deptName(s, dp)}
                 </h2>
                 {s.templates
                   .filter((tpl) => needFor(tpl, dp, days[mobileDay]) > 0 || cellOf(days[mobileDay], tpl.id, dp).length > 0)
@@ -505,11 +504,12 @@ function MoreMenu({
 
 function DeptBand({ dept, count, children }: { dept: Dept; count: number; children: ReactNode }) {
   const { t } = useT()
+  const { s } = useStore()
   return (
     <>
       <div className="sticky left-0 col-span-8 flex items-center gap-2 border-t border-line bg-paper px-4 py-2 text-sm">
-        <span className={cx('h-2 w-2 rounded-full', deptDot[dept])} />
-        <span className="font-semibold">{deptName(t, dept)}</span>
+        <DeptDot id={dept} />
+        <span className="font-semibold">{deptName(s, dept)}</span>
         <span className="text-muted">· {t('common.people', { count })}</span>
       </div>
       {children}
@@ -552,6 +552,7 @@ type CellProps = {
 
 function Cell({ slot, list, needed, tone, today, editable, dragOver, setDragOver, onDrop, openAssign, openMenu, employees, bare }: CellProps) {
   const { t } = useT()
+  const { s } = useStore()
   const key = `${slot.date}|${slot.templateId}|${slot.dept}`
   const past = slot.date < today
   const canEdit = editable && !past
@@ -592,6 +593,7 @@ function Cell({ slot, list, needed, tone, today, editable, dragOver, setDragOver
             }}
             data-assignment={x.id}
             onClick={(ev) => openMenu(x, ev.currentTarget)}
+            style={x.state === 'removed' ? undefined : { boxShadow: `inset 3px 0 0 ${e.color}` }}
             aria-label={x.state === 'added' ? t('schedule.a11yUnpublished', { name: e.name }) : x.state === 'removed' ? t('schedule.a11yRemoved', { name: e.name }) : e.name}
             className={cx(
               'flex w-full items-center gap-1.5 rounded-md px-2 py-1 text-left text-[13px] font-medium transition-shadow',
@@ -631,7 +633,7 @@ function Cell({ slot, list, needed, tone, today, editable, dragOver, setDragOver
       {canEdit && openSlots === 0 && (
         <button
           onClick={(ev) => openAssign(slot, ev.currentTarget)}
-          aria-label={t('schedule.addTo', { dept: deptName(t, slot.dept) })}
+          aria-label={t('schedule.addTo', { dept: deptName(s, slot.dept) })}
           className={cx(
             'flex items-center justify-center rounded-md py-0.5 text-muted transition-opacity hover:bg-forest-50 hover:text-forest focus-visible:opacity-100',
             bare ? 'w-full border border-dashed border-line py-1 text-xs' : 'opacity-0 group-hover/cell:opacity-100',

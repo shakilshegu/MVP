@@ -1,8 +1,8 @@
 import { addDays, dayLong, fromKey, pad, toMin, weekdayIndex } from './date'
 import { intlLocale, tr } from '../i18n/core'
+import { deptName } from '../i18n/format'
 import { isActive, leaveOn } from './validation'
 import type { Branch, Data, Dept, Manager } from './types'
-import { DEPTS } from './types'
 
 const ddmm = (k: string) => `${k.slice(8, 10)}.${k.slice(5, 7)}`
 const ddmmyyyy = (k: string) => `${ddmm(k)}.${k.slice(0, 4)}`
@@ -23,7 +23,7 @@ export function buildRota(s: Data, branchId: string, weekStart: string, depts: D
   const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i))
   const team = s.employees
     .filter((e) => e.branchId === branchId && depts.includes(e.dept))
-    .sort((a, b) => DEPTS.indexOf(a.dept) - DEPTS.indexOf(b.dept) || a.name.localeCompare(b.name))
+    .sort((a, b) => s.departments.findIndex((d) => d.id === a.dept) - s.departments.findIndex((d) => d.id === b.dept) || a.name.localeCompare(b.name))
 
   let hasDraft = false
   const rows = team.map((e) => {
@@ -38,7 +38,7 @@ export function buildRota(s: Data, branchId: string, weekStart: string, depts: D
         const draft = shifts.some((x) => x.a.state === 'added')
         hasDraft ||= draft
         const text = shifts
-          .map((x) => startLabel(x.t.start) + (x.a.dept !== e.dept ? ` ${tr(`dept.${x.a.dept}`)}` : ''))
+          .map((x) => startLabel(x.t.start) + (x.a.dept !== e.dept ? ` ${deptName(s, x.a.dept)}` : ''))
           .join(' / ')
         return { text: draft ? text + '*' : text, kind: 'shift', draft }
       }
@@ -72,7 +72,7 @@ export async function downloadRotaPdf(opts: { s: Data; branch: Branch; me: Manag
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(10.5)
   doc.setTextColor(...ink)
-  const scope = depts.length === DEPTS.length ? tr('pdf.allDepts') : depts.map((d) => tr(`dept.${d}`)).join(', ')
+  const scope = depts.length === s.departments.filter((d) => d.companyId === branch.companyId).length ? tr('pdf.allDepts') : depts.map((d) => deptName(s, d)).join(', ')
   doc.text([tr('pdf.title'), tr('pdf.week', { n: week }), `${ddmm(weekStart)}.–${ddmmyyyy(end)}`, scope].join(' · '), M, 22.5)
   doc.setFontSize(8.5)
   doc.setTextColor(...muted)
@@ -94,7 +94,7 @@ export async function downloadRotaPdf(opts: { s: Data; branch: Branch; me: Manag
   for (const r of rows) {
     if (depts.length > 1 && r.e.dept !== lastDept) {
       deptRows.add(body.length)
-      body.push([DEPT_ROW + tr(`dept.${r.e.dept}`), '', '', '', '', '', '', ''])
+      body.push([DEPT_ROW + deptName(s, r.e.dept), '', '', '', '', '', '', ''])
       lastDept = r.e.dept
     }
     kinds.set(body.length, r.cells.map((c) => c.kind))

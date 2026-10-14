@@ -7,7 +7,7 @@ import type { Conflict, ConflictKind } from '../lib/validation'
 import type { Dept, Employee } from '../lib/types'
 import { useT } from '../i18n'
 import { conflictDetail, conflictTitle, deptName } from '../i18n/format'
-import { Avatar, Button, cx, deptDot, Modal } from './ui'
+import { Avatar, Button, cx, DeptDot, Modal } from './ui'
 
 const toneToPref = { morning: 'Mornings', day: 'Days', evening: 'Evenings', night: 'Nights' } as const
 
@@ -41,11 +41,11 @@ export function AssignPanel({ slot, onPick }: { slot: Slot; onPick: (e: Employee
         prefers: e.preferred === toneToPref[tpl.tone],
       }))
     const sort = (a: Row, b: Row) => Number(b.prefers) - Number(a.prefers) || a.hours / a.e.maxHours - b.hours / b.e.maxHours
-    const same = rows.filter((r) => r.e.dept === slot.dept)
+    const same = rows.filter((r) => r.e.skills.includes(slot.dept))
     return {
       available: same.filter((r) => !r.conflicts.length).sort(sort),
       blocked: same.filter((r) => r.conflicts.length).sort((a, b) => a.conflicts.length - b.conflicts.length),
-      other: rows.filter((r) => r.e.dept !== slot.dept).sort((a, b) => a.conflicts.length - b.conflicts.length || sort(a, b)),
+      other: rows.filter((r) => !r.e.skills.includes(slot.dept)).sort((a, b) => a.conflicts.length - b.conflicts.length || sort(a, b)),
     }
   }, [s, branch, slot, q, ws, tpl.tone])
 
@@ -53,8 +53,8 @@ export function AssignPanel({ slot, onPick }: { slot: Slot; onPick: (e: Employee
     <div className="flex max-h-[inherit] flex-col">
       <div className="border-b border-line px-4 pb-3 pt-4">
         <div className="flex items-center gap-2 text-sm font-semibold">
-          <span className={cx('h-2 w-2 rounded-full', deptDot[slot.dept])} />
-          {deptName(t, slot.dept)} · {tpl.name}
+          <DeptDot id={slot.dept} />
+          {deptName(s, slot.dept)} · {tpl.name}
         </div>
         <div className="mt-0.5 text-[13px] text-muted">
           {fmtDay(slot.date)}, {tpl.start}–{tpl.end}
@@ -66,7 +66,7 @@ export function AssignPanel({ slot, onPick }: { slot: Slot; onPick: (e: Employee
         </label>
       </div>
       <div className="flex-1 overflow-y-auto p-2">
-        <Group title={t('assign.available', { count: available.length })} rows={available} onPick={onPick} empty={q ? t('assign.noMatches') : t('assign.nobodyFree', { dept: deptName(t, slot.dept) })} />
+        <Group title={t('assign.available', { count: available.length })} rows={available} onPick={onPick} empty={q ? t('assign.noMatches') : t('assign.nobodyFree', { dept: deptName(s, slot.dept) })} />
         {blocked.length > 0 && <Group title={t('assign.conflicts', { count: blocked.length })} rows={blocked} onPick={onPick} />}
         {other.length > 0 && (
           <div className="mt-1 border-t border-line pt-1">

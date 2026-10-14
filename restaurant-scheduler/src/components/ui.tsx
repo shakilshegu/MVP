@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { ButtonHTMLAttributes, ReactNode } from 'react'
 import { AlertTriangle, RotateCw, X } from 'lucide-react'
 import type { Dept, Employee, Tone } from '../lib/types'
-import { useToasts } from '../lib/store'
+import { useStore, useToasts } from '../lib/store'
 import { useT } from '../i18n'
 
 export const cx = (...c: (string | false | null | undefined)[]) => c.filter(Boolean).join(' ')
@@ -78,7 +78,7 @@ export function Modal({
   const d = useDialog(onClose)
   const { t } = useT()
   return (
-    <dialog {...d} className={cx('w-[calc(100%-32px)] animate-pop rounded-2xl bg-white p-0 text-ink shadow-2xl', width)}>
+    <dialog {...d} className={cx('max-h-[calc(100dvh-32px)] w-[calc(100%-32px)] animate-pop overflow-y-auto rounded-2xl bg-white p-0 text-ink shadow-2xl', width)}>
       <div className="flex items-start justify-between gap-4 px-6 pt-6">
         <div>
           <h2 className="text-lg font-semibold">{title}</h2>
@@ -147,8 +147,6 @@ export function Popover({ anchor, onClose, children, width = 340 }: { anchor: DO
   )
 }
 
-const deptBg: Record<Dept, string> = { Bar: 'bg-[#F3E2C2] text-[#6E4610]', Service: 'bg-[#CFE6DC] text-[#1D5244]', Kitchen: 'bg-[#EFD9D4] text-[#5E302A]' }
-export const deptDot: Record<Dept, string> = { Bar: 'bg-bar', Service: 'bg-service', Kitchen: 'bg-kitchen' }
 export const toneCls: Record<Tone, string> = {
   morning: 'bg-morning text-morning-ink',
   day: 'bg-day text-day-ink',
@@ -164,26 +162,34 @@ export const initials = (name: string) =>
     .join('')
     .toUpperCase()
 
-export function Avatar({ e, size = 36 }: { e: Pick<Employee, 'name' | 'dept' | 'photo'>; size?: number }) {
+/** Initials on the person's own colour (a light tint with the colour as text). */
+export function Avatar({ e, size = 36 }: { e: Pick<Employee, 'name' | 'photo'> & { color?: string }; size?: number }) {
+  const color = e.color ?? '#5C665F'
   return e.photo ? (
     <img src={e.photo} alt="" className="shrink-0 rounded-full object-cover" style={{ width: size, height: size }} />
   ) : (
     <span
       aria-hidden
-      className={cx('inline-flex shrink-0 items-center justify-center rounded-full font-semibold', deptBg[e.dept])}
-      style={{ width: size, height: size, fontSize: size * 0.36 }}
+      className="inline-flex shrink-0 items-center justify-center rounded-full font-semibold"
+      style={{ width: size, height: size, fontSize: size * 0.36, background: `${color}26`, color }}
     >
       {initials(e.name)}
     </span>
   )
 }
 
+/** A small dot in a department's colour. */
+export function DeptDot({ id, className = 'h-2 w-2' }: { id: Dept; className?: string }) {
+  const { depts } = useStore()
+  return <span aria-hidden className={cx('shrink-0 rounded-full', className)} style={{ background: depts.find((d) => d.id === id)?.color ?? '#8A938D' }} />
+}
+
 export function DeptTag({ dept }: { dept: Dept }) {
-  const { t } = useT()
+  const { depts } = useStore()
   return (
     <span className="inline-flex items-center gap-1.5 text-[13px] text-muted">
-      <span className={cx('h-2 w-2 rounded-full', deptDot[dept])} />
-      {t(`dept.${dept}`)}
+      <DeptDot id={dept} />
+      {depts.find((d) => d.id === dept)?.name ?? dept}
     </span>
   )
 }
@@ -242,7 +248,7 @@ export function Switch({ checked, onChange, label, disabled }: { checked: boolea
       onClick={() => onChange(!checked)}
       className={cx('relative h-6 w-10 shrink-0 rounded-full transition-colors disabled:opacity-50', checked ? 'bg-forest' : 'bg-sage-dark')}
     >
-      <span className={cx('absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform', checked ? 'translate-x-[18px]' : 'translate-x-0.5')} />
+      <span className={cx('absolute left-0 top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform', checked ? 'translate-x-[18px]' : 'translate-x-0.5')} />
     </button>
   )
 }

@@ -7,11 +7,13 @@ import { cx } from './ui'
 
 
 export function TaskList({ x, editable }: { x: Assignment; editable: boolean }) {
-  const { a } = useStore()
+  const { a, s } = useStore()
   const { t } = useT()
   const [text, setText] = useState('')
   const tasks = x.tasks ?? []
-  const suggestions = t(`tasks.suggest.${x.dept}`).split('|').filter((s) => !tasks.some((x) => x.text.toLowerCase() === s.toLowerCase())).slice(0, 4)
+  const employee = s.employees.find((e) => e.id === x.employeeId)
+  const own = s.checklists.find((c) => c.id === employee?.checklistId)?.items.map((i) => i.title) ?? []
+  const suggestions = own.filter((s) => !tasks.some((x) => x.text.toLowerCase() === s.toLowerCase())).slice(0, 4)
   const add = (t: string) => {
     a.addTask(x.id, t)
     setText('')

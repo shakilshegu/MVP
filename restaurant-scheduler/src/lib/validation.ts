@@ -21,6 +21,7 @@ export type ConflictParams = {
   date?: string
   branch?: string
   dept?: Dept
+  deptName?: string
   restMinutes?: number
   total?: number
   max?: number
@@ -42,7 +43,7 @@ export const MIN_REST_HOURS = 11
 export const MAX_DAY_HOURS = 10
 
 /** Staff needed for a shift on a given date, honouring per-weekday overrides. */
-export const needFor = (t: ShiftTemplate, dept: Dept, date: string) => t.perDay?.[dept]?.[weekdayIndex(date)] ?? t.needed[dept]
+export const needFor = (t: ShiftTemplate, dept: Dept, date: string) => t.perDay?.[dept]?.[weekdayIndex(date)] ?? t.needed[dept] ?? 0
 
 /** Break required by German working-time law (ArbZG §4) for a shift of this length. */
 export const breakMinutes = (hours: number) => (hours > 9 ? 45 : hours > 6 ? 30 : 0)
@@ -101,7 +102,7 @@ export function checkAssignment(s: Data, req: AssignRequest): Conflict[] {
     }
     const gap = s0 >= e1 ? s0 - e1 : s1 - e0
     if (gap < MIN_REST_HOURS * 60) out.push({ kind: 'rest', params: { ...other, restMinutes: gap } })
-    if (a.date === req.date && (a.branchId !== req.branchId || a.dept !== req.dept)) out.push({ kind: 'elsewhere', params: { ...other, dept: a.dept } })
+    if (a.date === req.date && (a.branchId !== req.branchId || a.dept !== req.dept)) out.push({ kind: 'elsewhere', params: { ...other, dept: a.dept, deptName: s.departments.find((d) => d.id === a.dept)?.name } })
   }
 
   const dayTotal =

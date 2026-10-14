@@ -4,7 +4,6 @@ import { addDays, fmtRange } from '../lib/date'
 import { isActive, weekHours, weekIssues, MIN_REST_HOURS, MAX_DAY_HOURS } from '../lib/validation'
 import type { WeekIssue } from '../lib/validation'
 import type { Dept } from '../lib/types'
-import { DEPTS } from '../lib/types'
 import { useT } from '../i18n'
 import { deptName, weekIssueText } from '../i18n/format'
 import { Avatar, cx, Drawer } from './ui'
@@ -12,7 +11,7 @@ import { Avatar, cx, Drawer } from './ui'
 const issueIcon: Record<WeekIssue['kind'], typeof Timer> = { rest: BedDouble, dayMax: Hourglass, maxHours: Timer }
 
 export function HoursDrawer({ weekStart, depts, onClose }: { weekStart: string; depts: Dept[]; onClose: () => void }) {
-  const { s, branch } = useStore()
+  const { s, branch, depts: order } = useStore()
   const { t } = useT()
   const end = addDays(weekStart, 6)
   const rows = s.employees
@@ -22,7 +21,7 @@ export function HoursDrawer({ weekStart, depts, onClose }: { weekStart: string; 
       const shifts = s.assignments.filter((a) => a.employeeId === e.id && isActive(a) && a.date >= weekStart && a.date <= end).length
       return { e, hours, shifts, issues: weekIssues(s, e.id, weekStart) }
     })
-    .sort((a, b) => b.issues.length - a.issues.length || DEPTS.indexOf(a.e.dept) - DEPTS.indexOf(b.e.dept) || a.e.name.localeCompare(b.e.name))
+    .sort((a, b) => b.issues.length - a.issues.length || order.findIndex((d) => d.id === a.e.dept) - order.findIndex((d) => d.id === b.e.dept) || a.e.name.localeCompare(b.e.name))
   const withIssues = rows.filter((r) => r.issues.length).length
   const unscheduled = rows.filter((r) => r.hours === 0 && r.e.status === 'active').length
 
@@ -53,7 +52,7 @@ export function HoursDrawer({ weekStart, depts, onClose }: { weekStart: string; 
                     {e.name}
                   </a>
                   <div className="text-xs text-muted">
-                    {deptName(t, e.dept)} · {t('common.shifts', { count: shifts })}
+                    {deptName(s, e.dept)} · {t('common.shifts', { count: shifts })}
                   </div>
                 </div>
                 <div className="w-24 text-right">

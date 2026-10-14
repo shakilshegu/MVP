@@ -1,5 +1,13 @@
-export type Dept = 'Bar' | 'Service' | 'Kitchen'
-export const DEPTS: Dept[] = ['Bar', 'Service', 'Kitchen']
+/** A department id. Departments are per company and can be added, renamed and recoloured. */
+export type Dept = string
+
+export type Department = { id: string; companyId: string; name: string; color: string; needsLeader: boolean }
+
+export type ChecklistItem = { id: string; title: string; detail: string }
+/** Duties and responsibilities assigned to an employee; ticked off on every shift. */
+export type ChecklistTemplate = { id: string; companyId: string; name: string; items: ChecklistItem[] }
+
+export type Currency = 'EUR' | 'INR'
 
 /** owner = runs the platform; super = a company's admin; manager = runs assigned branches. */
 export type Role = 'manager' | 'super' | 'owner'
@@ -8,7 +16,7 @@ export type Preferred = 'Mornings' | 'Days' | 'Evenings' | 'Nights' | 'Flexible'
 export const PREFERRED: Preferred[] = ['Flexible', 'Mornings', 'Days', 'Evenings', 'Nights']
 
 /** A restaurant business (tenant). Everything else belongs to exactly one company. */
-export type Company = { id: string; name: string; createdAt: string }
+export type Company = { id: string; name: string; createdAt: string; currency: Currency }
 
 export type Branch = { id: string; companyId: string; name: string; address: string; city: string; opens: string; closes: string }
 
@@ -19,7 +27,10 @@ export type Employee = {
   id: string
   branchId: string
   name: string
+  /** Main department, used for grouping. Always included in `skills`. */
   dept: Dept
+  /** Departments this person can work in. */
+  skills: Dept[]
   position: string
   email: string
   phone: string
@@ -29,6 +40,11 @@ export type Employee = {
   preferred: Preferred
   status: 'active' | 'invited'
   photo?: string
+  /** Gross hourly pay in the company's currency. Visible to admins and the employee only. */
+  hourlyRate: number
+  /** Colour used for this person on the schedule. */
+  color: string
+  checklistId: string | null
 }
 
 export type ShiftTemplate = {
@@ -122,6 +138,8 @@ export type Data = {
   managers: Manager[]
   employees: Employee[]
   templates: ShiftTemplate[]
+  departments: Department[]
+  checklists: ChecklistTemplate[]
   assignments: Assignment[]
   leaves: Leave[]
   history: HistoryEntry[]

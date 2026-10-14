@@ -6,15 +6,14 @@ import { addDays, dayShort, daysInclusive, fmtLong, fmtMonthYear, fmtRange, from
 import { useT } from '../i18n'
 import { deptName } from '../i18n/format'
 import { breakMinutes, isActive, needFor } from '../lib/validation'
-import { DEPTS } from '../lib/types'
 import type { Dept, ShiftTemplate, Tone } from '../lib/types'
-import { Avatar, Badge, Button, cx, deptDot, Drawer, EmptyState, Field, PageHeader, toneCls } from '../components/ui'
+import { Avatar, Badge, Button, cx, DeptDot, Drawer, EmptyState, Field, PageHeader, toneCls } from '../components/ui'
 
 function coverage(s: ReturnType<typeof useStore>['s'], branchId: string, date: string) {
   let need = 0
   let got = 0
   for (const t of s.templates)
-    for (const d of DEPTS) {
+    for (const d of s.departments.map((x) => x.id)) {
       const n = needFor(t, d, date)
       need += n
       got += Math.min(n, s.assignments.filter((x) => x.branchId === branchId && isActive(x) && x.date === date && x.templateId === t.id && x.dept === d).length)
@@ -38,7 +37,7 @@ export function Dashboard() {
     .filter((x) => x.branchId === branch!.id && x.date === today && isActive(x))
     .map((x) => ({ x, e: s.employees.find((e) => e.id === x.employeeId)!, tpl: s.templates.find((y) => y.id === x.templateId)! }))
     .filter((r) => r.e && r.tpl)
-    .sort((p, q) => DEPTS.indexOf(p.x.dept) - DEPTS.indexOf(q.x.dept) || toMin(p.tpl.start) - toMin(q.tpl.start))
+    .sort((p, q) => s.departments.findIndex((d) => d.id === p.x.dept) - s.departments.findIndex((d) => d.id === q.x.dept) || toMin(p.tpl.start) - toMin(q.tpl.start))
   const nowMin = hour * 60 + new Date().getMinutes()
   const axisStart = 5 * 60
   const axisLen = 22 * 60
@@ -104,7 +103,7 @@ export function Dashboard() {
                   return (
                     <li key={x.id} className="flex items-center gap-3">
                       <a href={`#/team/${e.id}`} className="flex w-[128px] shrink-0 items-center gap-2 hover:underline">
-                        <span className={cx('h-1.5 w-1.5 shrink-0 rounded-full', deptDot[x.dept])} />
+                        <DeptDot id={x.dept} className="h-1.5 w-1.5" />
                         <span className="truncate text-sm">{e.name}</span>
                       </a>
                       <div className="relative hidden h-7 flex-1 sm:block">
@@ -327,7 +326,7 @@ export function ShiftTemplates() {
             const st = toMin(tpl.start) / 60
             let en = toMin(tpl.end) / 60
             if (en <= st) en += 24
-            const totals = WEEK.map((i) => DEPTS.reduce((n, d) => n + (tpl.perDay?.[d]?.[i] ?? tpl.needed[d]), 0))
+            const totals = WEEK.map((i) => s.departments.reduce((n, d) => n + (tpl.perDay?.[d.id]?.[i] ?? tpl.needed[d.id] ?? 0), 0))
             const lo = Math.min(...totals)
             const hi = Math.max(...totals)
             const brk = breakMinutes(hoursBetween(tpl.start, tpl.end))
@@ -350,9 +349,9 @@ export function ShiftTemplates() {
                   </div>
                   <div className="relative h-8 w-full flex-1 rounded-md bg-paper">
                     <div className={cx('absolute inset-y-0 flex items-center gap-2 rounded-md px-2 text-[11px] font-medium', toneCls[tpl.tone])} style={{ left: `${(st / 28) * 100}%`, width: `${((en - st) / 28) * 100}%` }}>
-                      {DEPTS.filter((d) => tpl.needed[d]).map((d) => (
-                        <span key={d} className="flex items-center gap-1 whitespace-nowrap" title={deptName(t, d)}>
-                          <span className={cx('h-1.5 w-1.5 rounded-full', deptDot[d])} />
+                      {s.departments.map((x) => x.id).filter((d) => tpl.needed[d]).map((d) => (
+                        <span key={d} className="flex items-center gap-1 whitespace-nowrap" title={deptName(s, d)}>
+                          <DeptDot id={d} className="h-1.5 w-1.5" />
                           {tpl.needed[d]}
                         </span>
                       ))}
@@ -440,20 +439,20 @@ function ShiftDrawer({ t, onClose }: { t: ShiftTemplate | null; onClose: () => v
             <PerDayGrid f={f} setF={setF} />
           ) : (
           <div className="space-y-2">
-            {DEPTS.map((d) => (
+            {s.departments.map((x) => x.id).map((d) => (
               <div key={d} className="flex items-center justify-between rounded-xl bg-paper px-3 py-2">
                 <span className="flex items-center gap-2 text-sm">
-                  <span className={cx('h-2 w-2 rounded-full', deptDot[d])} />
-                  {deptName(tt, d)}
+                  <DeptDot id={d} />
+                  {deptName(s, d)}
                 </span>
                 <div className="flex items-center gap-1">
-                  <button aria-label={tt('templates.fewer', { dept: deptName(tt, d) })} onClick={() => setNeed(d, f.needed[d] - 1)} className="h-8 w-8 rounded-lg bg-white text-lg leading-none ring-1 ring-line hover:ring-forest/40">
+                  <button aria-label={tt('templates.fewer', { dept: deptName(s, d) })} onClick={() => setNeed(d, (f.needed[d] ?? 0) - 1)} className="h-8 w-8 rounded-lg bg-white text-lg leading-none ring-1 ring-line hover:ring-forest/40">
                     −
                   </button>
                   <span className="w-8 text-center text-sm font-semibold" aria-live="polite">
-                    {f.needed[d]}
+                    {f.needed[d] ?? 0}
                   </span>
-                  <button aria-label={tt('templates.more', { dept: deptName(tt, d) })} onClick={() => setNeed(d, f.needed[d] + 1)} className="h-8 w-8 rounded-lg bg-white text-lg leading-none ring-1 ring-line hover:ring-forest/40">
+                  <button aria-label={tt('templates.more', { dept: deptName(s, d) })} onClick={() => setNeed(d, (f.needed[d] ?? 0) + 1)} className="h-8 w-8 rounded-lg bg-white text-lg leading-none ring-1 ring-line hover:ring-forest/40">
                     +
                   </button>
                 </div>
@@ -469,7 +468,7 @@ function ShiftDrawer({ t, onClose }: { t: ShiftTemplate | null; onClose: () => v
               onChange={(e) =>
                 setF((p) => ({
                   ...p,
-                  perDay: e.target.checked ? (Object.fromEntries(DEPTS.map((d) => [d, Array(7).fill(p.needed[d])])) as Record<Dept, number[]>) : undefined,
+                  perDay: e.target.checked ? (Object.fromEntries(s.departments.map((x) => [x.id, Array(7).fill(p.needed[x.id] ?? 0)])) as Record<Dept, number[]>) : undefined,
                 }))
               }
             />
@@ -514,8 +513,9 @@ function ShiftDrawer({ t, onClose }: { t: ShiftTemplate | null; onClose: () => v
 
 function PerDayGrid({ f, setF }: { f: ShiftTemplate; setF: (fn: (p: ShiftTemplate) => ShiftTemplate) => void }) {
   const { t } = useT()
+  const { s } = useStore()
   const set = (d: Dept, i: number, n: number) =>
-    setF((p) => ({ ...p, perDay: { ...p.perDay!, [d]: p.perDay![d].map((v, j) => (j === i ? Math.max(0, Math.min(9, n)) : v)) } }))
+    setF((p) => ({ ...p, perDay: { ...p.perDay!, [d]: (p.perDay![d] ?? Array(7).fill(0)).map((v: number, j: number) => (j === i ? Math.max(0, Math.min(9, n)) : v)) } }))
   return (
     <div className="overflow-x-auto rounded-xl bg-paper p-2">
       <table className="w-full text-center text-sm">
@@ -530,22 +530,22 @@ function PerDayGrid({ f, setF }: { f: ShiftTemplate; setF: (fn: (p: ShiftTemplat
           </tr>
         </thead>
         <tbody>
-          {DEPTS.map((d) => (
+          {s.departments.map((x) => x.id).map((d) => (
             <tr key={d}>
               <td className="py-1 pr-1 text-left">
                 <span className="flex items-center gap-1.5 text-[13px]">
-                  <span className={cx('h-2 w-2 rounded-full', deptDot[d])} />
-                  {deptName(t, d)}
+                  <DeptDot id={d} />
+                  {deptName(s, d)}
                 </span>
               </td>
-              {f.perDay![d].map((v, i) => (
+              {(f.perDay![d] ?? Array(7).fill(0)).map((v: number, i: number) => (
                 <td key={i} className="px-0.5 py-1">
                   <input
                     type="number"
                     min={0}
                     max={9}
                     value={v}
-                    aria-label={t('templates.perDayA11y', { dept: deptName(t, d), day: dayShort(i) })}
+                    aria-label={t('templates.perDayA11y', { dept: deptName(s, d), day: dayShort(i) })}
                     onChange={(e) => set(d, i, Number(e.target.value))}
                     className="h-8 w-full min-w-[30px] rounded-md border border-line bg-white text-center text-sm focus:border-forest focus:outline-none"
                   />

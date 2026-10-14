@@ -7,11 +7,13 @@ import type { MsgKey, Params } from './core'
 /** A bound translator, e.g. `useT().t` or `tr`. */
 export type T = (key: MsgKey, params?: Params) => string
 
-export const deptName = (t: T, d: Dept) => t(`dept.${d}`)
+/** A department's display name; departments are company data, so this needs the state. */
+export const deptName = (s: Pick<Data, 'departments'>, d: Dept) => s.departments.find((x) => x.id === d)?.name ?? d
+export const deptColor = (s: Pick<Data, 'departments'>, d: Dept) => s.departments.find((x) => x.id === d)?.color ?? '#8A938D'
 
 export function describeSlot(t: T, s: Data, a: Pick<Assignment, 'templateId' | 'date' | 'dept'>) {
   const tpl = s.templates.find((x) => x.id === a.templateId)
-  return t('schedule.describe', { shift: tpl?.name ?? '', start: tpl?.start ?? '', end: tpl?.end ?? '', date: fmtDay(a.date), dept: deptName(t, a.dept) })
+  return t('schedule.describe', { shift: tpl?.name ?? '', start: tpl?.start ?? '', end: tpl?.end ?? '', date: fmtDay(a.date), dept: deptName(s, a.dept) })
 }
 
 export function conflictTitle(t: T, c: Conflict) {
@@ -33,7 +35,7 @@ export function conflictDetail(t: T, c: Conflict) {
     case 'rest':
       return t('conflict.rest.detail', { ...shift, rest: fmtDuration(p.restMinutes ?? 0), min: MIN_REST_HOURS })
     case 'elsewhere':
-      return t('conflict.elsewhere.detail', { shift: p.shift ?? '', dept: p.dept ? deptName(t, p.dept) : '', where })
+      return t('conflict.elsewhere.detail', { shift: p.shift ?? '', dept: p.deptName ?? '', where })
     case 'dayMax':
       return t('conflict.dayMax.detail', { name: p.name, total: p.total ?? 0, max: p.max ?? 0, date: p.date ? fmtDay(p.date) : '' })
     case 'maxHours':

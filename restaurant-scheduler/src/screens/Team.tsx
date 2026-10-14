@@ -1,19 +1,20 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
-import { ArrowLeft, Camera, ClipboardList, Mail, Pencil, Phone, Plane, Search, Send, UserPlus, Users } from 'lucide-react'
+import { ArrowLeft, Camera, Check, ClipboardList, Mail, Pencil, Phone, Plane, Search, Send, UserPlus, Users } from 'lucide-react'
 import { useStore } from '../lib/store'
 import { navigate, useLoad } from '../lib/hooks'
 import { addDays, dayShort, fmtDay, fmtRange, startOfWeek, todayKey, WEEK } from '../lib/date'
 import { useT } from '../i18n'
 import { deptName } from '../i18n/format'
 import { isActive, weekHours } from '../lib/validation'
-import { DEPTS, PREFERRED } from '../lib/types'
+import { PREFERRED } from '../lib/types'
+import { EMPLOYEE_COLORS } from '../lib/seed'
 import type { Dept, Employee } from '../lib/types'
 import { Hours } from '../components/assign'
 import { Avatar, Badge, Button, cx, DeptTag, EmptyState, ErrorState, Field, Modal, PageHeader, Segmented, Skeleton, toneCls } from '../components/ui'
 
 export function Team({ openAdd }: { openAdd: boolean }) {
-  const { s, branch, can } = useStore()
+  const { s, branch, can, depts } = useStore()
   const { t } = useT()
   const [q, setQ] = useState('')
   const [dept, setDept] = useState<'All' | Dept>('All')
@@ -23,12 +24,12 @@ export function Team({ openAdd }: { openAdd: boolean }) {
 
   const team = s.employees.filter((e) => e.branchId === branch!.id)
   const list = team
-    .filter((e) => dept === 'All' || e.dept === dept)
+    .filter((e) => dept === 'All' || e.skills.includes(dept))
     .filter((e) => {
       const t = q.trim().toLowerCase()
       return !t || e.name.toLowerCase().includes(t) || e.position.toLowerCase().includes(t) || e.email.includes(t)
     })
-    .sort((a, b) => DEPTS.indexOf(a.dept) - DEPTS.indexOf(b.dept) || a.name.localeCompare(b.name))
+    .sort((a, b) => depts.findIndex((d) => d.id === a.dept) - depts.findIndex((d) => d.id === b.dept) || a.name.localeCompare(b.name))
 
   return (
     <div className="mx-auto max-w-5xl">
@@ -56,7 +57,7 @@ export function Team({ openAdd }: { openAdd: boolean }) {
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
             <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('team.searchPlaceholder')} className="input pl-9" />
           </label>
-          <Segmented label={t('common.department')} value={dept} onChange={setDept} options={[{ value: 'All', label: t('common.all') }, ...DEPTS.map((d) => ({ value: d, label: deptName(t, d) }))]} />
+          <Segmented label={t('common.department')} value={dept} onChange={setDept} options={[{ value: 'All', label: t('common.all') }, ...depts.map((d) => ({ value: d.id, label: d.name }))]} />
         </div>
       )}
 
@@ -93,7 +94,7 @@ export function Team({ openAdd }: { openAdd: boolean }) {
           <EmptyState
             icon={<Search className="h-5 w-5" />}
             title={t('team.noMatches')}
-            body={dept !== 'All' ? t('team.noMatchesIn', { q, dept: deptName(t, dept) }) : t('team.noMatchesBody', { q })}
+            body={dept !== 'All' ? t('team.noMatchesIn', { q, dept: deptName(s, dept) }) : t('team.noMatchesBody', { q })}
             action={
               <Button
                 onClick={() => {
@@ -137,36 +138,56 @@ export function Team({ openAdd }: { openAdd: boolean }) {
 }
 
 export function EmployeeForm({ employee, onClose }: { employee?: Employee; onClose: () => void }) {
-  const { a, toast } = useStore()
+  const { a, s, toast, depts, canSeePay, company } = useStore()
   const { t } = useT()
   const [f, setF] = useState({
     name: employee?.name ?? '',
     email: employee?.email ?? '',
     phone: employee?.phone ?? '',
-    dept: employee?.dept ?? ('Service' as Dept),
+    skills: employee?.skills ?? ([] as Dept[]),
+    dept: employee?.dept ?? '',
     position: employee?.position ?? '',
     maxHours: employee?.maxHours ?? 40,
+    hourlyRate: employee?.hourlyRate ?? 0,
     preferred: employee?.preferred ?? 'Flexible',
+    color: employee?.color ?? EMPLOYEE_COLORS[s.employees.length % EMPLOYEE_COLORS.length],
+    checklistId: employee?.checklistId ?? null,
     photo: employee?.photo,
   })
   const [invite, setInvite] = useState(true)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const set = <K extends keyof typeof f>(k: K, v: (typeof f)[K]) => setF((p) => ({ ...p, [k]: v }))
+  const main = f.skills.includes(f.dept) ? f.dept : f.skills[0] ?? ''
+  const checklist = s.checklists.find((c) => c.id === f.checklistId)
+  const currency = company?.currency ?? 'EUR'
+
+  const toggleSkill = (id: Dept) =>
+    setF((p) => {
+      const skills = p.skills.includes(id) ? p.skills.filter((x) => x !== id) : [...p.skills, id]
+      // A new person's first department suggests a matching checklist.
+      const suggested = !employee && !p.checklistId ? s.checklists.find((c) => c.id.endsWith(`-cl-${id.split('-').pop()}`))?.id ?? null : p.checklistId
+      return { ...p, skills, checklistId: suggested }
+    })
 
   const submit = (ev: FormEvent) => {
     ev.preventDefault()
     const e: Record<string, string> = {}
     if (!f.name.trim()) e.name = t('employeeForm.errName')
     if (!/^\S+@\S+\.\S+$/.test(f.email)) e.email = t('employeeForm.errEmail')
+    else if (!a.isEmailFree(f.email, employee?.id)) e.email = t('employeeForm.errEmailTaken')
+    if (!f.skills.length) e.skills = t('employeeForm.errSkills')
     if (!f.position.trim()) e.position = t('employeeForm.errPosition')
     if (!(f.maxHours >= 1 && f.maxHours <= 60)) e.maxHours = t('employeeForm.errMax')
+    if (canSeePay && !(f.hourlyRate > 0)) e.hourlyRate = t('employeeForm.errHourly')
     setErrors(e)
     if (Object.keys(e).length) return
     const saved = a.saveEmployee({
       ...f,
       id: employee?.id,
       name: f.name.trim(),
+      email: f.email.trim(),
       position: f.position.trim(),
+      dept: main,
       availability: employee?.availability ?? [true, true, true, true, true, true, true],
       status: employee?.status ?? (invite ? 'invited' : 'active'),
     })
@@ -188,6 +209,7 @@ export function EmployeeForm({ employee, onClose }: { employee?: Employee; onClo
 
   return (
     <Modal
+      width="max-w-2xl"
       title={employee ? t('employeeForm.editTitle', { name: employee.name.split(' ')[0] }) : t('employeeForm.addTitle')}
       description={employee ? undefined : t('employeeForm.addDesc')}
       onClose={onClose}
@@ -206,10 +228,10 @@ export function EmployeeForm({ employee, onClose }: { employee?: Employee; onClo
         </>
       }
     >
-      <form id="emp-form" onSubmit={submit} noValidate className="space-y-4">
+      <form id="emp-form" onSubmit={submit} noValidate className="space-y-5">
         <div className="flex items-center gap-4">
           <label className="group relative cursor-pointer">
-            <Avatar e={{ name: f.name || '?', dept: f.dept, photo: f.photo }} size={56} />
+            <Avatar e={{ name: f.name || '?', color: f.color, photo: f.photo }} size={56} />
             <span className="absolute inset-0 flex items-center justify-center rounded-full bg-ink/50 text-white opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
               <Camera className="h-5 w-5" />
             </span>
@@ -222,6 +244,7 @@ export function EmployeeForm({ employee, onClose }: { employee?: Employee; onClo
             {errors.photo && <p className="mt-1 text-[13px] text-danger">{errors.photo}</p>}
           </div>
         </div>
+
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label={t('employeeForm.email')} htmlFor="f-email" error={errors.email}>
             <input id="f-email" type="email" className="input" value={f.email} onChange={(e) => set('email', e.target.value)} placeholder={t('employeeForm.emailPlaceholder')} />
@@ -230,28 +253,112 @@ export function EmployeeForm({ employee, onClose }: { employee?: Employee; onClo
             <input id="f-phone" type="tel" className="input" value={f.phone} onChange={(e) => set('phone', e.target.value)} />
           </Field>
         </div>
-        <Field label={t('common.department')}>
-          <Segmented label={t('common.department')} value={f.dept} onChange={(v) => set('dept', v)} options={DEPTS.map((d) => ({ value: d, label: deptName(t, d) }))} />
-        </Field>
-        <div className="grid gap-4 sm:grid-cols-3">
-          <div className="sm:col-span-2">
-            <Field label={t('employeeForm.position')} htmlFor="f-pos" error={errors.position}>
-              <input id="f-pos" className="input" value={f.position} onChange={(e) => set('position', e.target.value)} placeholder={t('employeeForm.positionPlaceholder')} />
-            </Field>
+
+        <Field label={t('employeeForm.skills')} error={errors.skills} hint={t('employeeForm.skillsHint')}>
+          <div className="flex flex-wrap gap-2" role="group" aria-label={t('employeeForm.skills')}>
+            {depts.map((d) => {
+              const on = f.skills.includes(d.id)
+              return (
+                <button
+                  key={d.id}
+                  type="button"
+                  aria-pressed={on}
+                  onClick={() => toggleSkill(d.id)}
+                  className={cx(
+                    'inline-flex h-9 items-center gap-2 rounded-lg border px-3 text-sm font-medium transition-colors',
+                    on ? 'border-forest bg-forest-50 text-forest' : 'border-line bg-white text-muted hover:border-sage-dark',
+                  )}
+                >
+                  <span className="h-2.5 w-2.5 rounded-full" style={{ background: d.color }} />
+                  {d.name}
+                  {on && <Check className="h-3.5 w-3.5" />}
+                </button>
+              )
+            })}
           </div>
+        </Field>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label={t('employeeForm.position')} htmlFor="f-pos" error={errors.position}>
+            <input id="f-pos" className="input" value={f.position} onChange={(e) => set('position', e.target.value)} placeholder={t('employeeForm.positionPlaceholder')} />
+          </Field>
+          {f.skills.length > 1 && (
+            <Field label={t('employeeForm.mainDept')} htmlFor="f-main">
+              <select id="f-main" className="input" value={main} onChange={(e) => set('dept', e.target.value)}>
+                {f.skills.map((id) => (
+                  <option key={id} value={id}>
+                    {deptName(s, id)}
+                  </option>
+                ))}
+              </select>
+            </Field>
+          )}
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-3">
           <Field label={t('employeeForm.maxHours')} htmlFor="f-max" error={errors.maxHours}>
             <input id="f-max" type="number" min={1} max={60} className="input" value={f.maxHours} onChange={(e) => set('maxHours', Number(e.target.value))} />
           </Field>
+          {canSeePay && (
+            <Field label={t('employeeForm.hourly')} htmlFor="f-rate" error={errors.hourlyRate} hint={t('employeeForm.hourlyHint')}>
+              <div className="relative">
+                <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted">{currency === 'EUR' ? '€' : '₹'}</span>
+                <input id="f-rate" type="number" min={0} step={0.5} className="input pl-7" value={f.hourlyRate || ''} onChange={(e) => set('hourlyRate', Number(e.target.value))} />
+              </div>
+            </Field>
+          )}
+          <Field label={t('employeeForm.preferred')} htmlFor="f-pref">
+            <select id="f-pref" className="input" value={f.preferred} onChange={(e) => set('preferred', e.target.value as Employee['preferred'])}>
+              {PREFERRED.map((p) => (
+                <option key={p} value={p}>
+                  {t(`preferred.${p}`)}
+                </option>
+              ))}
+            </select>
+          </Field>
         </div>
-        <Field label={t('employeeForm.preferred')} htmlFor="f-pref">
-          <select id="f-pref" className="input" value={f.preferred} onChange={(e) => set('preferred', e.target.value as Employee['preferred'])}>
-            {PREFERRED.map((p) => (
-              <option key={p} value={p}>
-                {t(`preferred.${p}`)}
+
+        <Field label={t('employeeForm.color')}>
+          <div className="flex flex-wrap gap-2" role="radiogroup" aria-label={t('employeeForm.color')}>
+            {EMPLOYEE_COLORS.map((c) => (
+              <button
+                key={c}
+                type="button"
+                role="radio"
+                aria-checked={f.color === c}
+                aria-label={c}
+                onClick={() => set('color', c)}
+                className={cx('h-8 w-8 rounded-full ring-offset-2 transition-shadow', f.color === c && 'ring-2 ring-ink')}
+                style={{ background: c }}
+              />
+            ))}
+          </div>
+        </Field>
+
+        <Field label={t('employeeForm.checklist')} htmlFor="f-cl" hint={t('employeeForm.checklistHint')}>
+          <select id="f-cl" className="input" value={f.checklistId ?? ''} onChange={(e) => set('checklistId', e.target.value || null)}>
+            <option value="">{t('employeeForm.checklistNone')}</option>
+            {s.checklists.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
               </option>
             ))}
           </select>
+          {checklist && (
+            <ul className="mt-2 divide-y divide-line rounded-xl border border-line bg-paper">
+              {checklist.items.map((i) => (
+                <li key={i.id} className="flex gap-3 px-3 py-2.5">
+                  <span className="mt-0.5 h-4 w-4 shrink-0 rounded border border-sage-dark bg-white" aria-hidden />
+                  <span>
+                    <span className="block text-sm font-medium">{i.title}</span>
+                    {i.detail && <span className="block text-[13px] text-muted">{i.detail}</span>}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
         </Field>
+
         {!employee && (
           <label className="flex cursor-pointer items-start gap-3 rounded-xl bg-paper p-3 text-sm">
             <input type="checkbox" checked={invite} onChange={(e) => setInvite(e.target.checked)} className="mt-0.5 h-4 w-4 accent-forest" />
@@ -267,8 +374,8 @@ export function EmployeeForm({ employee, onClose }: { employee?: Employee; onClo
 }
 
 export function EmployeeProfile({ id }: { id: string }) {
-  const { s, can, toast, a } = useStore()
-  const { t } = useT()
+  const { s, can, toast, a, canSeePay, company } = useStore()
+  const { t, locale } = useT()
   const [editing, setEditing] = useState(false)
   const e = s.employees.find((x) => x.id === id)
   if (!e) {
@@ -282,6 +389,7 @@ export function EmployeeProfile({ id }: { id: string }) {
   const ws = startOfWeek(today)
   const shifts = s.assignments.filter((x) => x.employeeId === e.id && isActive(x) && x.date >= ws && x.date <= addDays(ws, 6)).sort((x, y) => x.date.localeCompare(y.date))
   const leaves = s.leaves.filter((l) => l.employeeId === e.id && l.to >= today && l.status !== 'declined')
+  const checklist = s.checklists.find((c) => c.id === e.checklistId)
 
   return (
     <div className="mx-auto max-w-4xl">
@@ -355,6 +463,37 @@ export function EmployeeProfile({ id }: { id: string }) {
         </section>
 
         <div className="space-y-6">
+          <section className="panel p-5">
+            <h2 className="text-sm font-semibold">{t('profile.skills')}</h2>
+            <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2">
+              {e.skills.map((d) => (
+                <DeptTag key={d} dept={d} />
+              ))}
+            </div>
+            {canSeePay && (
+              <div className="mt-4 flex items-baseline justify-between border-t border-line pt-3 text-sm">
+                <span className="text-muted">{t('profile.pay')}</span>
+                <span className="font-semibold">
+                  {new Intl.NumberFormat(locale === 'de' ? 'de-DE' : 'en-GB', { style: 'currency', currency: company?.currency ?? 'EUR' }).format(e.hourlyRate)}
+                </span>
+              </div>
+            )}
+            {checklist && (
+              <div className="mt-4 border-t border-line pt-3">
+                <div className="flex items-center gap-2 text-sm text-muted">
+                  <ClipboardList className="h-4 w-4" /> {t('profile.checklist')}
+                </div>
+                <div className="mt-1 text-sm font-medium">{checklist.name}</div>
+                <ul className="mt-2 space-y-1">
+                  {checklist.items.map((i) => (
+                    <li key={i.id} className="text-[13px] text-ink/80">
+                      · {i.title}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </section>
           <section className="panel p-5">
             <h2 className="text-sm font-semibold">{t('profile.contact')}</h2>
             <a href={`mailto:${e.email}`} className="mt-3 flex items-center gap-2 text-sm text-forest hover:underline">

@@ -5,8 +5,8 @@ import { addDays, dayShort, fmtRange, daysInclusive, todayKey, toMin, weekDays }
 import { tr } from '../i18n/core'
 import type { MsgKey } from '../i18n/core'
 import { conflictTitles, deptName, describeSlot } from '../i18n/format'
-import { createSeed, defaultTemplates } from './seed'
-import type { Assignment, Company, Data, Dept, Task, Branch, Employee, HistoryEntry, Leave, Manager, Perm, ShiftTemplate, State } from './types'
+import { createSeed, defaultChecklists, defaultDepartments, defaultTemplates } from './seed'
+import type { Assignment, Company, Data, Department, Dept, Task, Branch, Employee, HistoryEntry, Leave, Manager, Perm, ShiftTemplate, State } from './types'
 import { checkAssignment, isActive, needFor, weekHours } from './validation'
 import type { AssignRequest, Conflict } from './validation'
 
@@ -42,6 +42,8 @@ export function scope(d: Data, companyId: string | null): State {
     employees,
     managers: d.managers.filter((m) => m.companyId === companyId),
     templates: d.templates.filter((t) => t.companyId === companyId),
+    departments: d.departments.filter((x) => x.companyId === companyId),
+    checklists: d.checklists.filter((x) => x.companyId === companyId),
     assignments: d.assignments.filter((a) => branchIds.has(a.branchId)),
     leaves: d.leaves.filter((l) => employeeIds.has(l.employeeId)),
     history: d.history.filter((h) => branchIds.has(h.branchId)),
@@ -118,7 +120,7 @@ function makeActions(get: () => Data, set: (s: Data) => void) {
       const s = get()
       if (me()?.role !== 'owner') return 'shell.noAccessBody'
       if (s.managers.some((m) => m.email.toLowerCase() === input.adminEmail.trim().toLowerCase())) return 'platform.errEmailTaken'
-      const company: Company = { id: uid(), name: input.name.trim(), createdAt: new Date().toISOString() }
+      const company: Company = { id: uid(), name: input.name.trim(), createdAt: new Date().toISOString(), currency: 'EUR' }
       const branch: Branch = { id: uid(), companyId: company.id, name: input.branch.trim(), address: '', city: input.city, opens: '10:00', closes: '23:00' }
       const admin: Manager = { id: uid(), companyId: company.id, name: input.adminName.trim(), email: input.adminEmail.trim(), role: 'super', branchIds: [branch.id] }
       set({
@@ -127,6 +129,8 @@ function makeActions(get: () => Data, set: (s: Data) => void) {
         branches: [...s.branches, branch],
         managers: [...s.managers, admin],
         templates: [...s.templates, ...defaultTemplates(company.id, uid)],
+        departments: [...s.departments, ...defaultDepartments(company.id)],
+        checklists: [...s.checklists, ...defaultChecklists(company.id)],
         companyPerms: { ...s.companyPerms, [company.id]: { ...DEFAULT_PERMS } },
       })
       return company
@@ -241,7 +245,7 @@ function makeActions(get: () => Data, set: (s: Data) => void) {
             let need = needFor(t, dept, date) - have
             if (need <= 0) continue
             const pool = draft.employees
-              .filter((e) => e.branchId === b && e.dept === dept && e.status === 'active')
+              .filter((e) => e.branchId === b && e.skills.includes(dept) && e.status === 'active')
               .map((e) => ({ e, prefers: e.preferred === pref[t.tone], load: weekHours(draft, e.id, weekStart) / e.maxHours }))
               .sort((p, q) => Number(q.prefers) - Number(p.prefers) || p.load - q.load)
             for (const { e } of pool) {
@@ -313,14 +317,14 @@ function makeActions(get: () => Data, set: (s: Data) => void) {
       const existing = data.id ? s.employees.find((e) => e.id === data.id) : undefined
       if (existing) {
         const next = { ...existing, ...data }
-        set({ ...s, employees: s.employees.map((e) => (e.id === next.id ? next : e)), history: [entry({ action: 'employeeEdited', subject: next.name, to: `${deptName(tr, next.dept)} · ${next.position}` }), ...s.history] })
+        set({ ...s, employees: s.employees.map((e) => (e.id === next.id ? next : e)), history: [entry({ action: 'employeeEdited', subject: next.name, to: `${deptName(s, next.dept)} · ${next.position}` }), ...s.history] })
         return next
       }
       const e: Employee = { ...data, id: uid(), branchId: bid() }
       set({
         ...s,
         employees: [...s.employees, e],
-        history: [entry({ action: 'employeeAdded', subject: e.name, to: `${deptName(tr, e.dept)} · ${e.position}${e.status === 'invited' ? ` · ${tr('history.detail.inviteSent')}` : ''}` }), ...s.history],
+        history: [entry({ action: 'employeeAdded', subject: e.name, to: `${deptName(s, e.dept)} · ${e.position}${e.status === 'invited' ? ` · ${tr('history.detail.inviteSent')}` : ''}` }), ...s.history],
       })
       return e
     },
@@ -414,6 +418,50 @@ function makeActions(get: () => Data, set: (s: Data) => void) {
       })
     },
 
+    /** Emails are logins, so they must be unique across every company. */
+    isEmailFree(email: string, exceptId?: string) {
+      const e = email.trim().toLowerCase()
+      const s = get()
+      return !s.managers.some((m) => m.email.toLowerCase() === e) && !s.employees.some((x) => x.id !== exceptId && x.email.toLowerCase() === e)
+    },
+
+    saveDepartment(d: Omit<Department, 'id' | 'companyId'> & { id?: string }) {
+      const s = get()
+      if (d.id) {
+        set({ ...s, departments: s.departments.map((x) => (x.id === d.id && x.companyId === cid() ? { ...x, ...d } : x)) })
+        return
+      }
+      set({ ...s, departments: [...s.departments, { ...d, id: uid(), companyId: cid() }] })
+    },
+    /** How many people, shifts and staffing rules use a department. It can only be deleted when this is 0. */
+    departmentUse(id: string) {
+      const s = get()
+      return s.employees.filter((e) => e.skills.includes(id)).length + s.assignments.filter((a) => a.dept === id && a.state !== 'removed').length
+    },
+    deleteDepartment(id: string) {
+      patch((s) => ({
+        departments: s.departments.filter((x) => !(x.id === id && x.companyId === cid())),
+        templates: s.templates.map((t) => {
+          if (t.companyId !== cid()) return t
+          const needed = { ...t.needed }
+          delete needed[id]
+          const perDay = t.perDay ? { ...t.perDay } : undefined
+          if (perDay) delete perDay[id]
+          return { ...t, needed, perDay }
+        }),
+      }))
+    },
+    moveDepartment(id: string, dir: -1 | 1) {
+      patch((s) => {
+        const mine = s.departments.filter((x) => x.companyId === cid())
+        const i = mine.findIndex((x) => x.id === id)
+        const j = i + dir
+        if (i < 0 || j < 0 || j >= mine.length) return {}
+        ;[mine[i], mine[j]] = [mine[j], mine[i]]
+        return { departments: [...s.departments.filter((x) => x.companyId !== cid()), ...mine] }
+      })
+    },
+
     markRead: (id?: string) => patch((s) => ({ notices: s.notices.map((n) => (!id || n.id === id ? { ...n, read: true } : n)) })),
 
     setPerm(p: Perm, v: boolean) {
@@ -457,6 +505,10 @@ type Ctx = {
   me: Manager | null
   company: Company | null
   isOwner: boolean
+  /** The current company's departments, in schedule order. */
+  depts: Department[]
+  /** Hourly pay is visible to admins only (and to the employee themselves). */
+  canSeePay: boolean
   /** Platform owner only: every company with headline numbers. Empty for everyone else. */
   platform: CompanySummary[]
   branch: Branch | null
@@ -554,6 +606,8 @@ export function StoreProvider({
       me,
       company: view.companies[0] ?? null,
       isOwner,
+      depts: view.departments,
+      canSeePay: me != null && me.role !== 'manager',
       platform,
       branch,
       myBranches,

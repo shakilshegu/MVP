@@ -3,20 +3,19 @@ import { AlertTriangle, CalendarCheck2, Check, Plane, X } from 'lucide-react'
 import { useStore } from '../lib/store'
 import { dayShort, daysInclusive, fmtDay, fmtRange, relTime, WEEK, weekdayIndex } from '../lib/date'
 import { useT } from '../i18n'
-import { deptName } from '../i18n/format'
 import { isActive } from '../lib/validation'
-import { DEPTS, PREFERRED } from '../lib/types'
+import { PREFERRED } from '../lib/types'
 import type { Dept, Leave, Preferred } from '../lib/types'
 import { Avatar, Badge, Button, cx, EmptyState, PageHeader, Segmented } from '../components/ui'
 
 export function Availability() {
-  const { s, a, branch, can, toast } = useStore()
+  const { s, a, branch, can, toast, depts } = useStore()
   const { t } = useT()
   const [dept, setDept] = useState<'All' | Dept>('All')
   const editable = can('createEmployees')
   const team = s.employees
     .filter((e) => e.branchId === branch!.id && (dept === 'All' || e.dept === dept))
-    .sort((x, y) => DEPTS.indexOf(x.dept) - DEPTS.indexOf(y.dept) || x.name.localeCompare(y.name))
+    .sort((x, y) => depts.findIndex((d) => d.id === x.dept) - depts.findIndex((d) => d.id === y.dept) || x.name.localeCompare(y.name))
   const perDay = WEEK.map((i) => team.filter((e) => e.availability[i]).length)
   const stateOf = (on: boolean) => t(on ? 'common.available' : 'common.unavailable')
 
@@ -25,7 +24,7 @@ export function Availability() {
       <PageHeader
         title={t('availability.title')}
         sub={t('availability.sub')}
-        actions={<Segmented label={t('common.department')} value={dept} onChange={setDept} options={[{ value: 'All', label: t('common.all') }, ...DEPTS.map((d) => ({ value: d, label: deptName(t, d) }))]} />}
+        actions={<Segmented label={t('common.department')} value={dept} onChange={setDept} options={[{ value: 'All', label: t('common.all') }, ...depts.map((d) => ({ value: d.id, label: d.name }))]} />}
       />
       {team.length === 0 ? (
         <div className="panel">

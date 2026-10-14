@@ -1,7 +1,6 @@
 import { addDays, daysAgoIso, startOfWeek, todayKey, weekDays } from './date'
 import { tr } from '../i18n/core'
-import type { Assignment, Data, Dept, Employee, Preferred, ShiftTemplate } from './types'
-import { DEPTS } from './types'
+import type { Assignment, ChecklistTemplate, Data, Department, Employee, Preferred, ShiftTemplate } from './types'
 import { checkAssignment, needFor } from './validation'
 
 function rng(seed: number) {
@@ -13,12 +12,48 @@ function rng(seed: number) {
   }
 }
 
+type Key = 'Bar' | 'Service' | 'Kitchen'
+const KEYS: Key[] = ['Bar', 'Service', 'Kitchen']
+const deptId = (companyId: string, key: Key) => `${companyId}-${key.toLowerCase()}`
+const DEPT_COLORS: Record<Key, string> = { Bar: '#B7791F', Service: '#2F7A64', Kitchen: '#8A4B42' }
+
+/** Colours offered for employees on the schedule. */
+export const EMPLOYEE_COLORS = ['#2F7A64', '#3A6F9E', '#B7791F', '#8A4B42', '#7A5AA6', '#C2577A', '#4F8A3A', '#B5652B', '#2E7D8C', '#6B6F2A']
+
+/** The three departments every new company starts with. */
+export function defaultDepartments(companyId: string): Department[] {
+  return KEYS.map((k) => ({ id: deptId(companyId, k), companyId, name: tr(`dept.${k}`), color: DEPT_COLORS[k], needsLeader: k !== 'Bar' }))
+}
+
+/** Starter duty checklists, one per default department. */
+export function defaultChecklists(companyId: string): ChecklistTemplate[] {
+  return KEYS.map((k) => ({
+    id: `${companyId}-cl-${k.toLowerCase()}`,
+    companyId,
+    name: tr(`seed.checklist.${k}.name`),
+    items: tr(`seed.checklist.${k}.items`)
+      .split('\n')
+      .map((line, i) => {
+        const [title, detail = ''] = line.split(' | ')
+        return { id: `${companyId}-${k.toLowerCase()}-${i}`, title, detail }
+      }),
+  }))
+}
+
+/** Cross-trained staff: extra departments they can work in. */
+const CROSS: Record<string, Key[]> = { e5: ['Bar'], e8: ['Bar'], e14: ['Service'], e41: ['Bar'], e22: ['Bar'], e52: ['Bar'], e58: ['Service'] }
+/** Gross hourly pay in EUR by position, filled per language when the seed runs. */
+let RATE: Record<string, number> = {}
+
+const need = (c: string, bar: number, service: number, kitchen: number) => ({ [deptId(c, 'Bar')]: bar, [deptId(c, 'Service')]: service, [deptId(c, 'Kitchen')]: kitchen })
+
 let phone = 100
+let colorIndex = 0
 function emp(
   id: string,
   branchId: string,
   name: string,
-  dept: Dept,
+  key: Key,
   position: string,
   maxHours: number,
   off: number[] = [],
@@ -26,11 +61,17 @@ function emp(
   status: Employee['status'] = 'active',
 ): Employee {
   const domain = branchId === 'b1' ? 'harborhouse.co' : branchId === 'b2' ? 'gardenroom.co' : 'cafe-mueller.de'
+  const companyId = ['b1', 'b2', 'b3'].includes(branchId) ? 'c1' : 'c2'
+  const dept = deptId(companyId, key)
   return {
     id,
     branchId,
     name,
     dept,
+    skills: [dept, ...(CROSS[id] ?? []).map((k) => deptId(companyId, k))],
+    hourlyRate: RATE[position] ?? 14.5,
+    color: EMPLOYEE_COLORS[colorIndex++ % EMPLOYEE_COLORS.length],
+    checklistId: `${companyId}-cl-${key.toLowerCase()}`,
     position,
     maxHours,
     email: `${name.split(' ')[0].toLowerCase()}@${domain}`,
@@ -42,8 +83,8 @@ function emp(
 }
 
 const harborTemplates = (): ShiftTemplate[] => [
-  { id: 't1', companyId: 'c1', name: tr('seed.shift.morning'), start: '06:00', end: '14:00', tone: 'morning', needed: { Bar: 0, Service: 1, Kitchen: 1 } },
-  { id: 't2', companyId: 'c1', name: tr('seed.shift.day'), start: '10:00', end: '18:00', tone: 'day', needed: { Bar: 1, Service: 1, Kitchen: 1 } },
+  { id: 't1', companyId: 'c1', name: tr('seed.shift.morning'), start: '06:00', end: '14:00', tone: 'morning', needed: need('c1', 0, 1, 1) },
+  { id: 't2', companyId: 'c1', name: tr('seed.shift.day'), start: '10:00', end: '18:00', tone: 'day', needed: need('c1', 1, 1, 1) },
   {
     id: 't3',
     companyId: 'c1',
@@ -51,18 +92,18 @@ const harborTemplates = (): ShiftTemplate[] => [
     start: '16:00',
     end: '23:00',
     tone: 'evening',
-    needed: { Bar: 1, Service: 2, Kitchen: 2 },
-    perDay: { Bar: [1, 1, 1, 1, 2, 2, 1], Service: [2, 2, 2, 2, 3, 3, 2], Kitchen: [2, 2, 2, 2, 2, 3, 2] },
+    needed: need('c1', 1, 2, 2),
+    perDay: { 'c1-bar': [1, 1, 1, 1, 2, 2, 1], 'c1-service': [2, 2, 2, 2, 3, 3, 2], 'c1-kitchen': [2, 2, 2, 2, 2, 3, 2] },
   },
-  { id: 't4', companyId: 'c1', name: tr('seed.shift.night'), start: '22:00', end: '02:00', tone: 'night', needed: { Bar: 1, Service: 0, Kitchen: 1 } },
+  { id: 't4', companyId: 'c1', name: tr('seed.shift.night'), start: '22:00', end: '02:00', tone: 'night', needed: need('c1', 1, 0, 1) },
 ]
 
 /** Starter shifts every new company gets; they can edit them straight away. */
 export function defaultTemplates(companyId: string, id: () => string): ShiftTemplate[] {
   return [
-    { id: id(), companyId, name: tr('seed.shift.morning'), start: '07:00', end: '15:00', tone: 'morning', needed: { Bar: 0, Service: 1, Kitchen: 1 } },
-    { id: id(), companyId, name: tr('seed.shift.day'), start: '11:00', end: '19:00', tone: 'day', needed: { Bar: 1, Service: 1, Kitchen: 1 } },
-    { id: id(), companyId, name: tr('seed.shift.evening'), start: '16:00', end: '23:00', tone: 'evening', needed: { Bar: 1, Service: 2, Kitchen: 1 } },
+    { id: id(), companyId, name: tr('seed.shift.morning'), start: '07:00', end: '15:00', tone: 'morning', needed: need(companyId, 0, 1, 1) },
+    { id: id(), companyId, name: tr('seed.shift.day'), start: '11:00', end: '19:00', tone: 'day', needed: need(companyId, 1, 1, 1) },
+    { id: id(), companyId, name: tr('seed.shift.evening'), start: '16:00', end: '23:00', tone: 'evening', needed: need(companyId, 1, 2, 1) },
   ]
 }
 
@@ -84,6 +125,11 @@ export function createSeed(): Data {
     pastryChef: tr('seed.pos.pastryChef'),
     porter: tr('seed.pos.porter'),
     headChef: tr('seed.pos.headChef'),
+  }
+  colorIndex = 0
+  RATE = {
+    [P.headBartender]: 18.5, [P.bartender]: 15.5, [P.barback]: 14, [P.floorLead]: 18, [P.server]: 14.5, [P.host]: 14.5, [P.runner]: 14,
+    [P.sousChef]: 20, [P.lineCook]: 16, [P.prepCook]: 14.5, [P.pastryChef]: 17, [P.porter]: 14, [P.headChef]: 23,
   }
   const employees: Employee[] = [
     emp('e1', 'b1', 'Marco Bellini', 'Bar', P.headBartender, 40, [0], 'Evenings'),
@@ -135,11 +181,11 @@ export function createSeed(): Data {
   const cafeTemplates = defaultTemplates('c2', () => `t${tid++}`)
 
   const s: Data = {
-    version: 8,
+    version: 9,
     session: { userId: null, companyId: null, branchId: null },
     companies: [
-      { id: 'c1', name: 'Harbor Group', createdAt: daysAgoIso(220) },
-      { id: 'c2', name: 'Café Müller', createdAt: daysAgoIso(64) },
+      { id: 'c1', name: 'Harbor Group', createdAt: daysAgoIso(220), currency: 'EUR' },
+      { id: 'c2', name: 'Café Müller', createdAt: daysAgoIso(64), currency: 'EUR' },
     ],
     branches: [
       { id: 'b1', companyId: 'c1', name: 'Harbor House', address: 'Große Elbstraße 14, 22767 Hamburg', city: 'Hamburg', opens: '07:00', closes: '01:00' },
@@ -158,6 +204,8 @@ export function createSeed(): Data {
     ],
     employees,
     templates: [...harborTemplates(), ...cafeTemplates],
+    departments: [...defaultDepartments('c1'), ...defaultDepartments('c2')],
+    checklists: [...defaultChecklists('c1'), ...defaultChecklists('c2')],
     assignments: [],
     leaves: [
       { id: 'l1', employeeId: 'e7', from: addDays(today, 3), to: addDays(today, 6), kind: 'Vacation', note: tr('seed.leaveNote.wedding'), status: 'pending', requestedAt: daysAgoIso(0, 2) },
@@ -197,7 +245,7 @@ export function createSeed(): Data {
     for (const offset of [-14, -7, 0]) {
       for (const date of weekDays(addDays(thisWeek, offset))) {
         for (const t of s.templates.filter((x) => x.companyId === companyId)) {
-          for (const dept of DEPTS) {
+          for (const dept of s.departments.filter((d) => d.companyId === companyId).map((d) => d.id)) {
             const pool = employees.filter((e) => e.branchId === branchId && e.dept === dept && e.status === 'active').sort(() => r() - 0.5)
             let need = needFor(t, dept, date)
             if (need > 0 && r() < (date >= today ? 0.3 : 0.07)) need--
@@ -216,11 +264,11 @@ export function createSeed(): Data {
 
   // A couple of unpublished edits so the review flow has something in it.
   const target = addDays(today, 1)
-  const out = s.assignments.find((a) => a.branchId === 'b1' && a.date === target && a.templateId === 't3' && a.dept === 'Service')
+  const out = s.assignments.find((a) => a.branchId === 'b1' && a.date === target && a.templateId === 't3' && a.dept === 'c1-service')
   if (out) {
     out.state = 'removed'
     const cand = employees.find(
-      (e) => e.branchId === 'b1' && e.dept === 'Service' && e.id !== out.employeeId && e.status === 'active' &&
+      (e) => e.branchId === 'b1' && e.dept === 'c1-service' && e.id !== out.employeeId && e.status === 'active' &&
         !checkAssignment(s, { ...out, employeeId: e.id, ignoreId: undefined }).length,
     )
     if (cand) s.assignments.push({ ...out, id: `a${n++}`, employeeId: cand.id, state: 'added' } satisfies Assignment)
