@@ -33,7 +33,7 @@ export function Team({ openAdd }: { openAdd: boolean }) {
     .sort((a, b) => depts.findIndex((d) => d.id === a.dept) - depts.findIndex((d) => d.id === b.dept) || a.name.localeCompare(b.name))
 
   return (
-    <div className="mx-auto max-w-5xl">
+    <div className="mx-auto max-w-6xl">
       <PageHeader
         title={t('team.title')}
         sub={[

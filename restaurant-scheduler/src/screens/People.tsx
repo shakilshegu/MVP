@@ -27,7 +27,7 @@ export function Availability({ week }: { week: string | null }) {
   const goWeek = (n: number) => navigate(`/availability?week=${addDays(weekStart, n)}`)
 
   return (
-    <div className="mx-auto max-w-5xl">
+    <div className="mx-auto max-w-6xl">
       <PageHeader
         title={t('availability.title')}
         sub={t('availability.sub')}
@@ -218,7 +218,7 @@ export function LeaveRequests() {
   const count = (st: Leave['status']) => all.filter((l) => l.status === st).length
 
   return (
-    <div className="mx-auto max-w-3xl">
+    <div className="mx-auto max-w-6xl">
       <PageHeader title={t('leave.title')} sub={t('leave.sub')} />
       <div className="mb-4">
         <Segmented
