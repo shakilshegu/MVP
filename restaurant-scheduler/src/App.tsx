@@ -10,6 +10,7 @@ import { EmployeeProfile, Team } from './screens/Team'
 import { Dashboard, MonthlySchedule, ShiftTemplates } from './screens/Planning'
 import { Availability, LeaveRequests } from './screens/People'
 import { Announcements } from './screens/Announcements'
+import { DailyReport } from './screens/DailyReport'
 import { History, Permissions, Settings } from './screens/Admin'
 import { Platform } from './screens/Platform'
 
@@ -45,6 +46,9 @@ function Screen() {
       break
     case 'leave':
       page = <LeaveRequests />
+      break
+    case 'report':
+      page = <DailyReport date={query.get('date')} />
       break
     case 'announcements':
       page = <Announcements />

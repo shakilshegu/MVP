@@ -20,6 +20,7 @@ import {
   WifiOff,
   X,
   Megaphone,
+  ClipboardCheck,
 } from 'lucide-react'
 import { branchChanges, useStore } from '../lib/store'
 import { navigate, useOnline } from '../lib/hooks'
@@ -45,6 +46,7 @@ export default function Shell({ path, children }: { path: string; children: Reac
         { to: '/schedule', label: t('nav.weekly'), icon: <CalendarDays />, match: (p) => p.startsWith('/schedule') || p === '/review' || p === '/published' },
         { to: '/month', label: t('nav.month'), icon: <CalendarRange />, match: (p) => p === '/month' },
         { to: '/templates', label: t('nav.templates'), icon: <Clock3 />, match: (p) => p === '/templates' },
+        { to: '/report', label: t('nav.report'), icon: <ClipboardCheck />, match: (p) => p === '/report' },
       ],
     },
     {

@@ -1,6 +1,6 @@
-import { addDays, daysAgoIso, startOfWeek, todayKey, weekDays } from './date'
+import { addDays, daysAgoIso, fromKey, hoursBetween, startOfWeek, todayKey, toMin, weekDays } from './date'
 import { tr } from '../i18n/core'
-import type { Assignment, ChecklistTemplate, Data, Department, Employee, Preferred, ShiftTemplate } from './types'
+import type { Assignment, ChecklistTemplate, Data, Department, Employee, Preferred, ShiftTemplate, Tick } from './types'
 import { checkAssignment, needFor } from './validation'
 
 function rng(seed: number) {
@@ -181,7 +181,7 @@ export function createSeed(): Data {
   const cafeTemplates = defaultTemplates('c2', () => `t${tid++}`)
 
   const s: Data = {
-    version: 13,
+    version: 14,
     session: { userId: null, companyId: null, branchId: null },
     companies: [
       { id: 'c1', name: 'Harbor Group', createdAt: daysAgoIso(220), currency: 'EUR' },
@@ -233,6 +233,7 @@ export function createSeed(): Data {
     dayNotes: {
       [`b1|${addDays(startOfWeek(today), 6)}`]: tr('seed.note.terrace'),
     },
+    ticks: {},
     announcements: [
       { id: 'an1', branchId: 'b1', date: addDays(startOfWeek(today), 4), start: '19:00', end: '23:30', title: tr('seed.ann.partyTitle'), body: tr('seed.ann.partyBody'), extraStaff: 2, dept: 'c1-service', by: 'Daniel Okafor', at: daysAgoIso(3), sentTo: 18 },
       { id: 'an2', branchId: 'b1', date: addDays(startOfWeek(today), 10), start: '18:00', end: '21:00', title: tr('seed.ann.wineTitle'), body: tr('seed.ann.wineBody'), extraStaff: 1, dept: 'c1-bar', by: 'Priya Raman', at: daysAgoIso(1), sentTo: 18 },
@@ -283,6 +284,32 @@ export function createSeed(): Data {
   }
   const rate = (a: Assignment) => employees.find((e) => e.id === a.employeeId)?.hourlyRate ?? 0
   for (const list of cells.values()) [...list].sort((x, y) => rate(y) - rate(x))[0].isLeader = true
+
+  // Checklist ticks for shifts already worked or under way, as the Employee App would record them.
+  const now = new Date()
+  const nowMin = now.getHours() * 60 + now.getMinutes()
+  const tr7 = rng(11)
+  for (const a of s.assignments) {
+    if (a.date < addDays(today, -35) || a.date > today) continue
+    const e = employees.find((x) => x.id === a.employeeId)!
+    const t = s.templates.find((x) => x.id === a.templateId)!
+    const items = s.checklists.find((c) => c.id === e.checklistId)?.items ?? []
+    const start = toMin(t.start)
+    const len = hoursBetween(t.start, t.end) * 60
+    // Today: only part of the way through a running shift, nothing before it starts.
+    const progress = a.date < today ? 1 : Math.max(0, Math.min(1, (nowMin - start) / len))
+    const sloppy = tr7() < 0.15
+    const shift: Record<string, Tick> = {}
+    items.forEach((item, i) => {
+      const due = (i + 1) / items.length
+      if (due > progress + 0.05 || tr7() < (sloppy ? 0.4 : 0.04)) return
+      const m = start + Math.round(len * due * (0.7 + tr7() * 0.25))
+      const at = fromKey(a.date)
+      at.setHours(0, m, 0, 0)
+      shift[item.id] = { at: at.toISOString(), by: e.name }
+    })
+    if (Object.keys(shift).length) s.ticks[a.id] = shift
+  }
 
   // A couple of unpublished edits so the review flow has something in it.
   const target = addDays(today, 1)

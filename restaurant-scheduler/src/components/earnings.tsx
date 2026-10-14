@@ -1,4 +1,6 @@
 import { useState } from 'react'
+import { ClipboardCheck } from 'lucide-react'
+import { doneCount, shiftItems } from '../lib/report'
 import { useStore } from '../lib/store'
 import { addDays, fmtDay, fmtMonthYear, fmtShort, startOfWeek, todayKey } from '../lib/date'
 import { sum, workedShifts } from '../lib/earnings'
@@ -88,6 +90,8 @@ export function EarningsHistory({ e }: { e: Employee }) {
                 <ul className="divide-y divide-line">
                   {list.map(({ a, hours, amount }) => {
                     const tpl = s.templates.find((y) => y.id === a.templateId)!
+                    const items = shiftItems(s, a)
+                    const done = doneCount(items)
                     return (
                       <li key={a.id} className="flex flex-wrap items-center gap-x-4 gap-y-1 px-5 py-2.5 text-sm">
                         <span className="w-24 font-medium">{fmtDay(a.date)}</span>
@@ -96,6 +100,16 @@ export function EarningsHistory({ e }: { e: Employee }) {
                           {tpl.start}–{tpl.end}
                         </span>
                         <DeptTag dept={a.dept} />
+                        {items.length > 0 && (
+                          <a
+                            href={`#/report?date=${a.date}`}
+                            title={t('profile.checklistDone', { done, total: items.length })}
+                            className={cx('flex items-center gap-1 text-xs tabular-nums hover:underline', done < items.length ? 'text-bark' : 'text-muted')}
+                          >
+                            <ClipboardCheck className="h-3.5 w-3.5" aria-hidden />
+                            {done}/{items.length}
+                          </a>
+                        )}
                         <span className="ml-auto tabular-nums text-muted">{hours} h</span>
                         {canSeePay && <span className="w-20 text-right font-medium tabular-nums">{money(amount, cur)}</span>}
                       </li>

@@ -477,6 +477,23 @@ function makeActions(get: () => Data, set: (s: Data) => void) {
         ),
       }))
     },
+    /** Ticks or unticks a checklist item or task on a shift, on the employee's behalf (CR-04). Current branch only. */
+    tickItem(assignmentId: string, itemId: string, on: boolean) {
+      const s = get()
+      const x = s.assignments.find((y) => y.id === assignmentId && y.branchId === bid())
+      if (!x) return
+      const by = s.managers.find((m) => m.id === s.session.userId)?.name ?? '—'
+      patch((d) => {
+        const shift = { ...(d.ticks[x.id] ?? {}) }
+        if (on) shift[itemId] = { at: new Date().toISOString(), by, byManager: true }
+        else delete shift[itemId]
+        return {
+          ticks: { ...d.ticks, [x.id]: shift },
+          assignments: d.assignments.map((y) => (y.id === x.id ? { ...y, tasks: y.tasks?.map((t) => (t.id === itemId ? { ...t, done: on } : t)) } : y)),
+        }
+      })
+    },
+
     revertTasks(assignmentId: string) {
       patch((s) => ({ assignments: s.assignments.map((x) => (x.id === assignmentId ? { ...x, tasks: x.publishedTasks } : x)) }))
     },

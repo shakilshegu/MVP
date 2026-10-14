@@ -63,6 +63,9 @@ export type ConflictKind = 'unavailable' | 'overlap' | 'maxHours' | 'elsewhere' 
 
 export type Task = { id: string; text: string; done: boolean }
 
+/** A ticked checklist item or task on one shift (CR-03/CR-04). `byManager` when ticked on someone's behalf. */
+export type Tick = { at: string; by: string; byManager?: boolean }
+
 export type Assignment = {
   id: string
   branchId: string
@@ -172,6 +175,8 @@ export type Data = {
   /** Keyed by `${branchId}|${date}` */
   dayNotes: Record<string, string>
   announcements: Announcement[]
+  /** Ticks per shift: assignmentId → checklist item or task id → who ticked it and when. */
+  ticks: Record<string, Record<string, Tick>>
   /** Availability for one specific week, overriding the usual pattern: employeeId → weekStart → Mon..Sun. */
   weekAvailability: Record<string, Record<string, boolean[]>>
   lastPublish: { branchId: string; at: string; count: number; notified: string[] } | null
