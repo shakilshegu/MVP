@@ -77,6 +77,8 @@ export type Assignment = {
   overridden?: ConflictKind[]
   /** This person leads the shift for their department (CR-01). */
   isLeader?: boolean
+  /** The leader flag as last published; only set while a published shift's leader change awaits publishing. */
+  publishedLeader?: boolean
   tasks?: Task[]
   /** Tasks as the team last saw them; differences are unpublished changes. */
   publishedTasks?: Task[]
@@ -111,6 +113,7 @@ export type HistoryAction =
   | 'permissions'
   | 'branch'
   | 'announcement'
+  | 'leader'
 
 export type HistoryEntry = {
   id: string

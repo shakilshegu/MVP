@@ -36,11 +36,18 @@ export function missingLeaders(s: Data, branchId: string): (Slot & { branchId: s
   return [...cells.values()].filter((list) => !list.some((a) => a.isLeader)).map(([a]) => ({ date: a.date, templateId: a.templateId, dept: a.dept, branchId }))
 }
 
+/** Sets the leader flag; on a published shift the old value is kept so the change goes through Review & publish. */
+export function withLeader(a: Assignment, on: boolean): Assignment {
+  if (!!a.isLeader === on) return a
+  return { ...a, isLeader: on, publishedLeader: a.state === 'published' ? (a.publishedLeader ?? !!a.isLeader) : undefined }
+}
+
 export type Change =
   | { kind: 'added'; a: Assignment }
   | { kind: 'removed'; a: Assignment }
   | { kind: 'moved'; from: Assignment; a: Assignment }
   | { kind: 'tasks'; a: Assignment; added: Task[]; removed: Task[] }
+  | { kind: 'leader'; a: Assignment; on: boolean }
 
 export function taskDiff(a: Assignment) {
   const pub = a.publishedTasks ?? []
@@ -82,6 +89,7 @@ export function branchChanges(s: Data, branchId: string): Change[] {
     if (a.branchId !== branchId || a.state !== 'published') continue
     const d = taskDiff(a)
     if (d.added.length || d.removed.length) out.push({ kind: 'tasks', a, ...d })
+    if (a.publishedLeader !== undefined && a.publishedLeader !== !!a.isLeader) out.push({ kind: 'leader', a, on: !!a.isLeader })
   }
   for (const a of list) {
     if (a.state === 'added' && a.movedFrom) {
@@ -222,9 +230,23 @@ function makeActions(get: () => Data, set: (s: Data) => void) {
         assignments: s.assignments
           .filter((a) => !(a.branchId === b && a.state === 'added'))
           .map((a) => (a.branchId === b && a.state === 'removed' ? { ...a, state: 'published' as const, movedTo: undefined } : a))
-          .map((a) => (a.branchId === b ? { ...a, tasks: a.publishedTasks } : a)),
+          .map((a) => (a.branchId === b ? { ...a, tasks: a.publishedTasks } : a))
+          .map((a) => (a.branchId === b && a.publishedLeader !== undefined ? { ...a, isLeader: a.publishedLeader, publishedLeader: undefined } : a)),
         pendingApproval: { ...s.pendingApproval, [b]: false },
       }))
+    },
+
+    /** Undoes unpublished leader changes on a shift, restoring whoever led it before. */
+    revertLeader(id: string) {
+      patch((s) => {
+        const target = s.assignments.find((a) => a.id === id)
+        if (!target) return {}
+        return {
+          assignments: s.assignments.map((a) =>
+            sameSlot(a, target) && a.publishedLeader !== undefined ? { ...a, isLeader: a.publishedLeader, publishedLeader: undefined } : a,
+          ),
+        }
+      })
     },
 
     copyWeek(fromStart: string, toStart: string) {
@@ -285,7 +307,7 @@ function makeActions(get: () => Data, set: (s: Data) => void) {
             const needsLeader = s.departments.find((d) => d.id === dept)?.needsLeader
             if (needsLeader && cell.length && !cell.some((a) => a.isLeader)) {
               const lead = [...cell].sort((x, y) => (draft.employees.find((e) => e.id === y.employeeId)?.hourlyRate ?? 0) - (draft.employees.find((e) => e.id === x.employeeId)?.hourlyRate ?? 0))[0]
-              draft.assignments = draft.assignments.map((a) => (a.id === lead.id ? { ...a, isLeader: true } : a))
+              draft.assignments = draft.assignments.map((a) => (a.id === lead.id ? withLeader(a, true) : a))
             }
           }
       }
@@ -298,7 +320,7 @@ function makeActions(get: () => Data, set: (s: Data) => void) {
         const target = s.assignments.find((a) => a.id === id)
         if (!target) return {}
         return {
-          assignments: s.assignments.map((a) => (a.id === id ? { ...a, isLeader: on } : on && sameSlot(a, target) ? { ...a, isLeader: false } : a)),
+          assignments: s.assignments.map((a) => (a.id === id ? withLeader(a, on) : on && sameSlot(a, target) ? withLeader(a, false) : a)),
         }
       })
     },
@@ -312,7 +334,7 @@ function makeActions(get: () => Data, set: (s: Data) => void) {
           .map((slot) => s.assignments.filter((a) => isActive(a) && sameSlot(a, slot)).sort((x, y) => rate(y) - rate(x))[0]?.id)
           .filter(Boolean),
       )
-      set({ ...s, assignments: s.assignments.map((a) => (picks.has(a.id) ? { ...a, isLeader: true } : a)) })
+      set({ ...s, assignments: s.assignments.map((a) => (picks.has(a.id) ? withLeader(a, true) : a)) })
       return picks.size
     },
 
@@ -344,7 +366,9 @@ function makeActions(get: () => Data, set: (s: Data) => void) {
             ? entry({ action: 'assigned', subject: empName(c.a.employeeId), to: describe(s, c.a) + overrideNote(c.a) + taskNote(c.a) })
             : c.kind === 'removed'
               ? entry({ action: 'removed', subject: empName(c.a.employeeId), from: describe(s, c.a) })
-              : entry({ action: 'moved', subject: empName(c.a.employeeId), from: describe(s, c.from), to: describe(s, c.a) }),
+              : c.kind === 'leader'
+                ? entry({ action: 'leader', subject: empName(c.a.employeeId), to: `${tr(c.on ? 'history.detail.leaderOn' : 'history.detail.leaderOff')} · ${describe(s, c.a)}` })
+                : entry({ action: 'moved', subject: empName(c.a.employeeId), from: describe(s, c.from), to: describe(s, c.a) }),
       )
       logs.unshift(entry({ action: 'published', subject: '', count: changes.length, people: notified.length }))
       const at = new Date().toISOString()
@@ -353,7 +377,7 @@ function makeActions(get: () => Data, set: (s: Data) => void) {
         assignments: s.assignments
           .filter((a) => !(a.branchId === b && a.state === 'removed'))
           .map((a) => (a.branchId === b && a.state === 'added' ? { ...a, state: 'published' as const, movedFrom: undefined } : a))
-          .map((a) => (a.branchId === b ? { ...a, publishedTasks: a.tasks } : a)),
+          .map((a) => (a.branchId === b ? { ...a, publishedTasks: a.tasks, publishedLeader: undefined } : a)),
         history: [...logs, ...s.history],
         pendingApproval: { ...s.pendingApproval, [b]: false },
         lastPublish: { branchId: b, at, count: changes.length, notified },

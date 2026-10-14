@@ -20,7 +20,7 @@ export function ReviewPublish() {
   const waiting = s.pendingApproval[branch!.id]
   const canPublish = can('publish')
   const notifyIds = [...new Set(changes.flatMap((c) => (c.kind === 'moved' ? [c.a.employeeId, c.from.employeeId] : [c.a.employeeId])))]
-  const overrides = changes.filter((c) => c.kind !== 'tasks' && c.a.overridden).length
+  const overrides = changes.filter((c) => (c.kind === 'added' || c.kind === 'moved') && c.a.overridden).length
   const taskChanges = changes.filter((c) => c.kind === 'tasks').length
   const missing = missingLeaders(s, branch!.id)
   const blocked = missing.length > 0
@@ -88,6 +88,11 @@ export function ReviewPublish() {
                           {c.kind === 'added' && <Badge tone="green">{t('publish.added')}</Badge>}
                           {c.kind === 'removed' && <Badge tone="danger">{t('publish.removed')}</Badge>}
                           {c.kind === 'moved' && <Badge tone="dark">{t('publish.moved')}</Badge>}
+                          {c.kind === 'leader' && (
+                            <Badge tone="warn">
+                              <Crown className="h-3 w-3" /> {t(c.on ? 'publish.leaderOn' : 'publish.leaderOff')}
+                            </Badge>
+                          )}
                           {c.kind === 'tasks' && (
                             <Badge tone="neutral">
                               <ClipboardList className="h-3 w-3" /> {t('publish.tasks')}
@@ -108,15 +113,15 @@ export function ReviewPublish() {
                         {c.kind === 'tasks' ? (
                           <TaskLines added={c.added} removed={c.removed} />
                         ) : (
-                          c.kind !== 'removed' && !!c.a.tasks?.length && <TaskLines added={c.a.tasks} removed={[]} />
+                          (c.kind === 'added' || c.kind === 'moved') && !!c.a.tasks?.length && <TaskLines added={c.a.tasks} removed={[]} />
                         )}
-                        {c.kind !== 'tasks' && c.a.overridden && (
+                        {(c.kind === 'added' || c.kind === 'moved') && c.a.overridden && (
                           <div className="mt-1 flex items-center gap-1.5 text-[13px] text-warn">
                             <AlertTriangle className="h-3.5 w-3.5" /> {t('schedule.despite', { list: conflictTitles(t, c.a.overridden) })}
                           </div>
                         )}
                       </div>
-                      <Button size="sm" variant="ghost" onClick={() => (c.kind === 'tasks' ? a.revertTasks(c.a.id) : c.kind === 'removed' ? a.undoRemove(c.a.id) : a.remove(c.a.id))} aria-label={t('publish.undoFor', { name: e.name })}>
+                      <Button size="sm" variant="ghost" onClick={() => (c.kind === 'tasks' ? a.revertTasks(c.a.id) : c.kind === 'leader' ? a.revertLeader(c.a.id) : c.kind === 'removed' ? a.undoRemove(c.a.id) : a.remove(c.a.id))} aria-label={t('publish.undoFor', { name: e.name })}>
                         <Undo2 className="h-3.5 w-3.5" /> {t('common.undo')}
                       </Button>
                     </li>
