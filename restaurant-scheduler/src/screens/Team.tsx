@@ -393,7 +393,7 @@ export function EmployeeProfile({ id }: { id: string }) {
   const checklist = s.checklists.find((c) => c.id === e.checklistId)
 
   return (
-    <div className="mx-auto max-w-4xl">
+    <div className="mx-auto max-w-6xl">
       <a href="#/team" className="mb-4 inline-flex items-center gap-1.5 text-sm text-muted hover:text-ink">
         <ArrowLeft className="h-4 w-4" /> {t('team.title')}
       </a>
@@ -421,7 +421,7 @@ export function EmployeeProfile({ id }: { id: string }) {
         </div>
       </div>
 
-      <div className="mt-6 grid gap-6 md:grid-cols-[1fr_300px]">
+      <div className="mt-6 grid gap-6 md:grid-cols-[1fr_300px] lg:grid-cols-[1fr_340px]">
         <section className="panel">
           <div className="flex items-center justify-between border-b border-line px-5 py-3.5">
             <h2 className="text-sm font-semibold">{t('profile.thisWeek')}</h2>

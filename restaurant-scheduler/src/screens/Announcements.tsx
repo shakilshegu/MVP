@@ -22,7 +22,7 @@ export function Announcements() {
   const past = mine.filter((x) => x.date < today).sort((x, y) => y.date.localeCompare(x.date))
 
   return (
-    <div className="mx-auto max-w-3xl">
+    <div className="mx-auto max-w-6xl">
       <PageHeader
         title={t('announce.title')}
         sub={t('announce.sub', { branch: branch!.name })}
@@ -44,7 +44,7 @@ export function Announcements() {
           />
         </div>
       ) : (
-        <ul className="space-y-3">
+        <ul className="grid items-start gap-3 lg:grid-cols-2">
           {upcoming.map((x) => (
             <Card key={x.id} x={x} editable={editable} onEdit={() => setEditing(x)} onDelete={() => setRemoving(x)} />
           ))}
@@ -57,7 +57,7 @@ export function Announcements() {
             {showPast ? t('announce.hidePast') : t('announce.showPast', { count: past.length })}
           </button>
           {showPast && (
-            <ul className="mt-3 space-y-3 opacity-70">
+            <ul className="mt-3 grid items-start gap-3 opacity-70 lg:grid-cols-2">
               {past.map((x) => (
                 <Card key={x.id} x={x} editable={false} onEdit={() => {}} onDelete={() => {}} />
               ))}
@@ -122,7 +122,7 @@ function Card({ x, editable, onEdit, onDelete }: { x: Announcement; editable: bo
           {fmtLong(x.date)}
           {x.start && (
             <span>
-              {'· '}
+              {'·\u00A0'}
               {x.start}
               {x.end && `–${x.end}`}
             </span>
