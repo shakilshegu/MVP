@@ -3,21 +3,34 @@ import { Cloud, CloudDrizzle, CloudFog, CloudLightning, CloudRain, CloudSnow, Cl
 import { addDays, todayKey } from './date'
 
 /** `name` is the stored key; `de` is the German spelling where it differs. */
-export type City = { name: string; de?: string; lat: number; lon: number }
+export type City = { name: string; de?: string; country: 'DE' | 'IN'; lat: number; lon: number }
 
-export const GERMAN_CITIES: City[] = [
-  { name: 'Berlin', lat: 52.52, lon: 13.405 },
-  { name: 'Hamburg', lat: 53.551, lon: 9.994 },
-  { name: 'Munich', de: 'München', lat: 48.137, lon: 11.575 },
-  { name: 'Cologne', de: 'Köln', lat: 50.938, lon: 6.96 },
-  { name: 'Frankfurt', lat: 50.11, lon: 8.682 },
-  { name: 'Stuttgart', lat: 48.776, lon: 9.183 },
-  { name: 'Düsseldorf', lat: 51.227, lon: 6.774 },
-  { name: 'Leipzig', lat: 51.34, lon: 12.375 },
-  { name: 'Dresden', lat: 51.05, lon: 13.738 },
-  { name: 'Hanover', de: 'Hannover', lat: 52.375, lon: 9.732 },
-  { name: 'Nuremberg', de: 'Nürnberg', lat: 49.452, lon: 11.077 },
-  { name: 'Bremen', lat: 53.079, lon: 8.802 },
+/** Restaurant locations for the forecast, set once per branch in Settings (CR-10). */
+export const CITIES: City[] = [
+  { name: 'Berlin', country: 'DE', lat: 52.52, lon: 13.405 },
+  { name: 'Hamburg', country: 'DE', lat: 53.551, lon: 9.994 },
+  { name: 'Munich', de: 'München', country: 'DE', lat: 48.137, lon: 11.575 },
+  { name: 'Cologne', de: 'Köln', country: 'DE', lat: 50.938, lon: 6.96 },
+  { name: 'Frankfurt', country: 'DE', lat: 50.11, lon: 8.682 },
+  { name: 'Stuttgart', country: 'DE', lat: 48.776, lon: 9.183 },
+  { name: 'Düsseldorf', country: 'DE', lat: 51.227, lon: 6.774 },
+  { name: 'Leipzig', country: 'DE', lat: 51.34, lon: 12.375 },
+  { name: 'Dresden', country: 'DE', lat: 51.05, lon: 13.738 },
+  { name: 'Hanover', de: 'Hannover', country: 'DE', lat: 52.375, lon: 9.732 },
+  { name: 'Nuremberg', de: 'Nürnberg', country: 'DE', lat: 49.452, lon: 11.077 },
+  { name: 'Bremen', country: 'DE', lat: 53.079, lon: 8.802 },
+  { name: 'Kochi', country: 'IN', lat: 9.931, lon: 76.267 },
+  { name: 'Thiruvananthapuram', country: 'IN', lat: 8.524, lon: 76.936 },
+  { name: 'Kozhikode', country: 'IN', lat: 11.258, lon: 75.78 },
+  { name: 'Thrissur', country: 'IN', lat: 10.527, lon: 76.214 },
+  { name: 'Kannur', country: 'IN', lat: 11.874, lon: 75.37 },
+  { name: 'Alappuzha', country: 'IN', lat: 9.498, lon: 76.339 },
+  { name: 'Kollam', country: 'IN', lat: 8.893, lon: 76.614 },
+  { name: 'Munnar', country: 'IN', lat: 10.089, lon: 77.06 },
+  { name: 'Bengaluru', country: 'IN', lat: 12.972, lon: 77.594 },
+  { name: 'Chennai', country: 'IN', lat: 13.083, lon: 80.271 },
+  { name: 'Mumbai', country: 'IN', lat: 19.076, lon: 72.878 },
+  { name: 'Delhi', country: 'IN', lat: 28.614, lon: 77.209 },
 ]
 
 export type HourWeather = { code: number; temp: number; rain: number }
@@ -53,7 +66,7 @@ function fetchRange(city: City, from: string, to: string) {
       `https://api.open-meteo.com/v1/forecast?latitude=${city.lat}&longitude=${city.lon}` +
       `&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max` +
       `&hourly=weather_code,temperature_2m,precipitation_probability` +
-      `&timezone=Europe%2FBerlin&start_date=${from}&end_date=${to}`
+      `&timezone=auto&start_date=${from}&end_date=${to}`
     p = fetch(url)
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
       .then((j) => {
@@ -138,7 +151,7 @@ export function shiftWeather(data: Record<string, DayWeather>, date: string, sta
   }
 }
 
-export const cityOf = (name: string | undefined) => GERMAN_CITIES.find((c) => c.name === name)
+export const cityOf = (name: string | undefined) => CITIES.find((c) => c.name === name)
 
 export const cityLabel = (name: string, locale: string) => {
   const c = cityOf(name)

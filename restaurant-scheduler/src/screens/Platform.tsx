@@ -4,7 +4,7 @@ import { Building2, ChevronRight, LogOut, Plus } from 'lucide-react'
 import { useStore } from '../lib/store'
 import { navigate } from '../lib/hooks'
 import { fmt } from '../lib/date'
-import { cityLabel, GERMAN_CITIES } from '../lib/weather'
+import { CityOptions } from '../components/weather'
 import { useT } from '../i18n'
 import { LanguageMenu } from '../components/LanguageSwitch'
 import { Button, Field, Modal, PageHeader } from '../components/ui'
@@ -84,7 +84,7 @@ export function Platform() {
 
 function AddCompany({ onClose }: { onClose: () => void }) {
   const { a, toast } = useStore()
-  const { t, locale } = useT()
+  const { t } = useT()
   const [f, setF] = useState({ name: '', branch: '', city: 'Berlin', adminName: '', adminEmail: '' })
   const [errors, setErrors] = useState<Record<string, string>>({})
   const set = (k: keyof typeof f, v: string) => setF((p) => ({ ...p, [k]: v }))
@@ -131,11 +131,7 @@ function AddCompany({ onClose }: { onClose: () => void }) {
           </Field>
           <Field label={t('settings.city')} htmlFor="c-city">
             <select id="c-city" className="input" value={f.city} onChange={(e) => set('city', e.target.value)}>
-              {GERMAN_CITIES.map((c) => (
-                <option key={c.name} value={c.name}>
-                  {cityLabel(c.name, locale)}
-                </option>
-              ))}
+              <CityOptions />
             </select>
           </Field>
         </div>

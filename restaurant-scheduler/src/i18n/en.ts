@@ -658,6 +658,8 @@ export const en = {
     address: 'Address',
     city: 'City',
     cityHint: 'Used for the weather forecast on the schedule.',
+    countryDE: 'Germany',
+    countryIN: 'India',
     hoursIntro: 'When {branch} is open to guests. Shifts can start before opening for prep.',
     opens: 'Opens',
     closes: 'Closes',

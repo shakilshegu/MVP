@@ -660,6 +660,8 @@ export const de: Shape<typeof en> = {
     address: 'Adresse',
     city: 'Stadt',
     cityHint: 'Wird für die Wettervorhersage im Dienstplan verwendet.',
+    countryDE: 'Deutschland',
+    countryIN: 'Indien',
     hoursIntro: 'Wann {branch} für Gäste geöffnet ist. Schichten können zur Vorbereitung früher beginnen.',
     opens: 'Öffnet',
     closes: 'Schließt',

@@ -12,7 +12,7 @@ import { backend } from '../data'
 import { PERMS } from '../lib/types'
 import type { HistoryAction } from '../lib/types'
 import { NoAccess } from '../components/Shell'
-import { cityLabel, GERMAN_CITIES } from '../lib/weather'
+import { CityOptions } from '../components/weather'
 import { Badge, Button, EmptyState, Field, Modal, PageHeader, Segmented, Switch } from '../components/ui'
 
 const GROUPS = {
@@ -192,7 +192,7 @@ type Tab = 'restaurant' | 'hours' | 'departments' | 'branches' | 'account'
 
 export function Settings({ tab: initial }: { tab: string | null }) {
   const { s, a, me, branch, can, toast } = useStore()
-  const { t, locale } = useT()
+  const { t } = useT()
   const tabs: { value: Tab; label: string }[] = (['restaurant', 'hours', 'departments', ...(can('manageBranches') ? ['branches' as const] : []), 'account'] as Tab[]).map((v) => ({
     value: v,
     label: t(`settings.tabs.${v}`),
@@ -230,11 +230,7 @@ export function Settings({ tab: initial }: { tab: string | null }) {
           </Field>
           <Field label={t('settings.city')} htmlFor="s-city" hint={t('settings.cityHint')}>
             <select id="s-city" className="input" value={city} onChange={(e) => setCity(e.target.value)}>
-              {GERMAN_CITIES.map((c) => (
-                <option key={c.name} value={c.name}>
-                  {cityLabel(c.name, locale)}
-                </option>
-              ))}
+              <CityOptions />
             </select>
           </Field>
           <div className="flex justify-end">
@@ -357,7 +353,7 @@ export function Settings({ tab: initial }: { tab: string | null }) {
 
 function AddBranch({ onClose }: { onClose: () => void }) {
   const { a, toast } = useStore()
-  const { t, locale } = useT()
+  const { t } = useT()
   const [name, setName] = useState('')
   const [address, setAddress] = useState('')
   const [city, setCity] = useState('Berlin')
@@ -392,11 +388,7 @@ function AddBranch({ onClose }: { onClose: () => void }) {
         </Field>
         <Field label={t('settings.city')} htmlFor="b-city">
           <select id="b-city" className="input" value={city} onChange={(e) => setCity(e.target.value)}>
-            {GERMAN_CITIES.map((c) => (
-              <option key={c.name} value={c.name}>
-                {cityLabel(c.name, locale)}
-              </option>
-            ))}
+            <CityOptions />
           </select>
         </Field>
         <Field label={t('settings.address')} htmlFor="b-addr" hint={t('common.optional')}>

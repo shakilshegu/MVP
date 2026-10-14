@@ -1,5 +1,5 @@
 import { Droplets } from 'lucide-react'
-import { shiftWeather, weatherKind } from '../lib/weather'
+import { CITIES, cityLabel, shiftWeather, weatherKind } from '../lib/weather'
 import type { DayWeather, SpanWeather } from '../lib/weather'
 import { useStore } from '../lib/store'
 import { fmtDay, toMin } from '../lib/date'
@@ -123,5 +123,23 @@ export function ShiftWeatherPopover({ date, data, city, anchor, onClose }: { dat
         })}
       </ul>
     </Popover>
+  )
+}
+
+/** City <option>s grouped by country, for the branch location selects. */
+export function CityOptions() {
+  const { t, locale } = useT()
+  return (
+    <>
+      {(['DE', 'IN'] as const).map((country) => (
+        <optgroup key={country} label={t(`settings.country${country}`)}>
+          {CITIES.filter((c) => c.country === country).map((c) => (
+            <option key={c.name} value={c.name}>
+              {cityLabel(c.name, locale)}
+            </option>
+          ))}
+        </optgroup>
+      ))}
+    </>
   )
 }
