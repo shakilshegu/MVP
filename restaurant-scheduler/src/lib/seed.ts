@@ -181,7 +181,7 @@ export function createSeed(): Data {
   const cafeTemplates = defaultTemplates('c2', () => `t${tid++}`)
 
   const s: Data = {
-    version: 10,
+    version: 11,
     session: { userId: null, companyId: null, branchId: null },
     companies: [
       { id: 'c1', name: 'Harbor Group', createdAt: daysAgoIso(220), currency: 'EUR' },
@@ -234,7 +234,15 @@ export function createSeed(): Data {
       [`b1|${addDays(startOfWeek(today), 4)}`]: tr('seed.note.party'),
       [`b1|${addDays(startOfWeek(today), 6)}`]: tr('seed.note.terrace'),
     },
+    weekAvailability: {},
     lastPublish: null,
+  }
+
+  // A few one-off weeks that differ from the usual pattern.
+  const offOn = (id: string, days: number[]) => employees.find((e) => e.id === id)!.availability.map((v, i) => v && !days.includes(i))
+  s.weekAvailability = {
+    e4: { [startOfWeek(today)]: offOn('e4', [3]), [addDays(startOfWeek(today), 7)]: offOn('e4', [4, 5]) },
+    e7: { [addDays(startOfWeek(today), 7)]: offOn('e7', [0, 1]) },
   }
 
   const r = rng(7)

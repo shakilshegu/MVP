@@ -1,5 +1,5 @@
 import { addDays, dayNumber, hoursBetween, startOfWeek, toMin, weekdayIndex } from './date'
-import type { Assignment, ConflictKind, Data, Dept, Leave, ShiftTemplate } from './types'
+import type { Assignment, ConflictKind, Data, Dept, Employee, Leave, ShiftTemplate } from './types'
 
 export type { ConflictKind } from './types'
 
@@ -10,7 +10,7 @@ export type { ConflictKind } from './types'
 export type ConflictParams = {
   name: string
   /** For 'unavailable': whether it comes from approved leave or the weekly availability. */
-  reason?: 'leave' | 'weekday'
+  reason?: 'leave' | 'weekday' | 'week'
   weekday?: number
   leaveKind?: Leave['kind']
   from?: string
@@ -68,6 +68,13 @@ export function weekHours(s: Data, employeeId: string, weekStart: string, ignore
     .reduce((sum, a) => sum + shiftHours(s, a), 0)
 }
 
+/** The days someone can work in a given week: that week's override, or their usual pattern. */
+export function weekPattern(s: Data, e: Employee, weekStart: string) {
+  return s.weekAvailability[e.id]?.[weekStart] ?? e.availability
+}
+
+export const availableOn = (s: Data, e: Employee, date: string) => weekPattern(s, e, startOfWeek(date))[weekdayIndex(date)]
+
 export function leaveOn(s: Data, employeeId: string, date: string) {
   return s.leaves.find((l) => l.employeeId === employeeId && l.status === 'approved' && l.from <= date && l.to >= date)
 }
@@ -83,8 +90,9 @@ export function checkAssignment(s: Data, req: AssignRequest): Conflict[] {
   const leave = leaveOn(s, emp.id, req.date)
   if (leave) {
     out.push({ kind: 'unavailable', params: { name, reason: 'leave', leaveKind: leave.kind, from: leave.from, to: leave.to } })
-  } else if (!emp.availability[weekdayIndex(req.date)]) {
-    out.push({ kind: 'unavailable', params: { name, reason: 'weekday', weekday: weekdayIndex(req.date) } })
+  } else if (!availableOn(s, emp, req.date)) {
+    const override = s.weekAvailability[emp.id]?.[startOfWeek(req.date)] != null
+    out.push({ kind: 'unavailable', params: { name, reason: override ? 'week' : 'weekday', weekday: weekdayIndex(req.date), date: req.date } })
   }
 
   const [s0, e0] = interval(req.date, tpl)

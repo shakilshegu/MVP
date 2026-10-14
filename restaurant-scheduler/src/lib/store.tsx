@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { Backend } from '../data'
-import { addDays, dayShort, fmtRange, daysInclusive, startOfWeek, todayKey, toMin, weekDays } from './date'
+import { addDays, dayShort, fmtDay, fmtRange, daysInclusive, startOfWeek, todayKey, toMin, weekDays } from './date'
 import { tr } from '../i18n/core'
 import type { MsgKey } from '../i18n/core'
 import { conflictTitles, deptName, describeSlot } from '../i18n/format'
@@ -389,6 +389,31 @@ function makeActions(get: () => Data, set: (s: Data) => void) {
       const d = dayShort(day)
       const state = (on: boolean) => tr(on ? 'common.available' : 'common.unavailable')
       log({ action: 'availability', subject: e.name, from: `${d}: ${state(!value)}`, to: `${d}: ${state(value)}` })
+    },
+
+    /** Changes one day for one specific week only, leaving the usual pattern alone (CR-07). */
+    setWeekAvailability(id: string, weekStart: string, day: number, value: boolean) {
+      const s = get()
+      const e = s.employees.find((x) => x.id === id)
+      if (!e) return
+      const days = (s.weekAvailability[id]?.[weekStart] ?? e.availability).map((v, i) => (i === day ? value : v))
+      const same = days.every((v, i) => v === e.availability[i])
+      const weeks = { ...(s.weekAvailability[id] ?? {}) }
+      if (same) delete weeks[weekStart]
+      else weeks[weekStart] = days
+      patch((d) => ({ weekAvailability: { ...d.weekAvailability, [id]: weeks } }))
+      const label = fmtDay(addDays(weekStart, day))
+      const state = (on: boolean) => tr(on ? 'common.available' : 'common.unavailable')
+      log({ action: 'availability', subject: e.name, from: `${label}: ${state(!value)}`, to: `${label}: ${state(value)}` })
+    },
+
+    /** Drops a week's override so the usual pattern applies again. */
+    resetWeekAvailability(id: string, weekStart: string) {
+      patch((d) => {
+        const weeks = { ...(d.weekAvailability[id] ?? {}) }
+        delete weeks[weekStart]
+        return { weekAvailability: { ...d.weekAvailability, [id]: weeks } }
+      })
     },
 
     setPreferred(id: string, preferred: Employee['preferred']) {

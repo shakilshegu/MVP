@@ -40,7 +40,7 @@ function Screen() {
       page = parts[1] ? <EmployeeProfile id={parts[1]} /> : <Team key={key} openAdd={query.get('add') === '1'} />
       break
     case 'availability':
-      page = <Availability />
+      page = <Availability week={query.get('week')} />
       break
     case 'leave':
       page = <LeaveRequests />

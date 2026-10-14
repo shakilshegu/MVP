@@ -151,6 +151,8 @@ export type Data = {
   pendingApproval: Record<string, boolean>
   /** Keyed by `${branchId}|${date}` */
   dayNotes: Record<string, string>
+  /** Availability for one specific week, overriding the usual pattern: employeeId → weekStart → Mon..Sun. */
+  weekAvailability: Record<string, Record<string, boolean[]>>
   lastPublish: { branchId: string; at: string; count: number; notified: string[] } | null
 }
 

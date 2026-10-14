@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
-import { AlertTriangle, CalendarRange, ClipboardList, Clock3, Crown, Download, Scale, StickyNote, Wand2, Loader2, MapPin, MoreHorizontal, ChevronLeft, ChevronRight, Copy, Eye, Plus, Undo2, UserPlus, Users } from 'lucide-react'
+import { AlertTriangle, CalendarRange, ClipboardList, Clock3, Crown, Download, Scale, StickyNote, Wand2, Loader2, MapPin, MoreHorizontal, ChevronLeft, ChevronRight, Copy, Eye, Plus, Undo2, UserPlus, UserRoundCheck, Users } from 'lucide-react'
 import { branchChanges, useStore } from '../lib/store'
 import { useT } from '../i18n'
 import { conflictTitles, deptName, describeSlot } from '../i18n/format'
@@ -196,6 +196,7 @@ export default function WeeklySchedule({ week }: { week: string | null }) {
               )
             }}
             onHours={() => setShowHours(true)}
+            weekStart={weekStart}
             onExport={async () => {
               setExporting(true)
               try {
@@ -461,6 +462,7 @@ function MoreMenu({
   canFill,
   onFill,
   onHours,
+  weekStart,
 }: {
   exporting: boolean
   canExport: boolean
@@ -468,6 +470,7 @@ function MoreMenu({
   canFill: boolean
   onFill: () => void
   onHours: () => void
+  weekStart: string
 }) {
   const { t } = useT()
   const [rect, setRect] = useState<DOMRect | null>(null)
@@ -525,6 +528,9 @@ function MoreMenu({
             >
               <Download className="h-4 w-4 text-muted" /> {t('schedule.downloadPdf')}
             </button>
+            <a role="menuitem" href={`#/availability?week=${weekStart}`} onClick={() => setRect(null)} className={item}>
+              <UserRoundCheck className="h-4 w-4 text-muted" /> {t('schedule.teamAvailability')}
+            </a>
             <a role="menuitem" href="#/month" onClick={() => setRect(null)} className={item}>
               <CalendarRange className="h-4 w-4 text-muted" /> {t('schedule.monthView')}
             </a>

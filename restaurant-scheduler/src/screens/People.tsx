@@ -1,101 +1,210 @@
 import { useState } from 'react'
-import { AlertTriangle, CalendarCheck2, Check, Plane, X } from 'lucide-react'
+import { AlertTriangle, CalendarCheck2, Check, ChevronLeft, ChevronRight, Plane, X } from 'lucide-react'
 import { useStore } from '../lib/store'
-import { dayShort, daysInclusive, fmtDay, fmtRange, relTime, WEEK, weekdayIndex } from '../lib/date'
+import { addDays, dayShort, daysInclusive, fmtDay, fmtRange, fmtRangeYear, fromKey, relTime, startOfWeek, todayKey, WEEK, weekDays, weekdayIndex } from '../lib/date'
 import { useT } from '../i18n'
-import { isActive } from '../lib/validation'
+import { isActive, leaveOn, weekHours, weekPattern } from '../lib/validation'
+import { navigate } from '../lib/hooks'
 import { PREFERRED } from '../lib/types'
-import type { Dept, Leave, Preferred } from '../lib/types'
-import { Avatar, Badge, Button, cx, EmptyState, PageHeader, Segmented } from '../components/ui'
+import type { Dept, Employee, Leave, Preferred } from '../lib/types'
+import { Avatar, Badge, Button, cx, EmptyState, IconButton, PageHeader, Segmented } from '../components/ui'
 
-export function Availability() {
+export function Availability({ week }: { week: string | null }) {
   const { s, a, branch, can, toast, depts } = useStore()
   const { t } = useT()
   const [dept, setDept] = useState<'All' | Dept>('All')
+  const [view, setView] = useState<'week' | 'pattern'>('week')
   const editable = can('createEmployees')
+  const today = todayKey()
+  const weekStart = startOfWeek(week ?? today)
+  const days = weekDays(weekStart)
   const team = s.employees
-    .filter((e) => e.branchId === branch!.id && (dept === 'All' || e.dept === dept))
+    .filter((e) => e.branchId === branch!.id && (dept === 'All' || e.skills.includes(dept)))
     .sort((x, y) => depts.findIndex((d) => d.id === x.dept) - depts.findIndex((d) => d.id === y.dept) || x.name.localeCompare(y.name))
-  const perDay = WEEK.map((i) => team.filter((e) => e.availability[i]).length)
+  const freeOn = (e: Employee, i: number) => (view === 'pattern' ? e.availability[i] : !leaveOn(s, e.id, days[i]) && weekPattern(s, e, weekStart)[i])
+  const perDay = WEEK.map((i) => team.filter((e) => freeOn(e, i)).length)
   const stateOf = (on: boolean) => t(on ? 'common.available' : 'common.unavailable')
+  const goWeek = (n: number) => navigate(`/availability?week=${addDays(weekStart, n)}`)
 
   return (
     <div className="mx-auto max-w-5xl">
       <PageHeader
         title={t('availability.title')}
         sub={t('availability.sub')}
-        actions={<Segmented label={t('common.department')} value={dept} onChange={setDept} options={[{ value: 'All', label: t('common.all') }, ...depts.map((d) => ({ value: d.id, label: d.name }))]} />}
+        actions={
+          <>
+            <Segmented label={t('availability.view')} value={view} onChange={setView} options={[{ value: 'week', label: t('availability.viewWeek') }, { value: 'pattern', label: t('availability.viewPattern') }]} />
+            <Segmented label={t('common.department')} value={dept} onChange={setDept} options={[{ value: 'All', label: t('common.all') }, ...depts.map((d) => ({ value: d.id, label: d.name }))]} />
+          </>
+        }
       />
+      {view === 'week' && (
+        <div className="mb-3 flex items-center gap-2">
+          <div className="flex items-center rounded-lg bg-white ring-1 ring-line">
+            <IconButton label={t('schedule.prevWeek')} onClick={() => goWeek(-7)}>
+              <ChevronLeft className="h-4 w-4" />
+            </IconButton>
+            <button onClick={() => navigate('/availability')} disabled={weekStart === startOfWeek(today)} className="h-9 px-2 text-[13px] font-medium text-ink disabled:text-muted">
+              {t('common.today')}
+            </button>
+            <IconButton label={t('schedule.nextWeek')} onClick={() => goWeek(7)}>
+              <ChevronRight className="h-4 w-4" />
+            </IconButton>
+          </div>
+          <span className="text-sm font-medium">{fmtRangeYear(weekStart, days[6])}</span>
+        </div>
+      )}
       {team.length === 0 ? (
         <div className="panel">
           <EmptyState icon={<CalendarCheck2 className="h-5 w-5" />} title={t('availability.emptyTitle')} body={t('availability.emptyBody')} />
         </div>
       ) : (
         <div className="panel overflow-x-auto">
-          <table className="w-full min-w-[720px] text-sm">
+          <table className="w-full min-w-[760px] text-sm">
             <thead>
               <tr className="border-b border-line text-left text-xs text-muted">
                 <th className="px-5 py-3 font-medium">{t('availability.employee')}</th>
                 {WEEK.map((i) => (
-                  <th key={i} className="px-1 py-3 text-center font-medium">
+                  <th key={i} className={cx('px-1 py-3 text-center font-medium', view === 'week' && days[i] === today && 'text-forest')}>
                     {dayShort(i)}
+                    {view === 'week' && <span className="ml-1">{fromKey(days[i]).getDate()}</span>}
                     <div className="font-normal text-muted/80">{t('availability.free', { count: perDay[i] })}</div>
                   </th>
                 ))}
-                <th className="px-5 py-3 font-medium">{t('availability.prefers')}</th>
+                <th className="px-5 py-3 font-medium">{view === 'week' ? t('availability.booked') : t('availability.prefers')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-line">
-              {team.map((e) => (
-                <tr key={e.id} className="hover:bg-paper/60">
-                  <td className="px-5 py-2.5">
-                    <a href={`#/team/${e.id}`} className="flex items-center gap-2.5 hover:underline">
-                      <Avatar e={e} size={28} />
-                      <span className="font-medium">{e.name}</span>
-                    </a>
-                  </td>
-                  {e.availability.map((on, i) => (
-                    <td key={i} className="px-1 py-2.5 text-center">
-                      <button
-                        disabled={!editable}
-                        onClick={() => {
-                          a.setAvailability(e.id, i, !on)
-                          toast(t('availability.toggled', { name: e.name.split(' ')[0], state: stateOf(!on), day: dayShort(i) }))
-                        }}
-                        aria-pressed={on}
-                        aria-label={t('availability.cellA11y', { name: e.name, day: dayShort(i), state: stateOf(on) })}
-                        className={cx(
-                          'inline-flex h-8 w-10 items-center justify-center rounded-lg transition-colors disabled:cursor-default',
-                          on ? 'bg-forest-50 text-forest hover:bg-forest-100' : 'bg-bark-50 text-bark/70 hover:bg-[#EEDDD9]',
-                        )}
-                      >
-                        {on ? <Check className="h-4 w-4" /> : <X className="h-4 w-4" />}
-                      </button>
+              {team.map((e) => {
+                const changed = view === 'week' && s.weekAvailability[e.id]?.[weekStart] != null
+                const booked = weekHours(s, e.id, weekStart)
+                return (
+                  <tr key={e.id} className="hover:bg-paper/60">
+                    <td className="px-5 py-2.5">
+                      <a href={`#/team/${e.id}`} className="flex items-center gap-2.5 hover:underline">
+                        <Avatar e={e} size={28} />
+                        <span className="font-medium">{e.name}</span>
+                      </a>
+                      {changed && (
+                        <div className="ml-[38px] mt-0.5 flex items-center gap-1.5 text-xs text-bar">
+                          {t('availability.changed')}
+                          {editable && (
+                            <button
+                              className="font-medium underline-offset-2 hover:underline"
+                              onClick={() => {
+                                a.resetWeekAvailability(e.id, weekStart)
+                                toast(t('availability.resetDone', { name: e.name.split(' ')[0] }))
+                              }}
+                            >
+                              · {t('availability.reset')}
+                            </button>
+                          )}
+                        </div>
+                      )}
                     </td>
-                  ))}
-                  <td className="px-5 py-2.5">
-                    <select
-                      aria-label={t('availability.prefA11y', { name: e.name })}
-                      disabled={!editable}
-                      value={e.preferred}
-                      onChange={(ev) => a.setPreferred(e.id, ev.target.value as Preferred)}
-                      className="h-8 rounded-lg border border-line bg-white px-2 text-[13px]"
-                    >
-                      {PREFERRED.map((p) => (
-                        <option key={p} value={p}>
-                          {t(`preferred.${p}`)}
-                        </option>
-                      ))}
-                    </select>
-                  </td>
-                </tr>
-              ))}
+                    {WEEK.map((i) => {
+                      if (view === 'pattern') {
+                        const on = e.availability[i]
+                        return (
+                          <td key={i} className="px-1 py-2.5 text-center">
+                            <DayToggle
+                              on={on}
+                              disabled={!editable}
+                              label={t('availability.cellA11y', { name: e.name, day: dayShort(i), state: stateOf(on) })}
+                              onClick={() => {
+                                a.setAvailability(e.id, i, !on)
+                                toast(t('availability.toggled', { name: e.name.split(' ')[0], state: stateOf(!on), day: dayShort(i) }))
+                              }}
+                            />
+                          </td>
+                        )
+                      }
+                      const d = days[i]
+                      if (leaveOn(s, e.id, d))
+                        return (
+                          <td key={i} className="px-1 py-2.5 text-center">
+                            <span title={t('availability.onLeave')} className="inline-flex h-8 w-10 items-center justify-center rounded-lg bg-[#F6EEEC] text-[#8B4A42]">
+                              <Plane className="h-4 w-4" aria-label={t('availability.onLeave')} />
+                            </span>
+                          </td>
+                        )
+                      const on = weekPattern(s, e, weekStart)[i]
+                      return (
+                        <td key={i} className="px-1 py-2.5 text-center">
+                          <DayToggle
+                            on={on}
+                            differs={on !== e.availability[i]}
+                            disabled={!editable || d < today}
+                            label={t('availability.cellA11y', { name: e.name, day: fmtDay(d), state: stateOf(on) })}
+                            onClick={() => {
+                              a.setWeekAvailability(e.id, weekStart, i, !on)
+                              toast(t('availability.toggledWeek', { name: e.name.split(' ')[0], state: stateOf(!on), date: fmtDay(d) }))
+                            }}
+                          />
+                        </td>
+                      )
+                    })}
+                    <td className="px-5 py-2.5">
+                      {view === 'week' ? (
+                        <span className="whitespace-nowrap text-[13px]">
+                          <span className={cx('font-semibold', booked > e.maxHours && 'text-danger')}>{booked}h</span>
+                          <span className="text-muted"> / {e.maxHours}h</span>
+                        </span>
+                      ) : (
+                        <select
+                          aria-label={t('availability.prefA11y', { name: e.name })}
+                          disabled={!editable}
+                          value={e.preferred}
+                          onChange={(ev) => a.setPreferred(e.id, ev.target.value as Preferred)}
+                          className="h-8 rounded-lg border border-line bg-white px-2 text-[13px]"
+                        >
+                          {PREFERRED.map((p) => (
+                            <option key={p} value={p}>
+                              {t(`preferred.${p}`)}
+                            </option>
+                          ))}
+                        </select>
+                      )}
+                    </td>
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
         </div>
       )}
-      <p className="mt-3 text-xs text-muted">{t('availability.hint')}</p>
+      <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-muted">
+        <span>{view === 'week' ? t('availability.weekHint') : t('availability.hint')}</span>
+        {view === 'week' && (
+          <>
+            <span className="flex items-center gap-1.5">
+              <span className="h-3 w-4 rounded ring-2 ring-bar" /> {t('availability.changed')}
+            </span>
+            <span className="flex items-center gap-1.5">
+              <Plane className="h-3.5 w-3.5 text-[#8B4A42]" /> {t('availability.onLeave')}
+            </span>
+          </>
+        )}
+      </div>
     </div>
+  )
+}
+
+function DayToggle({ on, differs, disabled, label, onClick }: { on: boolean; differs?: boolean; disabled: boolean; label: string; onClick: () => void }) {
+  return (
+    <button
+      disabled={disabled}
+      onClick={onClick}
+      aria-pressed={on}
+      aria-label={label}
+      className={cx(
+        'inline-flex h-8 w-10 items-center justify-center rounded-lg transition-colors disabled:cursor-default disabled:opacity-60',
+        on ? 'bg-forest-50 text-forest hover:bg-forest-100' : 'bg-bark-50 text-bark/70 hover:bg-[#EEDDD9]',
+        differs && 'ring-2 ring-bar',
+      )}
+    >
+      {on ? <Check className="h-4 w-4" /> : <X className="h-4 w-4" />}
+    </button>
   )
 }
 

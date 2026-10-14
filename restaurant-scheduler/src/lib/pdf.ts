@@ -1,7 +1,7 @@
 import { addDays, dayLong, fromKey, pad, toMin, weekdayIndex } from './date'
 import { intlLocale, tr } from '../i18n/core'
 import { deptName } from '../i18n/format'
-import { isActive, leaveOn } from './validation'
+import { availableOn, isActive, leaveOn } from './validation'
 import type { Branch, Data, Dept, Manager } from './types'
 
 const ddmm = (k: string) => `${k.slice(8, 10)}.${k.slice(5, 7)}`
@@ -42,7 +42,7 @@ export function buildRota(s: Data, branchId: string, weekStart: string, depts: D
           .join(' / ')
         return { text: draft ? text + '*' : text, kind: 'shift', draft, lead: shifts.some((x) => x.a.isLeader) }
       }
-      if (!e.availability[weekdayIndex(d)]) return { text: tr('pdf.off'), kind: 'off', draft: false }
+      if (!availableOn(s, e, d)) return { text: tr('pdf.off'), kind: 'off', draft: false }
       return { text: '', kind: 'empty', draft: false }
     })
     return { e, cells }
