@@ -3,7 +3,7 @@ import type { FormEvent } from 'react'
 import { ArrowRight, History as HistoryIcon, LogOut, Plus, RotateCcw, Search, Store } from 'lucide-react'
 import { useStore } from '../lib/store'
 import { navigate } from '../lib/hooks'
-import { fmtDayHeading, fmtStamp, fmtTime, relTime } from '../lib/date'
+import { dayLong, fmtDayHeading, fmtStamp, fmtTime, relTime, WEEK } from '../lib/date'
 import { useT } from '../i18n'
 import { historyText } from '../i18n/format'
 import { DepartmentsPanel } from '../components/departments'
@@ -13,6 +13,7 @@ import { PERMS } from '../lib/types'
 import type { HistoryAction } from '../lib/types'
 import { NoAccess } from '../components/Shell'
 import { CityOptions } from '../components/weather'
+import { settingsOf } from '../lib/settings'
 import { Badge, Button, EmptyState, Field, Modal, PageHeader, Segmented, Switch } from '../components/ui'
 
 const GROUPS = {
@@ -188,12 +189,14 @@ export function Permissions() {
   )
 }
 
-type Tab = 'restaurant' | 'hours' | 'departments' | 'branches' | 'account'
+type Tab = 'restaurant' | 'hours' | 'departments' | 'staff' | 'branches' | 'account'
 
 export function Settings({ tab: initial }: { tab: string | null }) {
-  const { s, a, me, branch, can, toast } = useStore()
+  const { s, a, me, branch, can, toast, company } = useStore()
   const { t } = useT()
-  const tabs: { value: Tab; label: string }[] = (['restaurant', 'hours', 'departments', ...(can('manageBranches') ? ['branches' as const] : []), 'account'] as Tab[]).map((v) => ({
+  const rules = settingsOf(company)
+  const isAdmin = me != null && me.role !== 'manager'
+  const tabs: { value: Tab; label: string }[] = (['restaurant', 'hours', 'departments', 'staff', ...(can('manageBranches') ? ['branches' as const] : []), 'account'] as Tab[]).map((v) => ({
     value: v,
     label: t(`settings.tabs.${v}`),
   }))
@@ -261,6 +264,64 @@ export function Settings({ tab: initial }: { tab: string | null }) {
       )}
 
       {tab === 'departments' && <DepartmentsPanel />}
+
+      {tab === 'staff' && (
+        <div className="space-y-4">
+          <p className="text-sm text-muted">{t('settings.staffIntro')}</p>
+          <section className="panel p-6">
+            <h2 className="text-sm font-semibold">{t('settings.deadlineTitle')}</h2>
+            <p className="mt-1 text-[13px] text-muted">{t('settings.deadlineBody')}</p>
+            <div className="mt-4 flex flex-wrap items-end gap-3">
+              <Field label={t('settings.deadlineDay')} htmlFor="s-dday">
+                <select
+                  id="s-dday"
+                  className="input"
+                  disabled={!isAdmin}
+                  value={rules.availabilityDay}
+                  onChange={(e) => {
+                    a.saveCompanySettings({ availabilityDay: Number(e.target.value) })
+                    toast(t('settings.saved'))
+                  }}
+                >
+                  {WEEK.map((i) => (
+                    <option key={i} value={i}>
+                      {dayLong(i)}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+              <Field label={t('settings.deadlineTime')} htmlFor="s-dtime">
+                <input
+                  id="s-dtime"
+                  type="time"
+                  className="input"
+                  disabled={!isAdmin}
+                  value={rules.availabilityTime}
+                  onChange={(e) => e.target.value && a.saveCompanySettings({ availabilityTime: e.target.value })}
+                  onBlur={() => toast(t('settings.saved'))}
+                />
+              </Field>
+            </div>
+            <p className="mt-3 text-[13px] text-muted">{t('settings.deadlineExample', { day: dayLong(rules.availabilityDay), time: rules.availabilityTime })}</p>
+          </section>
+          <section className="panel flex items-start justify-between gap-4 p-6">
+            <div>
+              <h2 className="text-sm font-semibold">{t('settings.leadersReport')}</h2>
+              <p className="mt-1 text-[13px] text-muted">{t('settings.leadersReportBody')}</p>
+            </div>
+            <Switch
+              label={t('settings.leadersReport')}
+              checked={rules.leadersSeeReport}
+              disabled={!isAdmin}
+              onChange={(v) => {
+                a.saveCompanySettings({ leadersSeeReport: v })
+                toast(t('settings.saved'))
+              }}
+            />
+          </section>
+          {!isAdmin && <p className="text-[13px] text-muted">{t('settings.staffAdminOnly')}</p>}
+        </div>
+      )}
 
       {tab === 'branches' && (
         <div className="space-y-3">

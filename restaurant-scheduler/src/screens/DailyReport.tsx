@@ -5,6 +5,7 @@ import { navigate } from '../lib/hooks'
 import { addDays, fmtLong, fmtTime, todayKey, toMin } from '../lib/date'
 import { isActive } from '../lib/validation'
 import { doneCount, shiftItems, shiftPhase } from '../lib/report'
+import { settingsOf } from '../lib/settings'
 import type { ReportItem, ShiftPhase } from '../lib/report'
 import type { Assignment, Dept, Employee, ShiftTemplate } from '../lib/types'
 import { useT } from '../i18n'
@@ -14,7 +15,7 @@ export type ReportRow = { a: Assignment; e: Employee; tpl: ShiftTemplate; items:
 
 /** Checklist progress per shift and employee for one day (CR-04). */
 export function DailyReport({ date }: { date: string | null }) {
-  const { s, a, branch, me, can, toast, depts } = useStore()
+  const { s, a, branch, me, can, toast, depts, company } = useStore()
   const { t } = useT()
   const today = todayKey()
   const day = date && /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : today
@@ -126,6 +127,8 @@ export function DailyReport({ date }: { date: string | null }) {
         </label>
       </div>
 
+      {settingsOf(company).leadersSeeReport && <p className="-mt-1 mb-4 text-xs text-muted">{t('report.leadersSee')}</p>}
+
       {rows.length === 0 ? (
         <div className="panel">
           <EmptyState icon={<ClipboardCheck className="h-5 w-5" />} title={all.length ? t('report.noMatchTitle') : t('report.emptyTitle')} body={all.length ? t('report.noMatchBody') : t('report.emptyBody')} />
@@ -139,6 +142,12 @@ export function DailyReport({ date }: { date: string | null }) {
                 <span className="font-normal text-muted">
                   {tpl.start}–{tpl.end}
                 </span>
+                {rows.some((r) => r.a.isLeader) && (
+                  <span className="flex items-center gap-1 text-xs font-normal text-muted">
+                    · <Crown className="h-3.5 w-3.5 text-bar" aria-hidden />
+                    {t('report.ledBy', { names: rows.filter((r) => r.a.isLeader).map((r) => r.e.name.split(' ')[0]).join(', ') })}
+                  </span>
+                )}
               </h2>
               <div className="grid gap-3 lg:grid-cols-2">
                 {rows.map((r) => (

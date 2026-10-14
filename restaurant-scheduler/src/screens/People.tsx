@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { AlertTriangle, CalendarCheck2, Check, ChevronLeft, ChevronRight, Plane, X } from 'lucide-react'
+import { AlertTriangle, CalendarCheck2, Check, ChevronLeft, ChevronRight, Clock3, Plane, X } from 'lucide-react'
+import { availabilityDeadline, deadlinePassed, settingsOf } from '../lib/settings'
 import { useStore } from '../lib/store'
 import { addDays, dayShort, daysInclusive, fmtDay, fmtRange, fmtRangeYear, fromKey, relTime, startOfWeek, todayKey, WEEK, weekDays, weekdayIndex } from '../lib/date'
 import { useT } from '../i18n'
@@ -10,7 +11,7 @@ import type { Dept, Employee, Leave, Preferred } from '../lib/types'
 import { Avatar, Badge, Button, cx, EmptyState, IconButton, PageHeader, Segmented } from '../components/ui'
 
 export function Availability({ week }: { week: string | null }) {
-  const { s, a, branch, can, toast, depts } = useStore()
+  const { s, a, branch, can, toast, depts, company } = useStore()
   const { t } = useT()
   const [dept, setDept] = useState<'All' | Dept>('All')
   const [view, setView] = useState<'week' | 'pattern'>('week')
@@ -24,6 +25,7 @@ export function Availability({ week }: { week: string | null }) {
   const freeOn = (e: Employee, i: number) => (view === 'pattern' ? e.availability[i] : !leaveOn(s, e.id, days[i]) && weekPattern(s, e, weekStart)[i])
   const perDay = WEEK.map((i) => team.filter((e) => freeOn(e, i)).length)
   const stateOf = (on: boolean) => t(on ? 'common.available' : 'common.unavailable')
+  const deadline = availabilityDeadline(weekStart, settingsOf(company))
   const goWeek = (n: number) => navigate(`/availability?week=${addDays(weekStart, n)}`)
 
   return (
@@ -52,6 +54,12 @@ export function Availability({ week }: { week: string | null }) {
             </IconButton>
           </div>
           <span className="text-sm font-medium">{fmtRangeYear(weekStart, days[6])}</span>
+          {days[6] >= today && (
+            <span className={cx('ml-auto flex items-center gap-1.5 text-[13px]', deadlinePassed(deadline) ? 'text-muted' : 'text-forest')}>
+              <Clock3 className="h-4 w-4" aria-hidden />
+              {t(deadlinePassed(deadline) ? 'availability.deadlinePassed' : 'availability.deadlineOpen', { date: fmtDay(deadline.date), time: deadline.time })}
+            </span>
+          )}
         </div>
       )}
       {team.length === 0 ? (

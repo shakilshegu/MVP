@@ -16,7 +16,17 @@ export type Preferred = 'Mornings' | 'Days' | 'Evenings' | 'Nights' | 'Flexible'
 export const PREFERRED: Preferred[] = ['Flexible', 'Mornings', 'Days', 'Evenings', 'Nights']
 
 /** A restaurant business (tenant). Everything else belongs to exactly one company. */
-export type Company = { id: string; name: string; createdAt: string; currency: Currency }
+/** Company-wide rules for the Employee App. */
+export type CompanySettings = {
+  /** Staff submit next week's availability by this weekday (0 = Mon) and time of the week before (CR-07). */
+  availabilityDay: number
+  availabilityTime: string
+  /** Shift leaders may see the daily report for the shifts they lead (CR-04). */
+  leadersSeeReport: boolean
+}
+export const DEFAULT_COMPANY_SETTINGS: CompanySettings = { availabilityDay: 3, availabilityTime: '18:00', leadersSeeReport: true }
+
+export type Company = { id: string; name: string; createdAt: string; currency: Currency; settings?: CompanySettings }
 
 export type Branch = { id: string; companyId: string; name: string; address: string; city: string; opens: string; closes: string }
 

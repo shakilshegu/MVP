@@ -6,7 +6,8 @@ import { tr } from '../i18n/core'
 import type { MsgKey } from '../i18n/core'
 import { conflictTitles, deptName, describeSlot } from '../i18n/format'
 import { createSeed, defaultChecklists, defaultDepartments, defaultTemplates } from './seed'
-import type { Announcement, Assignment, Company, Data, Department, Dept, Task, Branch, Employee, HistoryEntry, Leave, Manager, Perm, ShiftTemplate, State } from './types'
+import { DEFAULT_COMPANY_SETTINGS } from './types'
+import type { Announcement, Assignment, Company, CompanySettings, Data, Department, Dept, Task, Branch, Employee, HistoryEntry, Leave, Manager, Perm, ShiftTemplate, State } from './types'
 import { checkAssignment, isActive, neededAt, weekHours } from './validation'
 import type { AssignRequest, Conflict } from './validation'
 
@@ -233,6 +234,14 @@ function makeActions(get: () => Data, set: (s: Data) => void) {
           .map((a) => (a.branchId === b ? { ...a, tasks: a.publishedTasks } : a))
           .map((a) => (a.branchId === b && a.publishedLeader !== undefined ? { ...a, isLeader: a.publishedLeader, publishedLeader: undefined } : a)),
         pendingApproval: { ...s.pendingApproval, [b]: false },
+      }))
+    },
+
+    /** Super admins only: company-wide Employee App rules. */
+    saveCompanySettings(next: Partial<CompanySettings>) {
+      if (me()?.role === 'manager') return
+      patch((d) => ({
+        companies: d.companies.map((c) => (c.id === cid() ? { ...c, settings: { ...DEFAULT_COMPANY_SETTINGS, ...c.settings, ...next } } : c)),
       }))
     },
 
