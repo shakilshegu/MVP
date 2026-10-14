@@ -1,5 +1,5 @@
 import { addDays, dayNumber, hoursBetween, startOfWeek, toMin, weekdayIndex } from './date'
-import type { Assignment, ConflictKind, Data, Dept, Employee, Leave, ShiftTemplate } from './types'
+import type { Assignment, ConflictKind, Data, Dept, Employee, Leave, ShiftTemplate, TimeWindow } from './types'
 
 export type { ConflictKind } from './types'
 
@@ -10,7 +10,7 @@ export type { ConflictKind } from './types'
 export type ConflictParams = {
   name: string
   /** For 'unavailable': whether it comes from approved leave or the weekly availability. */
-  reason?: 'leave' | 'weekday' | 'week'
+  reason?: 'leave' | 'weekday' | 'week' | 'hours'
   weekday?: number
   leaveKind?: Leave['kind']
   from?: string
@@ -80,6 +80,17 @@ export function weekPattern(s: Data, e: Employee, weekStart: string) {
   return s.weekAvailability[e.id]?.[weekStart] ?? e.availability
 }
 
+/** Whether a shift lies inside someone's available hours. */
+export function fitsWindow(w: TimeWindow, start: string, end: string) {
+  const ws = toMin(w.from)
+  let we = toMin(w.to)
+  if (we <= ws) we += 1440
+  const ss = toMin(start)
+  let se = toMin(end)
+  if (se <= ss) se += 1440
+  return ss >= ws && se <= we
+}
+
 export const availableOn = (s: Data, e: Employee, date: string) => weekPattern(s, e, startOfWeek(date))[weekdayIndex(date)]
 
 export function leaveOn(s: Data, employeeId: string, date: string) {
@@ -100,6 +111,9 @@ export function checkAssignment(s: Data, req: AssignRequest): Conflict[] {
   } else if (!availableOn(s, emp, req.date)) {
     const override = s.weekAvailability[emp.id]?.[startOfWeek(req.date)] != null
     out.push({ kind: 'unavailable', params: { name, reason: override ? 'week' : 'weekday', weekday: weekdayIndex(req.date), date: req.date } })
+  } else {
+    const w = emp.availTimes?.[weekdayIndex(req.date)]
+    if (w && !fitsWindow(w, tpl.start, tpl.end)) out.push({ kind: 'unavailable', params: { name, reason: 'hours', weekday: weekdayIndex(req.date), from: w.from, to: w.to } })
   }
 
   const [s0, e0] = interval(req.date, tpl)

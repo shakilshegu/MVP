@@ -34,7 +34,9 @@ export function conflictDetail(t: T, c: Conflict) {
     case 'unavailable':
       return p.reason === 'leave'
         ? t('conflict.onLeave.detail', { name: p.name, kind: t(`leaveKind.${p.leaveKind ?? 'Vacation'}`), range: fmtRange(p.from!, p.to!) })
-        : p.reason === 'week'
+        : p.reason === 'hours'
+          ? t('conflict.unavailable.hours', { name: p.name, from: p.from ?? '', to: p.to ?? '', weekday: dayLong(p.weekday ?? 0) })
+          : p.reason === 'week'
           ? t('conflict.unavailable.week', { name: p.name, date: fmtDay(p.date!) })
           : t('conflict.unavailable.detail', { name: p.name, weekday: dayLong(p.weekday ?? 0) })
     case 'overlap':

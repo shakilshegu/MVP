@@ -181,7 +181,7 @@ export function createSeed(): Data {
   const cafeTemplates = defaultTemplates('c2', () => `t${tid++}`)
 
   const s: Data = {
-    version: 15,
+    version: 16,
     session: { userId: null, companyId: null, branchId: null },
     companies: [
       { id: 'c1', name: 'Harbor Group', createdAt: daysAgoIso(220), currency: 'EUR' },
@@ -241,6 +241,12 @@ export function createSeed(): Data {
     weekAvailability: {},
     lastPublish: null,
   }
+
+  // Some people can only work certain hours: Mei around her studies, Lukas from late afternoon.
+  const mei = employees.find((e) => e.id === 'e9')!
+  mei.availTimes = mei.availability.map((on, i) => (on && i < 5 ? { from: '06:00', to: '15:00' } : null))
+  const lukas = employees.find((e) => e.id === 'e40')!
+  lukas.availTimes = lukas.availability.map((on) => (on ? { from: '16:00', to: '03:00' } : null))
 
   // A few one-off weeks that differ from the usual pattern.
   const offOn = (id: string, days: number[]) => employees.find((e) => e.id === id)!.availability.map((v, i) => v && !days.includes(i))

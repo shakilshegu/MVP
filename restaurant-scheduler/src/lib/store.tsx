@@ -7,7 +7,7 @@ import type { MsgKey } from '../i18n/core'
 import { conflictTitles, deptName, describeSlot } from '../i18n/format'
 import { createSeed, defaultChecklists, defaultDepartments, defaultTemplates } from './seed'
 import { DEFAULT_COMPANY_SETTINGS } from './types'
-import type { Announcement, Assignment, Company, CompanySettings, Data, Department, Dept, Task, Branch, Employee, HistoryEntry, Leave, Manager, Perm, ShiftTemplate, State } from './types'
+import type { Announcement, Assignment, Company, CompanySettings, TimeWindow, Data, Department, Dept, Task, Branch, Employee, HistoryEntry, Leave, Manager, Perm, ShiftTemplate, State } from './types'
 import { checkAssignment, isActive, neededAt, weekHours } from './validation'
 import type { AssignRequest, Conflict } from './validation'
 
@@ -423,6 +423,15 @@ function makeActions(get: () => Data, set: (s: Data) => void) {
       const d = dayShort(day)
       const state = (on: boolean) => tr(on ? 'common.available' : 'common.unavailable')
       log({ action: 'availability', subject: e.name, from: `${d}: ${state(!value)}`, to: `${d}: ${state(value)}` })
+    },
+
+    /** Sets or clears the hours someone is available on a weekday of their usual week. */
+    setAvailTime(id: string, day: number, w: TimeWindow | null) {
+      const e = get().employees.find((x) => x.id === id && x.branchId === bid())
+      if (!e) return
+      const availTimes = Array.from({ length: 7 }, (_, i) => (i === day ? w : (e.availTimes?.[i] ?? null)))
+      patch((s) => ({ employees: s.employees.map((x) => (x.id === id ? { ...x, availTimes } : x)) }))
+      log({ action: 'availability', subject: e.name, to: `${dayShort(day)}: ${w ? `${w.from}–${w.to}` : tr('availability.anyTime')}` })
     },
 
     /** Changes one day for one specific week only, leaving the usual pattern alone (CR-07). */

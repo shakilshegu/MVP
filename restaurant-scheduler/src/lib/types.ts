@@ -47,6 +47,8 @@ export type Employee = {
   maxHours: number
   /** Monday first */
   availability: boolean[]
+  /** Optional hours on available days, Monday first; null or missing means any time (CR-07). */
+  availTimes?: (TimeWindow | null)[]
   preferred: Preferred
   status: 'active' | 'invited'
   photo?: string
@@ -72,6 +74,9 @@ export type ShiftTemplate = {
 export type ConflictKind = 'unavailable' | 'overlap' | 'maxHours' | 'elsewhere' | 'rest' | 'dayMax'
 
 export type Task = { id: string; text: string; done: boolean }
+
+/** A time window such as 17:00–23:00; `to` before `from` runs past midnight. */
+export type TimeWindow = { from: string; to: string }
 
 /** A ticked checklist item or task on one shift (CR-03/CR-04). `byManager` when ticked on someone's behalf. */
 export type Tick = { at: string; by: string; byManager?: boolean }

@@ -2,19 +2,20 @@ import { useState } from 'react'
 import { AlertTriangle, CalendarCheck2, Check, ChevronLeft, ChevronRight, Clock3, Plane, X } from 'lucide-react'
 import { availabilityDeadline, deadlinePassed, settingsOf } from '../lib/settings'
 import { useStore } from '../lib/store'
-import { addDays, dayShort, daysInclusive, fmtDay, fmtRange, fmtRangeYear, fromKey, relTime, startOfWeek, todayKey, WEEK, weekDays, weekdayIndex } from '../lib/date'
+import { addDays, dayLong, dayShort, daysInclusive, fmtDay, fmtRange, fmtRangeYear, fromKey, relTime, startOfWeek, todayKey, WEEK, weekDays, weekdayIndex } from '../lib/date'
 import { useT } from '../i18n'
 import { isActive, leaveOn, weekHours, weekPattern } from '../lib/validation'
 import { navigate } from '../lib/hooks'
 import { PREFERRED } from '../lib/types'
 import type { Dept, Employee, Leave, Preferred } from '../lib/types'
-import { Avatar, Badge, Button, cx, EmptyState, IconButton, PageHeader, Segmented } from '../components/ui'
+import { Avatar, Badge, Button, cx, EmptyState, Field, IconButton, PageHeader, Popover, Segmented } from '../components/ui'
 
 export function Availability({ week }: { week: string | null }) {
   const { s, a, branch, can, toast, depts, company } = useStore()
   const { t } = useT()
   const [dept, setDept] = useState<'All' | Dept>('All')
   const [view, setView] = useState<'week' | 'pattern'>('week')
+  const [timeAt, setTimeAt] = useState<{ e: Employee; day: number; rect: DOMRect } | null>(null)
   const editable = can('createEmployees')
   const today = todayKey()
   const weekStart = startOfWeek(week ?? today)
@@ -87,7 +88,7 @@ export function Availability({ week }: { week: string | null }) {
                 const changed = view === 'week' && s.weekAvailability[e.id]?.[weekStart] != null
                 const booked = weekHours(s, e.id, weekStart)
                 return (
-                  <tr key={e.id} className="hover:bg-paper/60">
+                  <tr key={e.id} className="group/row hover:bg-paper/60">
                     <td className="px-5 py-2.5">
                       <a href={`#/team/${e.id}`} className="flex items-center gap-2.5 hover:underline">
                         <Avatar e={e} size={28} />
@@ -113,8 +114,9 @@ export function Availability({ week }: { week: string | null }) {
                     {WEEK.map((i) => {
                       if (view === 'pattern') {
                         const on = e.availability[i]
+                        const w = e.availTimes?.[i]
                         return (
-                          <td key={i} className="px-1 py-2.5 text-center">
+                          <td key={i} className="px-1 py-2.5 text-center align-top">
                             <DayToggle
                               on={on}
                               disabled={!editable}
@@ -124,6 +126,19 @@ export function Availability({ week }: { week: string | null }) {
                                 toast(t('availability.toggled', { name: e.name.split(' ')[0], state: stateOf(!on), day: dayShort(i) }))
                               }}
                             />
+                            {on && (w || editable) && (
+                              <button
+                                disabled={!editable}
+                                onClick={(ev) => setTimeAt({ e, day: i, rect: ev.currentTarget.getBoundingClientRect() })}
+                                aria-label={t('availability.hoursA11y', { name: e.name, day: dayShort(i) })}
+                                className={cx(
+                                  'mx-auto mt-1 block rounded px-1 text-[10px] leading-4 tabular-nums disabled:cursor-default',
+                                  w ? 'font-medium text-forest hover:bg-forest-50' : 'text-muted/0 hover:bg-paper hover:text-muted focus-visible:text-muted group-hover/row:text-muted/70',
+                                )}
+                              >
+                                {w ? `${w.from}–${w.to}` : t('availability.addHours')}
+                              </button>
+                            )}
                           </td>
                         )
                       }
@@ -137,8 +152,9 @@ export function Availability({ week }: { week: string | null }) {
                           </td>
                         )
                       const on = weekPattern(s, e, weekStart)[i]
+                      const w = on ? e.availTimes?.[i] : null
                       return (
-                        <td key={i} className="px-1 py-2.5 text-center">
+                        <td key={i} className="px-1 py-2.5 text-center align-top">
                           <DayToggle
                             on={on}
                             differs={on !== e.availability[i]}
@@ -149,6 +165,7 @@ export function Availability({ week }: { week: string | null }) {
                               toast(t('availability.toggledWeek', { name: e.name.split(' ')[0], state: stateOf(!on), date: fmtDay(d) }))
                             }}
                           />
+                          {w && <div className="mt-1 text-[10px] font-medium leading-4 tabular-nums text-forest">{`${w.from}–${w.to}`}</div>}
                         </td>
                       )
                     })}
@@ -181,6 +198,7 @@ export function Availability({ week }: { week: string | null }) {
           </table>
         </div>
       )}
+      {timeAt && <HoursEditor {...timeAt} onClose={() => setTimeAt(null)} />}
       <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-muted">
         <span>{view === 'week' ? t('availability.weekHint') : t('availability.hint')}</span>
         {view === 'week' && (
@@ -195,6 +213,50 @@ export function Availability({ week }: { week: string | null }) {
         )}
       </div>
     </div>
+  )
+}
+
+/** Popover for the hours someone is available on one weekday of their usual week. */
+function HoursEditor({ e, day, rect, onClose }: { e: Employee; day: number; rect: DOMRect; onClose: () => void }) {
+  const { a, toast } = useStore()
+  const { t } = useT()
+  const cur = e.availTimes?.[day]
+  const [from, setFrom] = useState(cur?.from ?? '17:00')
+  const [to, setTo] = useState(cur?.to ?? '23:00')
+  const done = (w: { from: string; to: string } | null) => {
+    a.setAvailTime(e.id, day, w)
+    toast(w ? t('availability.hoursSet', { name: e.name.split(' ')[0], day: dayShort(day), from: w.from, to: w.to }) : t('availability.hoursCleared', { name: e.name.split(' ')[0], day: dayShort(day) }))
+    onClose()
+  }
+  return (
+    <Popover anchor={rect} onClose={onClose} width={260}>
+      <form
+        className="p-4"
+        onSubmit={(ev) => {
+          ev.preventDefault()
+          if (from && to && from !== to) done({ from, to })
+        }}
+      >
+        <div className="text-sm font-semibold">{t('availability.hoursTitle', { name: e.name.split(' ')[0], day: dayLong(day) })}</div>
+        <p className="mt-0.5 text-xs text-muted">{t('availability.hoursHint')}</p>
+        <div className="mt-3 flex items-end gap-2">
+          <Field label={t('availability.from')} htmlFor="h-from">
+            <input id="h-from" type="time" className="input w-full" value={from} onChange={(ev) => setFrom(ev.target.value)} />
+          </Field>
+          <Field label={t('availability.to')} htmlFor="h-to">
+            <input id="h-to" type="time" className="input w-full" value={to} onChange={(ev) => setTo(ev.target.value)} />
+          </Field>
+        </div>
+        <div className="mt-4 flex justify-between gap-2">
+          <Button type="button" variant="ghost" size="sm" onClick={() => done(null)}>
+            {t('availability.anyTime')}
+          </Button>
+          <Button type="submit" variant="primary" size="sm" disabled={!from || !to || from === to}>
+            {t('common.save')}
+          </Button>
+        </div>
+      </form>
+    </Popover>
   )
 }
 
