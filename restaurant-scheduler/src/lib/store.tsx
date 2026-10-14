@@ -491,17 +491,19 @@ function makeActions(get: () => Data, set: (s: Data) => void) {
       const s = get()
       const sentTo = s.employees.filter((e) => e.branchId === bid() && e.status === 'active').length
       const by = s.managers.find((m) => m.id === s.session.userId)?.name ?? '—'
-      const prev = input.id ? s.announcements.find((x) => x.id === input.id) : undefined
-      const next: Announcement = { ...input, id: prev?.id ?? uid(), branchId: prev?.branchId ?? bid(), by, at: new Date().toISOString(), sentTo }
+      // Only announcements of the current branch can be edited; an unknown id creates a new one.
+      const prev = input.id ? s.announcements.find((x) => x.id === input.id && x.branchId === bid()) : undefined
+      const next: Announcement = { ...input, id: prev?.id ?? uid(), branchId: bid(), by, at: new Date().toISOString(), sentTo }
       patch((d) => ({
-        announcements: prev ? d.announcements.map((x) => (x.id === prev.id ? next : x)) : [...d.announcements, next],
+        announcements: prev ? d.announcements.map((x) => (x.id === prev.id && x.branchId === prev.branchId ? next : x)) : [...d.announcements, next],
         history: [entry({ action: 'announcement', subject: next.title, from: prev ? prev.title : undefined, to: fmtDay(next.date) }), ...d.history],
       }))
       return sentTo
     },
 
     deleteAnnouncement(id: string) {
-      patch((d) => ({ announcements: d.announcements.filter((x) => x.id !== id) }))
+      const b = bid()
+      patch((d) => ({ announcements: d.announcements.filter((x) => !(x.id === id && x.branchId === b)) }))
     },
 
     setDayNote(date: string, text: string) {
