@@ -1,12 +1,12 @@
 import { useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
-import { AlertTriangle, CalendarRange, ClipboardList, Clock3, Crown, Download, Scale, StickyNote, Wand2, Loader2, MapPin, MoreHorizontal, ChevronLeft, ChevronRight, Copy, Eye, Plus, Undo2, UserPlus, UserRoundCheck, Users } from 'lucide-react'
+import { AlertTriangle, CalendarRange, ClipboardList, Clock3, Crown, Download, Scale, StickyNote, Wand2, Loader2, MapPin, Megaphone, MoreHorizontal, ChevronLeft, ChevronRight, Copy, Eye, Plus, Undo2, UserPlus, UserRoundCheck, Users } from 'lucide-react'
 import { branchChanges, useStore } from '../lib/store'
 import { useT } from '../i18n'
 import { conflictTitles, deptName, describeSlot } from '../i18n/format'
 import { navigate, useLoad } from '../lib/hooks'
 import { addDays, dayShort, fmtDay, fmtRangeYear, fmtShort, fromKey, hoursBetween, startOfWeek, todayKey, weekDays } from '../lib/date'
-import { checkAssignment, isActive, needFor, weekHours } from '../lib/validation'
+import { checkAssignment, extraFor, isActive, neededAt, weekHours } from '../lib/validation'
 import type { Conflict } from '../lib/validation'
 import type { Assignment, Dept, Employee, ShiftTemplate } from '../lib/types'
 import { AssignPanel, ConflictDialog, Hours } from '../components/assign'
@@ -62,7 +62,7 @@ export default function WeeklySchedule({ week }: { week: string | null }) {
     for (const date of days)
       for (const t of s.templates)
         for (const d of visibleDepts) {
-          const n = needFor(t, d, date)
+          const n = neededAt(s, branch!.id, t, d, date)
           const f = inWeek.filter((x) => isActive(x) && x.date === date && x.templateId === t.id && x.dept === d).length
           needed += n
           filled += Math.min(n, f)
@@ -273,7 +273,7 @@ export default function WeeklySchedule({ week }: { week: string | null }) {
                 let got = 0
                 for (const tpl of s.templates)
                   for (const dp of visibleDepts) {
-                    const n = needFor(tpl, dp, d)
+                    const n = neededAt(s, branch!.id, tpl, dp, d)
                     need += n
                     got += Math.min(n, inWeek.filter((x) => isActive(x) && x.date === d && x.templateId === tpl.id && x.dept === dp).length)
                   }
@@ -311,7 +311,7 @@ export default function WeeklySchedule({ week }: { week: string | null }) {
                   {s.templates.map((tpl) => (
                     <Row key={tpl.id} tpl={tpl}>
                       {days.map((d) => (
-                        <Cell key={d} {...cellProps} slot={{ date: d, templateId: tpl.id, dept: dp }} list={cellOf(d, tpl.id, dp)} needed={needFor(tpl, dp, d)} tone={tpl.tone} />
+                        <Cell key={d} {...cellProps} slot={{ date: d, templateId: tpl.id, dept: dp }} list={cellOf(d, tpl.id, dp)} needed={neededAt(s, branch!.id, tpl, dp, d)} extra={extraFor(s, branch!.id, tpl.id, dp, d)} tone={tpl.tone} />
                       ))}
                     </Row>
                   ))}
@@ -366,7 +366,7 @@ export default function WeeklySchedule({ week }: { week: string | null }) {
                   {deptName(s, dp)}
                 </h2>
                 {s.templates
-                  .filter((tpl) => needFor(tpl, dp, days[mobileDay]) > 0 || cellOf(days[mobileDay], tpl.id, dp).length > 0)
+                  .filter((tpl) => neededAt(s, branch!.id, tpl, dp, days[mobileDay]) > 0 || cellOf(days[mobileDay], tpl.id, dp).length > 0)
                   .map((tpl) => (
                     <div key={tpl.id} className="flex gap-3 border-b border-line px-4 py-3 last:border-0">
                       <div className="w-20 shrink-0">
@@ -382,7 +382,8 @@ export default function WeeklySchedule({ week }: { week: string | null }) {
                           bare
                           slot={{ date: days[mobileDay], templateId: tpl.id, dept: dp }}
                           list={cellOf(days[mobileDay], tpl.id, dp)}
-                          needed={needFor(tpl, dp, days[mobileDay])}
+                          needed={neededAt(s, branch!.id, tpl, dp, days[mobileDay])}
+                          extra={extraFor(s, branch!.id, tpl.id, dp, days[mobileDay])}
                           tone={tpl.tone}
                         />
                       </div>
@@ -586,6 +587,8 @@ type CellProps = {
   slot: Slot
   list: Assignment[]
   needed: number
+  /** Of `needed`, how many come from announcements. */
+  extra?: number
   tone: ShiftTemplate['tone']
   today: string
   editable: boolean
@@ -598,7 +601,7 @@ type CellProps = {
   bare?: boolean
 }
 
-function Cell({ slot, list, needed, tone, today, editable, dragOver, setDragOver, onDrop, openAssign, openMenu, employees, bare }: CellProps) {
+function Cell({ slot, list, needed, extra = 0, tone, today, editable, dragOver, setDragOver, onDrop, openAssign, openMenu, employees, bare }: CellProps) {
   const { t } = useT()
   const { s } = useStore()
   const key = `${slot.date}|${slot.templateId}|${slot.dept}`
@@ -628,6 +631,19 @@ function Cell({ slot, list, needed, tone, today, editable, dragOver, setDragOver
         dragOver === key && 'bg-forest-50 ring-2 ring-inset ring-forest',
       )}
     >
+      {needed > 0 && (
+        <div
+          className={cx('flex items-center justify-end gap-1.5 text-[10px] font-medium leading-none tabular-nums', filled < needed && !past ? 'text-bark' : 'text-muted/80')}
+          title={[t('common.slotsFilled', { got: Math.min(filled, needed), need: needed }), extra ? t('schedule.extraFromAnnouncement', { count: extra }) : ''].filter(Boolean).join(' · ')}
+        >
+          {extra > 0 && (
+            <span className="flex items-center gap-0.5 text-[#7A4F12]">
+              <Megaphone className="h-2.5 w-2.5" aria-hidden />+{extra}
+            </span>
+          )}
+          {filled}/{needed}
+        </div>
+      )}
       {list.map((x) => {
         const e = employees.find((y) => y.id === x.employeeId)
         if (!e) return null

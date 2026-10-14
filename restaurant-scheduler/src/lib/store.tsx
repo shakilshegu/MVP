@@ -7,7 +7,7 @@ import type { MsgKey } from '../i18n/core'
 import { conflictTitles, deptName, describeSlot } from '../i18n/format'
 import { createSeed, defaultChecklists, defaultDepartments, defaultTemplates } from './seed'
 import type { Announcement, Assignment, Company, Data, Department, Dept, Task, Branch, Employee, HistoryEntry, Leave, Manager, Perm, ShiftTemplate, State } from './types'
-import { checkAssignment, isActive, needFor, weekHours } from './validation'
+import { checkAssignment, isActive, neededAt, weekHours } from './validation'
 import type { AssignRequest, Conflict } from './validation'
 
 const uid = () => Math.random().toString(36).slice(2, 10)
@@ -287,7 +287,7 @@ function makeActions(get: () => Data, set: (s: Data) => void) {
         for (const t of tpls)
           for (const dept of depts) {
             const have = draft.assignments.filter((a) => a.branchId === b && isActive(a) && a.date === date && a.templateId === t.id && a.dept === dept).length
-            let need = needFor(t, dept, date) - have
+            let need = neededAt(s, b, t, dept, date) - have
             if (need <= 0) continue
             const pool = draft.employees
               .filter((e) => e.branchId === b && e.skills.includes(dept) && e.status === 'active')

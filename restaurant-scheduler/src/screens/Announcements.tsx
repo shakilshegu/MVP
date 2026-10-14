@@ -2,7 +2,7 @@ import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { Megaphone, Pencil, Plus, Send, Trash2, UserPlus } from 'lucide-react'
 import { useStore } from '../lib/store'
-import { addDays, fmt, fmtLong, fromKey, relTime, todayKey } from '../lib/date'
+import { addDays, fmt, fmtLong, fromKey, relTime, todayKey, toMin } from '../lib/date'
 import type { Announcement, Dept } from '../lib/types'
 import { useT } from '../i18n'
 import { deptName } from '../i18n/format'
@@ -131,6 +131,7 @@ function Card({ x, editable, onEdit, onDelete }: { x: Announcement; editable: bo
             <Badge tone="warn">
               <UserPlus className="h-3 w-3" />
               {x.dept ? t('announce.extraIn', { count: x.extraStaff, dept: deptName(s, x.dept) }) : t('announce.extra', { count: x.extraStaff })}
+              {s.templates.find((y) => y.id === x.templateId) && ` · ${s.templates.find((y) => y.id === x.templateId)!.name}`}
             </Badge>
           )}
         </div>
@@ -144,7 +145,17 @@ function Card({ x, editable, onEdit, onDelete }: { x: Announcement; editable: bo
 }
 
 function AnnouncementForm({ current, onClose }: { current?: Announcement; onClose: () => void }) {
-  const { a, toast, depts } = useStore()
+  const { s, a, toast, depts } = useStore()
+  const shifts = [...s.templates].sort((x, y) => toMin(x.start) - toMin(y.start))
+  /** The shift running at a given time, for a sensible default. */
+  const shiftAt = (time: string) =>
+    shifts.find((tpl) => {
+      const st = toMin(tpl.start)
+      let en = toMin(tpl.end)
+      if (en <= st) en += 1440
+      const m = toMin(time)
+      return (m >= st && m < en) || (m + 1440 >= st && m + 1440 < en)
+    })?.id
   const { t } = useT()
   const [title, setTitle] = useState(current?.title ?? '')
   const [date, setDate] = useState(current?.date ?? addDays(todayKey(), 1))
@@ -152,7 +163,8 @@ function AnnouncementForm({ current, onClose }: { current?: Announcement; onClos
   const [end, setEnd] = useState(current?.end ?? '')
   const [body, setBody] = useState(current?.body ?? '')
   const [extra, setExtra] = useState(String(current?.extraStaff ?? 0))
-  const [dept, setDept] = useState<Dept | ''>(current?.dept ?? '')
+  const [dept, setDept] = useState<Dept>(current?.dept ?? depts[0]?.id ?? '')
+  const [shift, setShift] = useState(current?.templateId ?? '')
   const [tried, setTried] = useState(false)
   const errTitle = !title.trim() ? t('announce.errTitle') : undefined
   const errDate = !date ? t('announce.errDate') : date < todayKey() && !current ? t('announce.errPast') : undefined
@@ -171,7 +183,8 @@ function AnnouncementForm({ current, onClose }: { current?: Announcement; onClos
       end: end || undefined,
       body: body.trim(),
       extraStaff: n || undefined,
-      dept: n && dept ? dept : undefined,
+      dept: n ? dept : undefined,
+      templateId: n ? shift || shiftAt(start || '18:00') || shifts[0]?.id : undefined,
     })
     toast(t(current ? 'announce.updated' : 'announce.sent', { count }))
     onClose()
@@ -209,13 +222,21 @@ function AnnouncementForm({ current, onClose }: { current?: Announcement; onClos
         <Field label={t('announce.fBody')} htmlFor="an-body">
           <textarea id="an-body" rows={4} className="input h-auto w-full py-2" value={body} onChange={(e) => setBody(e.target.value)} placeholder={t('announce.fBodyPh')} />
         </Field>
-        <div className="grid gap-3 sm:grid-cols-[140px_1fr]">
-          <Field label={t('announce.fExtra')} htmlFor="an-extra" hint={t('announce.fExtraHint')}>
+        <div className="grid gap-3 sm:grid-cols-[120px_1fr_1fr]">
+          <Field label={t('announce.fExtra')} htmlFor="an-extra">
             <input id="an-extra" type="number" min={0} max={50} className="input w-full" value={extra} onChange={(e) => setExtra(e.target.value)} />
+          </Field>
+          <Field label={t('announce.fShift')} htmlFor="an-shift">
+            <select id="an-shift" className={cx('input w-full', !(Number(extra) > 0) && 'opacity-50')} disabled={!(Number(extra) > 0)} value={shift || shiftAt(start || '18:00') || ''} onChange={(e) => setShift(e.target.value)}>
+              {shifts.map((tpl) => (
+                <option key={tpl.id} value={tpl.id}>
+                  {tpl.name} {tpl.start}–{tpl.end}
+                </option>
+              ))}
+            </select>
           </Field>
           <Field label={t('announce.fDept')} htmlFor="an-dept">
             <select id="an-dept" className={cx('input w-full', !(Number(extra) > 0) && 'opacity-50')} disabled={!(Number(extra) > 0)} value={dept} onChange={(e) => setDept(e.target.value)}>
-              <option value="">{t('announce.anyDept')}</option>
               {depts.map((d) => (
                 <option key={d.id} value={d.id}>
                   {d.name}
@@ -224,6 +245,7 @@ function AnnouncementForm({ current, onClose }: { current?: Announcement; onClos
             </select>
           </Field>
         </div>
+        <p className="-mt-2 text-xs text-muted">{t('announce.fExtraHint')}</p>
       </form>
     </Modal>
   )

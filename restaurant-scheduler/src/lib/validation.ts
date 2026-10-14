@@ -42,6 +42,13 @@ export const isActive = (a: Assignment) => a.state !== 'removed'
 export const MIN_REST_HOURS = 11
 export const MAX_DAY_HOURS = 10
 
+/** Extra people asked for by announcements on this shift (CR-05). */
+export const extraFor = (s: Pick<Data, 'announcements'>, branchId: string, templateId: string, dept: Dept, date: string) =>
+  s.announcements.filter((x) => x.branchId === branchId && x.date === date && x.templateId === templateId && x.dept === dept).reduce((n, x) => n + (x.extraStaff ?? 0), 0)
+
+/** Staff needed including announcement extras: what the schedule shows and auto-fill aims for. */
+export const neededAt = (s: Pick<Data, 'announcements'>, branchId: string, t: ShiftTemplate, dept: Dept, date: string) => needFor(t, dept, date) + extraFor(s, branchId, t.id, dept, date)
+
 /** Staff needed for a shift on a given date, honouring per-weekday overrides. */
 export const needFor = (t: ShiftTemplate, dept: Dept, date: string) => t.perDay?.[dept]?.[weekdayIndex(date)] ?? t.needed[dept] ?? 0
 

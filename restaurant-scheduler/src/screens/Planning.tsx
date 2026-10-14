@@ -5,7 +5,7 @@ import { navigate } from '../lib/hooks'
 import { addDays, dayShort, daysInclusive, fmtLong, fmtMonthYear, fmtRange, fromKey, hoursBetween, pad, startOfWeek, todayKey, toKey, toMin, WEEK, weekdayIndex } from '../lib/date'
 import { useT } from '../i18n'
 import { deptName } from '../i18n/format'
-import { breakMinutes, isActive, needFor } from '../lib/validation'
+import { breakMinutes, isActive, neededAt } from '../lib/validation'
 import { cityOf, shiftWeather, useWeather } from '../lib/weather'
 import { ShiftWeatherTag } from '../components/weather'
 import type { Dept, ShiftTemplate, Tone } from '../lib/types'
@@ -16,7 +16,7 @@ function coverage(s: ReturnType<typeof useStore>['s'], branchId: string, date: s
   let got = 0
   for (const t of s.templates)
     for (const d of s.departments.map((x) => x.id)) {
-      const n = needFor(t, d, date)
+      const n = neededAt(s, branchId, t, d, date)
       need += n
       got += Math.min(n, s.assignments.filter((x) => x.branchId === branchId && isActive(x) && x.date === date && x.templateId === t.id && x.dept === d).length)
     }

@@ -143,6 +143,8 @@ export type Announcement = {
   /** Extra people needed on top of the usual staffing, optionally for one department. */
   extraStaff?: number
   dept?: Dept
+  /** The shift the extra people are needed on. */
+  templateId?: string
   by: string
   at: string
   /** How many people were told when it was last sent. */

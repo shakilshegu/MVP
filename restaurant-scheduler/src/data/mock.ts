@@ -2,8 +2,8 @@ import { createSeed } from '../lib/seed'
 import type { Data } from '../lib/types'
 import type { Backend } from './backend'
 
-const KEY = 'rota-state-v14'
-const VERSION = 14
+const KEY = 'rota-state-v15'
+const VERSION = 15
 
 /** Demo data kept in this browser. Used for client demos; needs no server. */
 export const mockBackend: Backend = {
