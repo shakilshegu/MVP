@@ -17,7 +17,7 @@ export function isoWeek(k: string) {
 /** "15" for 15:00, "15:30" otherwise — the way the paper rota writes start times. */
 const startLabel = (t: string) => (toMin(t) % 60 === 0 ? pad(Math.floor(toMin(t) / 60)) : t)
 
-type Cell = { text: string; kind: 'shift' | 'off' | 'leave' | 'empty'; draft: boolean }
+type Cell = { text: string; kind: 'shift' | 'off' | 'leave' | 'empty'; draft: boolean; lead?: boolean }
 
 export function buildRota(s: Data, branchId: string, weekStart: string, depts: Dept[]) {
   const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i))
@@ -40,7 +40,7 @@ export function buildRota(s: Data, branchId: string, weekStart: string, depts: D
         const text = shifts
           .map((x) => startLabel(x.t.start) + (x.a.dept !== e.dept ? ` ${deptName(s, x.a.dept)}` : ''))
           .join(' / ')
-        return { text: draft ? text + '*' : text, kind: 'shift', draft }
+        return { text: draft ? text + '*' : text, kind: 'shift', draft, lead: shifts.some((x) => x.a.isLeader) }
       }
       if (!e.availability[weekdayIndex(d)]) return { text: tr('pdf.off'), kind: 'off', draft: false }
       return { text: '', kind: 'empty', draft: false }
@@ -86,6 +86,7 @@ export async function downloadRotaPdf(opts: { s: Data; branch: Branch; me: Manag
   const body: string[][] = []
   const deptRows = new Set<number>()
   const kinds = new Map<number, Cell['kind'][]>()
+  const leads = new Map<number, boolean[]>()
   const NOTE_ROW = notes.some(Boolean) ? 0 : -1
   if (NOTE_ROW === 0) body.push([tr('pdf.notes'), ...notes])
   let lastDept: Dept | null = null
@@ -98,6 +99,7 @@ export async function downloadRotaPdf(opts: { s: Data; branch: Branch; me: Manag
       lastDept = r.e.dept
     }
     kinds.set(body.length, r.cells.map((c) => c.kind))
+    leads.set(body.length, r.cells.map((c) => !!c.lead))
     body.push([label(r.e.name), ...r.cells.map((c) => c.text)])
   }
   // Spare rows for handwritten additions, only while the table still fits one page.
@@ -145,6 +147,10 @@ export async function downloadRotaPdf(opts: { s: Data; branch: Branch; me: Manag
         h.cell.styles.textColor = [84, 48, 44]
       }
       if (raw.endsWith('*')) h.cell.styles.textColor = [140, 83, 0]
+      if (h.column.index > 0 && leads.get(h.row.index)?.[h.column.index - 1]) {
+        h.cell.styles.fontStyle = 'bold'
+        h.cell.styles.fontSize = 10
+      }
     },
     didDrawPage: () => {
       const H = doc.internal.pageSize.getHeight()

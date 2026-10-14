@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
-import { AlertTriangle, CalendarRange, ClipboardList, Download, Scale, StickyNote, Wand2, Loader2, MapPin, MoreHorizontal, ChevronLeft, ChevronRight, Copy, Eye, Plus, Undo2, UserPlus, Users } from 'lucide-react'
+import { AlertTriangle, CalendarRange, ClipboardList, Crown, Download, Scale, StickyNote, Wand2, Loader2, MapPin, MoreHorizontal, ChevronLeft, ChevronRight, Copy, Eye, Plus, Undo2, UserPlus, Users } from 'lucide-react'
 import { branchChanges, useStore } from '../lib/store'
 import { useT } from '../i18n'
 import { conflictTitles, deptName, describeSlot } from '../i18n/format'
@@ -557,6 +557,7 @@ function Cell({ slot, list, needed, tone, today, editable, dragOver, setDragOver
   const past = slot.date < today
   const canEdit = editable && !past
   const filled = list.filter(isActive).length
+  const needsLeader = s.departments.find((d) => d.id === slot.dept)?.needsLeader
   const openSlots = Math.max(0, needed - filled)
   return (
     <div
@@ -598,11 +599,14 @@ function Cell({ slot, list, needed, tone, today, editable, dragOver, setDragOver
             className={cx(
               'flex w-full items-center gap-1.5 rounded-md px-2 py-1 text-left text-[13px] font-medium transition-shadow',
               canEdit && x.state !== 'removed' && 'cursor-grab active:cursor-grabbing',
-              x.state === 'published' && `${toneCls[tone]} hover:shadow-sm`,
+              x.state === 'published' && !x.isLeader && `${toneCls[tone]} hover:shadow-sm`,
+              x.state === 'published' && x.isLeader && 'bg-forest text-white hover:shadow-sm',
+              x.state === 'added' && x.isLeader && 'font-semibold',
               x.state === 'added' && 'border-[1.5px] border-dashed border-forest bg-white text-forest',
               x.state === 'removed' && 'bg-transparent text-muted line-through decoration-bark/70',
             )}
           >
+            {x.isLeader && x.state !== 'removed' && <Crown className="h-3.5 w-3.5 shrink-0 text-[#E8C15A]" aria-label={t('schedule.leader')} />}
             <span className="truncate">{short}</span>
             <span className="ml-auto flex items-center gap-1">
               {!!x.tasks?.length && (
@@ -629,6 +633,11 @@ function Cell({ slot, list, needed, tone, today, editable, dragOver, setDragOver
             <Plus className="h-3 w-3" /> {t('schedule.openSlot')}
           </button>
         ))}
+      {!past && needsLeader && filled > 0 && !list.some((x) => isActive(x) && x.isLeader) && (
+        <div className="flex items-center justify-center gap-1 rounded-md bg-warn-50 py-0.5 text-[11px] font-medium text-warn">
+          <Crown className="h-3 w-3" /> {t('schedule.noLeader')}
+        </div>
+      )}
       {!canEdit && openSlots > 0 && <div className="rounded-md bg-bark-50 py-1 text-center text-xs text-bark/80">{t('schedule.unfilled', { count: openSlots })}</div>}
       {canEdit && openSlots === 0 && (
         <button
@@ -674,6 +683,18 @@ function ChipMenu({ x, rect, onClose, editable }: { x: Assignment; rect: DOMRect
         <a href={`#/team/${e.id}`} onClick={onClose} className="rounded-lg px-3 py-2 text-sm hover:bg-paper">
           {t('common.viewProfile')}
         </a>
+        {editable && x.state !== 'removed' && (
+          <button
+            onClick={() => {
+              a.setLeader(x.id, !x.isLeader)
+              onClose()
+              if (!x.isLeader) toast(t('schedule.leaderSet', { name: e.name.split(' ')[0] }))
+            }}
+            className="flex items-center gap-2 rounded-lg px-3 py-2 text-left text-sm hover:bg-paper"
+          >
+            <Crown className="h-4 w-4 text-bar" /> {t(x.isLeader ? 'schedule.removeLeader' : 'schedule.makeLeader')}
+          </button>
+        )}
         {editable && x.state !== 'removed' && (
           <button
             onClick={() => {
@@ -746,6 +767,12 @@ function Legend() {
       </span>
       <span className="flex items-center gap-1.5">
         <AlertTriangle className="h-3.5 w-3.5 text-warn" /> {t('schedule.override')}
+      </span>
+      <span className="flex items-center gap-1.5">
+        <span className="flex h-3 w-5 items-center justify-center rounded bg-forest">
+          <Crown className="h-2.5 w-2.5 text-[#E8C15A]" />
+        </span>{' '}
+        {t('schedule.leader')}
       </span>
       <span className="hidden md:inline">{t('schedule.legendHint')}</span>
     </div>

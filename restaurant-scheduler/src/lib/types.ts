@@ -72,6 +72,8 @@ export type Assignment = {
   dept: Dept
   state: 'published' | 'added' | 'removed'
   overridden?: ConflictKind[]
+  /** This person leads the shift for their department (CR-01). */
+  isLeader?: boolean
   tasks?: Task[]
   /** Tasks as the team last saw them; differences are unpublished changes. */
   publishedTasks?: Task[]

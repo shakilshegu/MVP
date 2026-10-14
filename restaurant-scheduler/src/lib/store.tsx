@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { Backend } from '../data'
-import { addDays, dayShort, fmtRange, daysInclusive, todayKey, toMin, weekDays } from './date'
+import { addDays, dayShort, fmtRange, daysInclusive, startOfWeek, todayKey, toMin, weekDays } from './date'
 import { tr } from '../i18n/core'
 import type { MsgKey } from '../i18n/core'
 import { conflictTitles, deptName, describeSlot } from '../i18n/format'
@@ -13,6 +13,28 @@ import type { AssignRequest, Conflict } from './validation'
 const uid = () => Math.random().toString(36).slice(2, 10)
 
 export const DEFAULT_PERMS: Record<Perm, boolean> = { createEmployees: true, editShifts: true, publish: true, approveLeave: true, manageBranches: false }
+
+export type Slot = { date: string; templateId: string; dept: Dept }
+const sameSlot = (a: Pick<Assignment, 'date' | 'templateId' | 'dept' | 'branchId'>, b: Pick<Assignment, 'date' | 'templateId' | 'dept' | 'branchId'>) =>
+  a.date === b.date && a.templateId === b.templateId && a.dept === b.dept && a.branchId === b.branchId
+
+/**
+ * Staffed shifts in departments that need a leader but have none (CR-01).
+ * Checks the weeks that contain unpublished changes, from today on.
+ */
+export function missingLeaders(s: Data, branchId: string): (Slot & { branchId: string })[] {
+  const today = todayKey()
+  const needs = new Set(s.departments.filter((d) => d.needsLeader).map((d) => d.id))
+  const changed = branchChanges(s, branchId)
+  const weeks = new Set(changed.map((c) => startOfWeek(c.a.date)))
+  const cells = new Map<string, Assignment[]>()
+  for (const a of s.assignments) {
+    if (a.branchId !== branchId || !isActive(a) || a.date < today || !weeks.has(startOfWeek(a.date)) || !needs.has(a.dept)) continue
+    const k = `${a.date}|${a.templateId}|${a.dept}`
+    cells.set(k, [...(cells.get(k) ?? []), a])
+  }
+  return [...cells.values()].filter((list) => !list.some((a) => a.isLeader)).map(([a]) => ({ date: a.date, templateId: a.templateId, dept: a.dept, branchId }))
+}
 
 export type Change =
   | { kind: 'added'; a: Assignment }
@@ -258,11 +280,41 @@ function makeActions(get: () => Data, set: (s: Data) => void) {
               need--
             }
             open += Math.max(0, need)
+            const cell = draft.assignments.filter((a) => a.branchId === b && isActive(a) && a.date === date && a.templateId === t.id && a.dept === dept)
+            const needsLeader = s.departments.find((d) => d.id === dept)?.needsLeader
+            if (needsLeader && cell.length && !cell.some((a) => a.isLeader)) {
+              const lead = [...cell].sort((x, y) => (draft.employees.find((e) => e.id === y.employeeId)?.hourlyRate ?? 0) - (draft.employees.find((e) => e.id === x.employeeId)?.hourlyRate ?? 0))[0]
+              draft.assignments = draft.assignments.map((a) => (a.id === lead.id ? { ...a, isLeader: true } : a))
+            }
           }
       }
       set(draft)
       return { ids, open }
     },
+    /** Makes this person the shift leader for their department in this shift, replacing any other (CR-01). */
+    setLeader(id: string, on: boolean) {
+      patch((s) => {
+        const target = s.assignments.find((a) => a.id === id)
+        if (!target) return {}
+        return {
+          assignments: s.assignments.map((a) => (a.id === id ? { ...a, isLeader: on } : on && sameSlot(a, target) ? { ...a, isLeader: false } : a)),
+        }
+      })
+    },
+
+    /** Gives each listed shift a leader: the best-paid person working it. Returns how many were set. */
+    autoLeaders(slots: (Slot & { branchId: string })[]) {
+      const s = get()
+      const rate = (a: Assignment) => s.employees.find((e) => e.id === a.employeeId)?.hourlyRate ?? 0
+      const picks = new Set(
+        slots
+          .map((slot) => s.assignments.filter((a) => isActive(a) && sameSlot(a, slot)).sort((x, y) => rate(y) - rate(x))[0]?.id)
+          .filter(Boolean),
+      )
+      set({ ...s, assignments: s.assignments.map((a) => (picks.has(a.id) ? { ...a, isLeader: true } : a)) })
+      return picks.size
+    },
+
     removeMany: (ids: string[]) => patch((s) => ({ assignments: s.assignments.filter((a) => !ids.includes(a.id)) })),
 
     sendForApproval() {

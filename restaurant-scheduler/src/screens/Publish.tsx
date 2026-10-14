@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { AlertTriangle, ArrowRight, ClipboardList, Bell, CalendarCheck2, Check, Hourglass, Undo2, WifiOff } from 'lucide-react'
-import { branchChanges, useStore } from '../lib/store'
+import { AlertTriangle, ArrowRight, ClipboardList, Bell, CalendarCheck2, Check, Crown, Hourglass, Undo2, WifiOff } from 'lucide-react'
+import { branchChanges, missingLeaders, useStore } from '../lib/store'
 import { useT } from '../i18n'
 import { conflictTitles, describeSlot } from '../i18n/format'
 import type { Change } from '../lib/store'
@@ -22,6 +22,8 @@ export function ReviewPublish() {
   const notifyIds = [...new Set(changes.flatMap((c) => (c.kind === 'moved' ? [c.a.employeeId, c.from.employeeId] : [c.a.employeeId])))]
   const overrides = changes.filter((c) => c.kind !== 'tasks' && c.a.overridden).length
   const taskChanges = changes.filter((c) => c.kind === 'tasks').length
+  const missing = missingLeaders(s, branch!.id)
+  const blocked = missing.length > 0
   const step = confirmed ? 3 : 1
 
   const byDate = changes.reduce<Record<string, Change[]>>((m, c) => {
@@ -165,6 +167,26 @@ export function ReviewPublish() {
               </div>
             )}
 
+            {blocked && (
+              <div className="mt-4 rounded-xl border border-warn/30 bg-warn-50 p-3 text-[13px] text-warn">
+                <div className="flex items-center gap-2 font-medium">
+                  <Crown className="h-4 w-4 shrink-0" /> {t('publish.leadersTitle')}
+                </div>
+                <p className="mt-1">{t('publish.leadersBody', { count: missing.length })}</p>
+                <p className="mt-1 opacity-80">{t('publish.leadersHint')}</p>
+                <Button
+                  size="sm"
+                  className="mt-3"
+                  onClick={() => {
+                    const n = a.autoLeaders(missing)
+                    toast(t('publish.leadersFixed', { count: n }))
+                  }}
+                >
+                  <Crown className="h-4 w-4" /> {t('publish.leadersFix')}
+                </Button>
+              </div>
+            )}
+
             <div className="mt-5 border-t border-line pt-5">
               {!online && (
                 <p className="mb-3 flex items-center gap-2 text-[13px] text-bark">
@@ -181,7 +203,7 @@ export function ReviewPublish() {
                   <Button
                     variant="primary"
                     className="mt-4 w-full"
-                    disabled={!confirmed || !online}
+                    disabled={!confirmed || !online || blocked}
                     onClick={() => {
                       a.publish()
                       navigate('/published')
@@ -204,7 +226,7 @@ export function ReviewPublish() {
                   <Button
                     variant="primary"
                     className="mt-4 w-full"
-                    disabled={!online}
+                    disabled={!online || blocked}
                     onClick={() => {
                       a.sendForApproval()
                       toast(t('publish.sent'))

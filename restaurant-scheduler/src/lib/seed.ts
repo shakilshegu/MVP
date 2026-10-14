@@ -181,7 +181,7 @@ export function createSeed(): Data {
   const cafeTemplates = defaultTemplates('c2', () => `t${tid++}`)
 
   const s: Data = {
-    version: 9,
+    version: 10,
     session: { userId: null, companyId: null, branchId: null },
     companies: [
       { id: 'c1', name: 'Harbor Group', createdAt: daysAgoIso(220), currency: 'EUR' },
@@ -261,6 +261,17 @@ export function createSeed(): Data {
       }
     }
   }
+
+  // A leader on every staffed shift in departments that need one: the best-paid person on it.
+  const leaderDepts = new Set(s.departments.filter((d) => d.needsLeader).map((d) => d.id))
+  const cells = new Map<string, Assignment[]>()
+  for (const a of s.assignments) {
+    if (!leaderDepts.has(a.dept)) continue
+    const k = `${a.branchId}|${a.date}|${a.templateId}|${a.dept}`
+    cells.set(k, [...(cells.get(k) ?? []), a])
+  }
+  const rate = (a: Assignment) => employees.find((e) => e.id === a.employeeId)?.hourlyRate ?? 0
+  for (const list of cells.values()) [...list].sort((x, y) => rate(y) - rate(x))[0].isLeader = true
 
   // A couple of unpublished edits so the review flow has something in it.
   const target = addDays(today, 1)
