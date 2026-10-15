@@ -1,13 +1,13 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
-import { ArrowLeft, Camera, Check, ClipboardList, Mail, Pencil, Phone, Plane, Search, Send, UserPlus, Users } from 'lucide-react'
+import { ArrowLeft, Camera, Check, ChevronDown, ClipboardList, Mail, Pencil, Phone, Plane, Search, Send, UserPlus, Users } from 'lucide-react'
 import { useStore } from '../lib/store'
 import { navigate, useLoad } from '../lib/hooks'
 import { addDays, dayShort, fmtDay, fmtRange, startOfWeek, todayKey, WEEK } from '../lib/date'
 import { useT } from '../i18n'
 import { deptName, money } from '../i18n/format'
 import { EarningsHistory } from '../components/earnings'
-import { isActive, weekHours } from '../lib/validation'
+import { isActive, leaveOn, weekHours } from '../lib/validation'
 import { PREFERRED } from '../lib/types'
 import { EMPLOYEE_COLORS } from '../lib/seed'
 import type { Dept, Employee } from '../lib/types'
@@ -23,14 +23,45 @@ export function Team({ openAdd }: { openAdd: boolean }) {
   const { status, retry } = useLoad('team' + branch!.id)
   const ws = startOfWeek(todayKey())
 
+  const [sort, setSort] = useState<'dept' | 'name' | 'hours'>('dept')
+  const [quick, setQuick] = useState<'all' | 'today' | 'leave' | 'over' | 'invited'>('all')
+  const today = todayKey()
   const team = s.employees.filter((e) => e.branchId === branch!.id)
+  const hoursOf = (e: Employee) => weekHours(s, e.id, ws)
+  const shiftToday = (e: Employee) =>
+    s.assignments
+      .filter((x) => x.employeeId === e.id && x.date === today && isActive(x))
+      .map((x) => s.templates.find((y) => y.id === x.templateId))
+      .filter(Boolean)
+      .sort((a, b) => a!.start.localeCompare(b!.start))[0]
+  const quickTest = {
+    all: () => true,
+    today: (e: Employee) => !!shiftToday(e),
+    leave: (e: Employee) => !!leaveOn(s, e.id, today),
+    over: (e: Employee) => hoursOf(e) > e.maxHours,
+    invited: (e: Employee) => e.status === 'invited',
+  }
+  const quickCounts = { today: team.filter(quickTest.today).length, leave: team.filter(quickTest.leave).length, over: team.filter(quickTest.over).length, invited: team.filter(quickTest.invited).length }
   const list = team
     .filter((e) => dept === 'All' || e.skills.includes(dept))
+    .filter(quickTest[quick])
     .filter((e) => {
       const t = q.trim().toLowerCase()
       return !t || e.name.toLowerCase().includes(t) || e.position.toLowerCase().includes(t) || e.email.includes(t)
     })
-    .sort((a, b) => depts.findIndex((d) => d.id === a.dept) - depts.findIndex((d) => d.id === b.dept) || a.name.localeCompare(b.name))
+    .sort((a, b) =>
+      sort === 'name'
+        ? a.name.localeCompare(b.name)
+        : sort === 'hours'
+          ? hoursOf(b) / b.maxHours - hoursOf(a) / a.maxHours
+          : depts.findIndex((d) => d.id === a.dept) - depts.findIndex((d) => d.id === b.dept) || a.name.localeCompare(b.name),
+    )
+  const SortBtn = ({ k, label, className }: { k: typeof sort; label: string; className?: string }) => (
+    <button onClick={() => setSort(k)} aria-pressed={sort === k} className={cx('flex items-center gap-1 text-left hover:text-ink', sort === k && 'font-semibold text-ink', className)}>
+      {label}
+      {sort === k && <ChevronDown className="h-3 w-3" aria-hidden />}
+    </button>
+  )
 
   return (
     <div className="mx-auto max-w-6xl">
@@ -59,6 +90,25 @@ export function Team({ openAdd }: { openAdd: boolean }) {
             <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('team.searchPlaceholder')} className="input pl-9" />
           </label>
           <Segmented label={t('common.department')} value={dept} onChange={setDept} options={[{ value: 'All', label: t('common.all') }, ...depts.map((d) => ({ value: d.id, label: d.name }))]} />
+          <div className="flex w-full flex-wrap gap-1.5" role="group" aria-label={t('team.quickFilter')}>
+            {(['all', 'today', 'leave', 'over', 'invited'] as const)
+              .filter((k) => k === 'all' || quickCounts[k] > 0)
+              .map((k) => (
+                <button
+                  key={k}
+                  onClick={() => setQuick(k)}
+                  aria-pressed={quick === k}
+                  className={cx(
+                    'rounded-full px-3 py-1 text-xs font-medium ring-1 transition-colors',
+                    quick === k ? 'bg-forest text-white ring-forest' : 'bg-white text-muted ring-line hover:text-ink',
+                    k === 'over' && quick !== k && 'text-danger',
+                  )}
+                >
+                  {t(`team.quick.${k}`)}
+                  {k !== 'all' && <span className="ml-1 opacity-70">{quickCounts[k]}</span>}
+                </button>
+              ))}
+          </div>
         </div>
       )}
 
@@ -109,6 +159,15 @@ export function Team({ openAdd }: { openAdd: boolean }) {
           />
         )}
         {status === 'ready' && list.length > 0 && (
+          <div className="hidden items-center gap-3 border-b border-line bg-paper px-5 py-2 text-xs text-muted sm:flex">
+            <span className="w-10" />
+            <SortBtn k="name" label={t('team.colName')} className="flex-1" />
+            <SortBtn k="dept" label={t('common.department')} className="w-28" />
+            <span className="hidden w-24 md:block">{t('availability.prefers')}</span>
+            <SortBtn k="hours" label={t('team.colWeek')} className="w-[60px] justify-end" />
+          </div>
+        )}
+        {status === 'ready' && list.length > 0 && (
           <ul className="divide-y divide-line">
             {list.map((e) => (
               <li key={e.id}>
@@ -118,6 +177,13 @@ export function Team({ openAdd }: { openAdd: boolean }) {
                     <div className="flex items-center gap-2">
                       <span className="truncate text-sm font-medium">{e.name}</span>
                       {e.status === 'invited' && <Badge tone="warn">{t('team.invitePending')}</Badge>}
+                      {leaveOn(s, e.id, today) ? (
+                        <Badge>
+                          <Plane className="h-3 w-3" /> {t('team.onLeave')}
+                        </Badge>
+                      ) : (
+                        shiftToday(e) && <Badge tone="green">{t('team.todayAt', { time: shiftToday(e)!.start })}</Badge>
+                      )}
                     </div>
                     <div className="text-[13px] text-muted">{e.position}</div>
                   </div>

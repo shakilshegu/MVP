@@ -374,6 +374,12 @@ export const en = {
     noMatchesIn: 'Nobody matches “{q}” in {dept}.',
     clearFilters: 'Clear filters',
     invitePending: 'Invite pending',
+    quickFilter: 'Quick filter',
+    quick: { all: 'Everyone', today: 'On shift today', leave: 'On leave', over: 'Over max hours', invited: 'Invite pending' },
+    colName: 'Name',
+    colWeek: 'This week',
+    onLeave: 'On leave',
+    todayAt: 'Today {time}',
   },
   employeeForm: {
     editTitle: 'Edit {name}',

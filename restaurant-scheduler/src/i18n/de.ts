@@ -376,6 +376,12 @@ export const de: Shape<typeof en> = {
     noMatchesIn: 'Niemand in {dept} passt zu „{q}“.',
     clearFilters: 'Filter zurücksetzen',
     invitePending: 'Einladung offen',
+    quickFilter: 'Schnellfilter',
+    quick: { all: 'Alle', today: 'Heute im Dienst', leave: 'Abwesend', over: 'Über Max-Stunden', invited: 'Einladung offen' },
+    colName: 'Name',
+    colWeek: 'Diese Woche',
+    onLeave: 'Abwesend',
+    todayAt: 'Heute {time}',
   },
   employeeForm: {
     editTitle: '{name} bearbeiten',
