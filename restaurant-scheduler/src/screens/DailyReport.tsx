@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Check, ChevronLeft, ChevronRight, ClipboardCheck, Crown, Download, Loader2 } from 'lucide-react'
+import { Check, CheckCircle2, ChevronLeft, ChevronRight, ClipboardCheck, Crown, Download, Loader2 } from 'lucide-react'
 import { useStore } from '../lib/store'
 import { navigate } from '../lib/hooks'
 import { addDays, fmtLong, fmtTime, todayKey, toMin } from '../lib/date'
@@ -10,6 +10,8 @@ import type { ReportItem, ShiftPhase } from '../lib/report'
 import type { Assignment, Dept, Employee, ShiftTemplate } from '../lib/types'
 import { useT } from '../i18n'
 import { Avatar, Badge, Button, cx, DeptTag, EmptyState, IconButton, PageHeader, Segmented, toneCls } from '../components/ui'
+
+const isComplete = (r: { items: unknown[]; done: number }) => r.items.length > 0 && r.done === r.items.length
 
 export type ReportRow = { a: Assignment; e: Employee; tpl: ShiftTemplate; items: ReportItem[]; phase: ShiftPhase; done: number }
 
@@ -22,6 +24,7 @@ export function DailyReport({ date }: { date: string | null }) {
   const [dept, setDept] = useState<'All' | Dept>('All')
   const [person, setPerson] = useState('')
   const [onlyOpen, setOnlyOpen] = useState(false)
+  const [showComplete, setShowComplete] = useState(false)
   const [exporting, setExporting] = useState(false)
   const canTick = can('editShifts')
 
@@ -36,8 +39,10 @@ export function DailyReport({ date }: { date: string | null }) {
   const rows = all
     .filter((r) => (dept === 'All' || r.a.dept === dept) && (!person || r.e.id === person))
     .filter((r) => !onlyOpen || (r.phase !== 'upcoming' && r.done < r.items.length))
+    .filter((r) => showComplete || onlyOpen || !isComplete(r))
     .sort((p, q) => toMin(p.tpl.start) - toMin(q.tpl.start) || depts.findIndex((d) => d.id === p.a.dept) - depts.findIndex((d) => d.id === q.a.dept) || Number(!!q.a.isLeader) - Number(!!p.a.isLeader) || p.e.name.localeCompare(q.e.name))
 
+  const completeCount = all.filter((r) => (dept === 'All' || r.a.dept === dept) && (!person || r.e.id === person) && isComplete(r)).length
   const scope = all.filter((r) => (dept === 'All' || r.a.dept === dept) && (!person || r.e.id === person))
   const total = scope.reduce((n, r) => n + r.items.length, 0)
   const done = scope.reduce((n, r) => n + r.done, 0)
@@ -128,8 +133,14 @@ export function DailyReport({ date }: { date: string | null }) {
       </div>
 
       {settingsOf(company).leadersSeeReport && <p className="-mt-1 mb-4 text-xs text-muted">{t('report.leadersSee')}</p>}
+      {!onlyOpen && completeCount > 0 && (
+        <button onClick={() => setShowComplete((v) => !v)} className="mb-4 flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-sage-dark py-2.5 text-[13px] font-medium text-forest hover:bg-white/60">
+          <CheckCircle2 className="h-4 w-4" aria-hidden />
+          {showComplete ? t('report.hideComplete') : t('report.showComplete', { count: completeCount })}
+        </button>
+      )}
 
-      {rows.length === 0 ? (
+      {rows.length === 0 && completeCount > 0 && !showComplete && !onlyOpen ? null : rows.length === 0 ? (
         <div className="panel">
           <EmptyState icon={<ClipboardCheck className="h-5 w-5" />} title={all.length ? t('report.noMatchTitle') : t('report.emptyTitle')} body={all.length ? t('report.noMatchBody') : t('report.emptyBody')} />
         </div>

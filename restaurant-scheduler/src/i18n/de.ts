@@ -473,6 +473,8 @@ export const de: Shape<typeof en> = {
     noMatchBody: 'Wähle einen anderen Bereich oder eine andere Person oder zeige auch vollständige Schichten.',
     noChecklist: 'Keine Checkliste zugewiesen. Lege sie in den Mitarbeiterdaten fest.',
     extraTask: 'Extra',
+    showComplete: { one: '{count} vollständige Schicht anzeigen', other: '{count} vollständige Schichten anzeigen' },
+    hideComplete: 'Vollständige Schichten ausblenden',
     ledBy: 'Leitung: {names}',
     leadersSee: 'Schichtleitungen sehen den Bericht ihrer eigenen Schicht auch in der App.',
     byManager: '{name} (Leitung)',

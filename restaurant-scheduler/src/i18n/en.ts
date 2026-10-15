@@ -471,6 +471,8 @@ export const en = {
     noMatchBody: 'Try another department or person, or show complete shifts too.',
     noChecklist: 'No checklist assigned. Set one in their employee details.',
     extraTask: 'Extra',
+    showComplete: { one: 'Show {count} complete shift', other: 'Show {count} complete shifts' },
+    hideComplete: 'Hide complete shifts',
     ledBy: 'Led by {names}',
     leadersSee: 'Shift leaders can also see their own shift’s report in the app.',
     byManager: '{name} (manager)',
