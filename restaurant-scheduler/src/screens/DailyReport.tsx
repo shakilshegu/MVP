@@ -88,15 +88,15 @@ export function DailyReport({ date }: { date: string | null }) {
         }
       />
 
-      <div className="mb-5 grid gap-3 sm:grid-cols-3">
-        <div className="panel p-4">
-          <div className="text-[13px] text-muted">{t('report.onShift')}</div>
-          <div className="mt-1 text-2xl font-semibold">{new Set(scope.map((r) => r.e.id)).size}</div>
+      <div className="mb-5 grid grid-cols-3 gap-2 sm:gap-3">
+        <div className="panel p-3 sm:p-4">
+          <div className="text-xs text-muted sm:text-[13px]">{t('report.onShift')}</div>
+          <div className="mt-1 text-xl font-semibold sm:text-2xl">{new Set(scope.map((r) => r.e.id)).size}</div>
         </div>
-        <div className="panel p-4">
-          <div className="text-[13px] text-muted">{t('report.tasksDone')}</div>
-          <div className="mt-1 flex items-baseline gap-2">
-            <span className="text-2xl font-semibold">
+        <div className="panel p-3 sm:p-4">
+          <div className="text-xs text-muted sm:text-[13px]">{t('report.tasksDone')}</div>
+          <div className="mt-1 flex flex-wrap items-baseline gap-x-2">
+            <span className="text-xl font-semibold sm:text-2xl">
               {done}/{total}
             </span>
             {total > 0 && <span className="text-sm text-muted">{Math.round((done / total) * 100)}%</span>}
@@ -105,9 +105,9 @@ export function DailyReport({ date }: { date: string | null }) {
             <div className="h-full rounded-full bg-forest" style={{ width: `${total ? (done / total) * 100 : 0}%` }} />
           </div>
         </div>
-        <div className={cx('panel p-4', missed > 0 && 'border-bark/30')}>
-          <div className="text-[13px] text-muted">{t('report.missed')}</div>
-          <div className={cx('mt-1 text-2xl font-semibold', missed > 0 && 'text-bark')}>{missed}</div>
+        <div className={cx('panel p-3 sm:p-4', missed > 0 && 'border-bark/30')}>
+          <div className="text-xs text-muted sm:text-[13px]">{t('report.missed')}</div>
+          <div className={cx('mt-1 text-xl font-semibold sm:text-2xl', missed > 0 && 'text-bark')}>{missed}</div>
         </div>
       </div>
 

@@ -1,12 +1,13 @@
 import { useState } from 'react'
-import { ChevronLeft, ChevronRight, Clock3, Hourglass, Megaphone, Plus, Send, Trash2 } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Clock3, Crown, Hourglass, Megaphone, Plus, Send, Trash2, Wand2 } from 'lucide-react'
 import { branchChanges, useStore } from '../lib/store'
 import { navigate } from '../lib/hooks'
-import { addDays, dayShort, daysInclusive, fmtLong, fmtMonthYear, fmtRange, fromKey, hoursBetween, pad, startOfWeek, todayKey, toKey, toMin, WEEK, weekdayIndex } from '../lib/date'
+import { addDays, dayShort, daysInclusive, fmtDay, fmtLong, fmtMonthYear, fmtRange, fromKey, hoursBetween, pad, startOfWeek, todayKey, toKey, toMin, WEEK, weekdayIndex } from '../lib/date'
 import { useT } from '../i18n'
 import { deptName } from '../i18n/format'
 import { breakMinutes, isActive, neededAt } from '../lib/validation'
 import { cityOf, shiftWeather, useWeather } from '../lib/weather'
+import { doneCount, shiftItems, shiftPhase } from '../lib/report'
 import { ShiftWeatherTag } from '../components/weather'
 import type { Dept, ShiftTemplate, Tone } from '../lib/types'
 import { Avatar, Badge, Button, cx, DeptDot, Drawer, EmptyState, Field, PageHeader, toneCls } from '../components/ui'
@@ -41,6 +42,18 @@ export function Dashboard() {
     .filter((r) => r.e && r.tpl)
     .sort((p, q) => s.departments.findIndex((d) => d.id === p.x.dept) - s.departments.findIndex((d) => d.id === q.x.dept) || toMin(p.tpl.start) - toMin(q.tpl.start))
   const nowMin = hour * 60 + new Date().getMinutes()
+  const onNow = new Set(todays.filter((r) => shiftPhase(s, r.x) === 'running').map((r) => r.e.id))
+  const firstGap = next7.find((d) => {
+    const c = coverage(s, branch!.id, d)
+    return c.got < c.need
+  })
+  const checks = todays.reduce(
+    (m, r) => {
+      const items = shiftItems(s, r.x)
+      return { done: m.done + doneCount(items), total: m.total + items.length }
+    },
+    { done: 0, total: 0 },
+  )
   const weather = useWeather(cityOf(branch!.city), [today, addDays(today, 1)])
   const shiftsToday = [...s.templates]
     .filter((tpl) => todays.some((r) => r.tpl.id === tpl.id))
@@ -58,18 +71,59 @@ export function Dashboard() {
     <div className="mx-auto max-w-6xl">
       <PageHeader title={t(greet, { name: me?.name.split(' ')[0] ?? '' })} sub={`${fmtLong(today)} · ${branch!.name}`} />
 
-      <div className="mb-6 grid gap-3 sm:grid-cols-3">
-        <a href="#/schedule" className="panel p-4 transition-shadow hover:shadow-md">
-          <div className="text-[13px] text-muted">{t('dashboard.workingToday')}</div>
-          <div className="mt-1 text-2xl font-semibold">{new Set(todays.map((r) => r.e.id)).size}</div>
+      <div className="mb-6 grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4">
+        <a href="#/schedule" className="panel p-3 transition-shadow hover:shadow-md sm:p-4">
+          <div className="text-xs text-muted sm:text-[13px]">{t('dashboard.workingToday')}</div>
+          <div className="mt-1 flex items-baseline gap-2">
+            <span className="text-xl font-semibold sm:text-2xl">{new Set(todays.map((r) => r.e.id)).size}</span>
+            {onNow.size > 0 && (
+              <span className="flex items-center gap-1 text-xs font-medium text-forest">
+                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-forest" aria-hidden />
+                {t('dashboard.onNow', { count: onNow.size })}
+              </span>
+            )}
+          </div>
         </a>
-        <a href="#/schedule" className={cx('panel p-4 transition-shadow hover:shadow-md', open7 > 0 && 'border-bark/30')}>
-          <div className="text-[13px] text-muted">{t('dashboard.open7')}</div>
-          <div className={cx('mt-1 text-2xl font-semibold', open7 > 0 && 'text-bark')}>{open7}</div>
+        <div className={cx('panel p-3 sm:p-4', open7 > 0 && 'border-bark/30')}>
+          <div className="text-xs text-muted sm:text-[13px]">{t('dashboard.open7')}</div>
+          <div className={cx('mt-1 text-xl font-semibold sm:text-2xl', open7 > 0 && 'text-bark')}>{open7}</div>
+          {open7 > 0 && (
+            <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs font-medium">
+              {firstGap && (
+                <a href={`#/schedule?week=${startOfWeek(firstGap)}`} className="text-forest hover:underline">
+                  {t('dashboard.firstGap', { date: fmtDay(firstGap) })}
+                </a>
+              )}
+              {can('editShifts') && (
+                <button
+                  className="flex items-center gap-1 text-forest hover:underline"
+                  onClick={() => {
+                    const r = a.autoFill(startOfWeek(today), s.departments.map((d) => d.id))
+                    if (!r.ids.length) return toast(t('schedule.noOneFree'))
+                    toast(t('schedule.filled', { count: r.ids.length }), { label: t('common.undo'), run: () => a.removeMany(r.ids) })
+                  }}
+                >
+                  <Wand2 className="h-3 w-3" aria-hidden /> {t('dashboard.fillWeek')}
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+        <a href="#/report" className="panel p-3 transition-shadow hover:shadow-md sm:p-4">
+          <div className="text-xs text-muted sm:text-[13px]">{t('dashboard.checklists')}</div>
+          <div className="mt-1 flex items-baseline gap-2">
+            <span className="text-xl font-semibold sm:text-2xl">
+              {checks.done}/{checks.total}
+            </span>
+            {checks.total > 0 && <span className="text-xs text-muted">{Math.round((checks.done / checks.total) * 100)}%</span>}
+          </div>
+          <div className="mt-2 h-1 overflow-hidden rounded-full bg-line">
+            <div className="h-full rounded-full bg-forest" style={{ width: `${checks.total ? (checks.done / checks.total) * 100 : 0}%` }} />
+          </div>
         </a>
-        <a href="#/leave" className="panel p-4 transition-shadow hover:shadow-md">
-          <div className="text-[13px] text-muted">{t('dashboard.leaveToReview')}</div>
-          <div className="mt-1 text-2xl font-semibold">{pendingLeave.length}</div>
+        <a href="#/leave" className="panel p-3 transition-shadow hover:shadow-md sm:p-4">
+          <div className="text-xs text-muted sm:text-[13px]">{t('dashboard.leaveToReview')}</div>
+          <div className={cx('mt-1 text-xl font-semibold sm:text-2xl', pendingLeave.length > 0 && 'text-bark')}>{pendingLeave.length}</div>
         </a>
       </div>
 
@@ -128,10 +182,14 @@ export function Dashboard() {
                     <li key={x.id} className="flex items-center gap-3">
                       <a href={`#/team/${e.id}`} className="flex w-[128px] shrink-0 items-center gap-2 hover:underline">
                         <DeptDot id={x.dept} className="h-1.5 w-1.5" />
-                        <span className="truncate text-sm">{e.name}</span>
+                        <span className={cx('truncate text-sm', onNow.has(e.id) && shiftPhase(s, x) === 'running' && 'font-semibold')}>{e.name}</span>
+                        {x.isLeader && <Crown className="h-3 w-3 shrink-0 text-bar" aria-label={t('schedule.leader')} />}
                       </a>
                       <div className="relative hidden h-7 flex-1 sm:block">
-                        <div className={cx('absolute inset-y-0 flex items-center rounded-md px-2 text-xs font-medium', toneCls[tpl.tone])} style={{ left: pos(st), width: `calc(${pos(en)} - ${pos(st)})` }}>
+                        <div
+                          className={cx('absolute inset-y-0 flex items-center rounded-md px-2 text-xs font-medium', toneCls[tpl.tone], shiftPhase(s, x) === 'running' && 'ring-2 ring-forest ring-offset-1', shiftPhase(s, x) === 'over' && 'opacity-50')}
+                          style={{ left: pos(st), width: `calc(${pos(en)} - ${pos(st)})` }}
+                        >
                           <span className="truncate">
                             {tpl.name} {tpl.start}–{tpl.end}
                           </span>
