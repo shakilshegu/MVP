@@ -29,12 +29,14 @@ export default {
       keyframes: {
         pop: { from: { opacity: '0', transform: 'translateY(4px) scale(.98)' }, to: { opacity: '1', transform: 'none' } },
         slide: { from: { transform: 'translateX(100%)' }, to: { transform: 'none' } },
+        'slide-left': { from: { transform: 'translateX(-100%)' }, to: { transform: 'none' } },
         rise: { from: { transform: 'translateY(100%)' }, to: { transform: 'none' } },
         draw: { from: { strokeDashoffset: '48' }, to: { strokeDashoffset: '0' } },
       },
       animation: {
         pop: 'pop .16s ease-out',
         slide: 'slide .22s cubic-bezier(.2,.8,.2,1)',
+        'slide-left': 'slide-left .22s cubic-bezier(.2,.8,.2,1)',
         rise: 'rise .22s cubic-bezier(.2,.8,.2,1)',
         draw: 'draw .6s .15s ease-out both',
       },

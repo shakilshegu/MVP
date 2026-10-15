@@ -99,7 +99,7 @@ export default function WeeklySchedule({ week }: { week: string | null }) {
         { label: t('common.undo'), run: () => a.remove(id) },
       )
     }
-    setAssignAt(null)
+    // The fill panel stays open so several people can be added in a row.
     if (conflicts.length) setPending({ employee, conflicts, slot, run: () => run(conflicts) })
     else run()
   }
@@ -126,6 +126,7 @@ export default function WeeklySchedule({ week }: { week: string | null }) {
     setDragOver,
     onDrop,
     openAssign: (slot: Slot, el: HTMLElement) => setAssignAt({ slot, rect: el.getBoundingClientRect() }),
+    activeKey: assignAt ? `${assignAt.slot.date}|${assignAt.slot.templateId}|${assignAt.slot.dept}` : null,
     openMenu: (x: Assignment, el: HTMLElement) => setMenu({ id: x.id, rect: el.getBoundingClientRect() }),
     employees: s.employees,
   }
@@ -418,11 +419,7 @@ export default function WeeklySchedule({ week }: { week: string | null }) {
         </div>
       )}
 
-      {assignAt && (
-        <Popover anchor={assignAt.rect} onClose={() => setAssignAt(null)} width={360}>
-          <AssignPanel slot={assignAt.slot} onPick={(e, c) => tryAssign(e, c, assignAt.slot)} />
-        </Popover>
-      )}
+      {assignAt && <AssignPanel slot={assignAt.slot} anchor={assignAt.rect} onPick={(e, c) => tryAssign(e, c, assignAt.slot)} onClose={() => setAssignAt(null)} />}
       {menuItem && <ChipMenu x={menuItem} rect={menu!.rect} onClose={() => setMenu(null)} editable={editable && menuItem.date >= today} weather={weather.data} />}
       {weatherAt && <ShiftWeatherPopover date={weatherAt.date} data={weather.data} city={cityLabel(branch!.city, locale)} anchor={weatherAt.rect} onClose={() => setWeatherAt(null)} />}
       {noteAt && <NoteEditor date={noteAt.date} rect={noteAt.rect} onClose={() => setNoteAt(null)} />}
@@ -596,12 +593,14 @@ type CellProps = {
   setDragOver: (k: string | null) => void
   onDrop: (id: string, slot: Slot) => void
   openAssign: (slot: Slot, el: HTMLElement) => void
+  /** The cell being filled in the side panel, outlined on the grid. */
+  activeKey?: string | null
   openMenu: (a: Assignment, el: HTMLElement) => void
   employees: Employee[]
   bare?: boolean
 }
 
-function Cell({ slot, list, needed, extra = 0, tone, today, editable, dragOver, setDragOver, onDrop, openAssign, openMenu, employees, bare }: CellProps) {
+function Cell({ slot, list, needed, extra = 0, tone, today, editable, dragOver, setDragOver, onDrop, openAssign, activeKey, openMenu, employees, bare }: CellProps) {
   const { t } = useT()
   const { s } = useStore()
   const key = `${slot.date}|${slot.templateId}|${slot.dept}`
@@ -629,6 +628,7 @@ function Cell({ slot, list, needed, extra = 0, tone, today, editable, dragOver, 
         !bare && 'min-h-[68px] border-l border-t border-line p-1.5',
         !bare && past && 'bg-paper/60',
         dragOver === key && 'bg-forest-50 ring-2 ring-inset ring-forest',
+        activeKey === key && 'bg-forest-50/70 ring-2 ring-inset ring-forest',
       )}
     >
       {needed > 0 && (
