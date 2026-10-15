@@ -261,8 +261,8 @@ export function Dashboard() {
                             size="sm"
                             variant="quiet"
                             onClick={() => {
-                              a.decideLeave(l.id, 'approved')
-                              toast(t('dashboard.leaveApproved', { name: e.name.split(' ')[0] }))
+                              const undo = a.decideLeave(l.id, 'approved')
+                              toast(t('dashboard.leaveApproved', { name: e.name.split(' ')[0] }), undo && { label: t('common.undo'), run: undo })
                             }}
                           >
                             {t('common.approve')}
@@ -271,8 +271,8 @@ export function Dashboard() {
                             size="sm"
                             variant="ghost"
                             onClick={() => {
-                              a.decideLeave(l.id, 'declined')
-                              toast(t('dashboard.leaveDeclined', { name: e.name.split(' ')[0] }))
+                              const undo = a.decideLeave(l.id, 'declined')
+                              toast(t('dashboard.leaveDeclined', { name: e.name.split(' ')[0] }), undo && { label: t('common.undo'), run: undo })
                             }}
                           >
                             {t('common.decline')}

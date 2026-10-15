@@ -407,10 +407,11 @@ export function LeaveRequests() {
                       variant="primary"
                       size="sm"
                       onClick={() => {
-                        a.decideLeave(l.id, 'approved')
+                        const undo = a.decideLeave(l.id, 'approved')
                         toast(
                           clashes.length ? t('leave.approvedClash', { count: clashes.length }) : t('dashboard.leaveApproved', { name: e.name.split(' ')[0] }),
-                          clashes.length ? { label: t('common.openSchedule'), run: () => (window.location.hash = `/schedule?week=${clashes[0].date}`) } : undefined,
+                          clashes.length ? { label: t('common.openSchedule'), run: () => (window.location.hash = `/schedule?week=${clashes[0].date}`) } : undo && { label: t('common.undo'), run: undo },
+                          clashes.length && undo ? { label: t('common.undo'), run: undo } : undefined,
                         )
                       }}
                     >
@@ -419,8 +420,8 @@ export function LeaveRequests() {
                     <Button
                       size="sm"
                       onClick={() => {
-                        a.decideLeave(l.id, 'declined')
-                        toast(t('dashboard.leaveDeclined', { name: e.name.split(' ')[0] }))
+                        const undo = a.decideLeave(l.id, 'declined')
+                        toast(t('dashboard.leaveDeclined', { name: e.name.split(' ')[0] }), undo && { label: t('common.undo'), run: undo })
                       }}
                     >
                       {t('common.decline')}

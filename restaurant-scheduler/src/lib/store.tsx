@@ -111,6 +111,11 @@ function makeActions(get: () => Data, set: (s: Data) => void) {
   const me = () => get().managers.find((m) => m.id === get().session.userId)
   const bid = () => get().session.branchId ?? ''
   const cid = () => get().session.companyId ?? ''
+  /** Same rule as `can()` in the UI, checked again here so every caller is held to it. */
+  const allowed = (p: Perm) => {
+    const m = me()
+    return m != null && (m.role !== 'manager' || ((get().companyPerms[cid()] ?? DEFAULT_PERMS)[p] ?? false))
+  }
   const empName = (id: string) => get().employees.find((e) => e.id === id)?.name ?? '—'
   const entry = (e: Omit<HistoryEntry, 'id' | 'at' | 'by' | 'branchId'>, branchId = bid()): HistoryEntry => ({
     id: uid(),
@@ -259,6 +264,7 @@ function makeActions(get: () => Data, set: (s: Data) => void) {
     },
 
     copyWeek(fromStart: string, toStart: string) {
+      if (!allowed('editShifts')) return { added: 0, skipped: 0 }
       const s = get()
       const b = bid()
       const draft: Data = { ...s, assignments: [...s.assignments] }
@@ -283,6 +289,7 @@ function makeActions(get: () => Data, set: (s: Data) => void) {
 
     /** Fills open slots as drafts with people who pass every check. */
     autoFill(weekStart: string, depts: Dept[]) {
+      if (!allowed('editShifts')) return { ids: [] as string[], open: 0 }
       const s = get()
       const b = bid()
       const today = todayKey()
@@ -464,23 +471,21 @@ function makeActions(get: () => Data, set: (s: Data) => void) {
     },
 
     decideLeave(id: string, status: 'approved' | 'declined') {
+      if (!allowed('approveLeave')) return
       const l = get().leaves.find((x) => x.id === id)
       if (!l) return
       const emp = get().employees.find((e) => e.id === l.employeeId)
-      patch((s) => ({
-        leaves: s.leaves.map((x) => (x.id === id ? { ...x, status } : x)),
-        history: [
-          entry(
-            {
-              action: status === 'approved' ? 'leaveApproved' : 'leaveDeclined',
-              subject: emp?.name ?? '',
-              to: `${tr(`leaveKind.${l.kind}`)} · ${fmtRange(l.from, l.to)} (${tr('common.days', { count: daysInclusive(l.from, l.to) })})`,
-            },
-            emp?.branchId,
-          ),
-          ...s.history,
-        ],
-      }))
+      const log = entry(
+        {
+          action: status === 'approved' ? 'leaveApproved' : 'leaveDeclined',
+          subject: emp?.name ?? '',
+          to: `${tr(`leaveKind.${l.kind}`)} · ${fmtRange(l.from, l.to)} (${tr('common.days', { count: daysInclusive(l.from, l.to) })})`,
+        },
+        emp?.branchId,
+      )
+      patch((s) => ({ leaves: s.leaves.map((x) => (x.id === id ? { ...x, status } : x)), history: [log, ...s.history] }))
+      // Undo from the toast: back to pending, and the decision drops out of History.
+      return () => patch((s) => ({ leaves: s.leaves.map((x) => (x.id === id ? { ...x, status: 'pending' as const } : x)), history: s.history.filter((h) => h.id !== log.id) }))
     },
 
     saveTemplate(input: ShiftTemplate) {
@@ -596,6 +601,10 @@ function makeActions(get: () => Data, set: (s: Data) => void) {
       return s.employees.filter((e) => e.skills.includes(id)).length + s.assignments.filter((a) => a.dept === id && a.state !== 'removed').length
     },
     deleteDepartment(id: string) {
+      const all = get().departments
+      const removed = all.find((x) => x.id === id && x.companyId === cid())
+      const at = all.indexOf(removed!)
+      const undo = () => removed && patch((s) => ({ departments: [...s.departments.slice(0, at), removed, ...s.departments.slice(at)] }))
       patch((s) => ({
         departments: s.departments.filter((x) => !(x.id === id && x.companyId === cid())),
         templates: s.templates.map((t) => {
@@ -607,6 +616,7 @@ function makeActions(get: () => Data, set: (s: Data) => void) {
           return { ...t, needed, perDay }
         }),
       }))
+      return undo
     },
     moveDepartment(id: string, dir: -1 | 1) {
       patch((s) => {

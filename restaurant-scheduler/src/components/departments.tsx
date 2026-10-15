@@ -65,8 +65,8 @@ export function DepartmentsPanel() {
                     label={inUse ? t('settings.deptInUse', { count: inUse }) : t('settings.deptDelete', { name: d.name })}
                     disabled={inUse > 0}
                     onClick={() => {
-                      a.deleteDepartment(d.id)
-                      toast(t('settings.deptDeleted', { name: d.name }))
+                      const undo = a.deleteDepartment(d.id)
+                      toast(t('settings.deptDeleted', { name: d.name }), { label: t('common.undo'), run: undo })
                     }}
                     className="hover:text-danger disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-muted"
                   >
