@@ -707,6 +707,12 @@ export const de: Shape<typeof en> = {
     manageBranches: { label: 'Filialen verwalten', hint: 'Filialen anlegen und Manager zuweisen' },
   },
   platform: {
+    statCompanies: 'Unternehmen',
+    statBranches: 'Filialen',
+    statStaff: 'Mitarbeitende',
+    statAdmins: 'Super-Admins',
+    search: 'Unternehmen oder Admins suchen',
+    noMatch: 'Kein Unternehmen gefunden.',
     title: 'Unternehmen',
     sub: 'Alle Restaurantunternehmen auf Rota. Jedes sieht nur seine eigenen Filialen, Mitarbeitenden und Daten.',
     add: 'Unternehmen hinzufügen',

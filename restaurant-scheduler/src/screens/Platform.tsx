@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
-import { Building2, ChevronRight, LogOut, Plus } from 'lucide-react'
+import { Building2, ChevronRight, LogOut, Plus, Search } from 'lucide-react'
 import { useStore } from '../lib/store'
 import { navigate } from '../lib/hooks'
 import { fmt } from '../lib/date'
@@ -12,6 +12,9 @@ import { Button, Field, Modal, PageHeader } from '../components/ui'
 /** Platform owner's home: every company on Rota, and a way to add one. */
 export function Platform() {
   const { platform, a, me } = useStore()
+  const [q, setQ] = useState('')
+  const needle = q.trim().toLowerCase()
+  const shown = platform.filter((p) => !needle || p.company.name.toLowerCase().includes(needle) || p.admins.some((m) => m.name.toLowerCase().includes(needle) || m.email.toLowerCase().includes(needle)))
   const { t } = useT()
   const [adding, setAdding] = useState(false)
 
@@ -36,7 +39,7 @@ export function Platform() {
         </Button>
       </header>
 
-      <main className="mx-auto max-w-4xl px-4 py-10 md:px-8">
+      <main className="mx-auto max-w-6xl px-4 py-10 md:px-8">
         <PageHeader
           title={t('platform.title')}
           sub={t('platform.sub')}
@@ -46,8 +49,29 @@ export function Platform() {
             </Button>
           }
         />
+        <dl className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {[
+            [t('platform.statCompanies'), platform.length],
+            [t('platform.statBranches'), platform.reduce((n, p) => n + p.branches, 0)],
+            [t('platform.statStaff'), platform.reduce((n, p) => n + p.staff, 0)],
+            [t('platform.statAdmins'), platform.reduce((n, p) => n + p.admins.length, 0)],
+          ].map(([k, v]) => (
+            <div key={k} className="panel p-4">
+              <dt className="text-[13px] text-muted">{k}</dt>
+              <dd className="mt-1 text-2xl font-semibold">{v}</dd>
+            </div>
+          ))}
+        </dl>
+        {platform.length > 3 && (
+          <label className="relative mb-4 block">
+            <span className="sr-only">{t('platform.search')}</span>
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
+            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('platform.search')} className="input w-full pl-9" />
+          </label>
+        )}
         <ul className="space-y-3">
-          {platform.map(({ company, branches, staff, admins }) => (
+          {shown.length === 0 && <li className="panel px-5 py-10 text-center text-sm text-muted">{t('platform.noMatch')}</li>}
+          {shown.map(({ company, branches, staff, admins }) => (
             <li key={company.id}>
               <button
                 onClick={() => {

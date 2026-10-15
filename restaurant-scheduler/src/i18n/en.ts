@@ -705,6 +705,12 @@ export const en = {
     manageBranches: { label: 'Manage branches', hint: 'Add branches and assign managers' },
   },
   platform: {
+    statCompanies: 'Companies',
+    statBranches: 'Branches',
+    statStaff: 'Staff',
+    statAdmins: 'Super admins',
+    search: 'Search companies or admins',
+    noMatch: 'No company matches.',
     title: 'Companies',
     sub: 'Every restaurant company on Rota. Each one only sees its own branches, staff and data.',
     add: 'Add company',

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { ChevronRight, Eye, EyeOff, LogOut, Plane, Store, Users } from 'lucide-react'
 import { branchChanges, useStore } from '../lib/store'
+import { backend } from '../data'
 import { navigate } from '../lib/hooks'
 import { fmtLong, todayKey } from '../lib/date'
 import { isActive } from '../lib/validation'
@@ -97,23 +98,26 @@ export function Login() {
               {t('auth.title')}
             </Button>
           </form>
-          <div className="mt-8 rounded-xl border border-dashed border-sage-dark p-4">
-            <div className="text-xs font-medium text-muted">{t('auth.demoAccounts')}</div>
-            <div className="mt-2 grid gap-2">
-              <button onClick={() => demo('priya@harborhouse.co')} className="rounded-lg bg-white px-3 py-2 text-left text-sm ring-1 ring-line hover:ring-forest/40">
-                <span className="font-medium">Priya Raman</span> <span className="text-muted">· {t('auth.demoManager')}</span>
-              </button>
-              <button onClick={() => demo('daniel@harborhouse.co')} className="rounded-lg bg-white px-3 py-2 text-left text-sm ring-1 ring-line hover:ring-forest/40">
-                <span className="font-medium">Daniel Okafor</span> <span className="text-muted">· {t('auth.demoSuper')}</span>
-              </button>
-              <button onClick={() => demo('lena@cafe-mueller.de')} className="rounded-lg bg-white px-3 py-2 text-left text-sm ring-1 ring-line hover:ring-forest/40">
-                <span className="font-medium">Lena Hoffmann</span> <span className="text-muted">· {t('auth.demoCafe')}</span>
-              </button>
-              <button onClick={() => demo('owner@rota.app')} className="rounded-lg bg-white px-3 py-2 text-left text-sm ring-1 ring-line hover:ring-forest/40">
-                <span className="font-medium">Alex Morgan</span> <span className="text-muted">· {t('auth.demoOwner')}</span>
-              </button>
+          {/* Quick sign-in for demos only; a real backend build never shows it. */}
+          {backend.kind === 'mock' && (
+            <div className="mt-8 rounded-xl border border-dashed border-sage-dark p-4">
+              <div className="text-xs font-medium text-muted">{t('auth.demoAccounts')}</div>
+              <div className="mt-2 grid gap-2">
+                <button onClick={() => demo('priya@harborhouse.co')} className="rounded-lg bg-white px-3 py-2 text-left text-sm ring-1 ring-line hover:ring-forest/40">
+                  <span className="font-medium">Priya Raman</span> <span className="text-muted">· {t('auth.demoManager')}</span>
+                </button>
+                <button onClick={() => demo('daniel@harborhouse.co')} className="rounded-lg bg-white px-3 py-2 text-left text-sm ring-1 ring-line hover:ring-forest/40">
+                  <span className="font-medium">Daniel Okafor</span> <span className="text-muted">· {t('auth.demoSuper')}</span>
+                </button>
+                <button onClick={() => demo('lena@cafe-mueller.de')} className="rounded-lg bg-white px-3 py-2 text-left text-sm ring-1 ring-line hover:ring-forest/40">
+                  <span className="font-medium">Lena Hoffmann</span> <span className="text-muted">· {t('auth.demoCafe')}</span>
+                </button>
+                <button onClick={() => demo('owner@rota.app')} className="rounded-lg bg-white px-3 py-2 text-left text-sm ring-1 ring-line hover:ring-forest/40">
+                  <span className="font-medium">Alex Morgan</span> <span className="text-muted">· {t('auth.demoOwner')}</span>
+                </button>
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
     </div>
