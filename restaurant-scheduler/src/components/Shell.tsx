@@ -23,11 +23,14 @@ import {
   ClipboardCheck,
   Search,
   Send,
+  PanelLeftClose,
+  PanelLeftOpen,
   Hourglass,
   UserPlus,
 } from 'lucide-react'
 import { branchChanges, useStore } from '../lib/store'
-import { navigate, useOnline } from '../lib/hooks'
+import { navigate, useMediaQuery, useOnline } from '../lib/hooks'
+import { useFocusMode } from '../lib/focus'
 import { relTime } from '../lib/date'
 import { useT } from '../i18n'
 import { noticeText } from '../i18n/format'
@@ -44,6 +47,26 @@ export default function Shell({ path, children }: { path: string; children: Reac
   const { t } = useT()
   const online = useOnline()
   const [navOpen, setNavOpen] = useState(false)
+  const { focus } = useFocusMode()
+  const isXl = useMediaQuery('(min-width: 1280px)')
+  const [railPref, setRailPrefState] = useState<'rail' | 'full' | null>(() => {
+    try {
+      const v = localStorage.getItem('rota-sidebar')
+      return v === 'rail' || v === 'full' ? v : null
+    } catch {
+      return null
+    }
+  })
+  const setRailPref = (v: 'rail' | 'full') => {
+    setRailPrefState(v)
+    try {
+      localStorage.setItem('rota-sidebar', v)
+    } catch {
+      /* remembered for this visit only */
+    }
+  }
+  // No choice yet: automatic (rail on 1024–1279 px, full from 1280 px).
+  const rail = railPref ? railPref === 'rail' : !isXl
   const [cmdOpen, setCmdOpen] = useState(false)
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -87,19 +110,19 @@ export default function Shell({ path, children }: { path: string; children: Reac
 
   const nav = (
     <nav aria-label={t('nav.main')} className="flex h-full flex-col">
-      {/* 1024–1279 px: the sidebar is a slim icon rail (labels as tooltips); full width from 1280 px. */}
-      <div className="flex items-center gap-2.5 px-5 pb-6 pt-5 lg:max-xl:justify-center lg:max-xl:px-0">
+      {/* Rail mode (icons only, labels as tooltips) is driven by the `rail` class on the aside. */}
+      <div className="flex items-center gap-2.5 px-5 pb-6 pt-5 group-[.rail]/side:justify-center group-[.rail]/side:px-0">
         <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-forest font-serif text-xl leading-none text-white">R</span>
-        <span className="min-w-0 lg:max-xl:hidden">
+        <span className="min-w-0 group-[.rail]/side:hidden">
           <span className="block text-[15px] font-semibold leading-tight text-forest">Rota</span>
           <span className="block truncate text-xs text-muted">{company?.name}</span>
         </span>
       </div>
-      <div className="flex-1 space-y-6 overflow-y-auto px-3 lg:max-xl:space-y-3 lg:max-xl:px-2">
+      <div className="flex-1 space-y-6 overflow-y-auto px-3 group-[.rail]/side:space-y-3 group-[.rail]/side:px-2">
         {items.map((g, i) => (
           <div key={i}>
-            {g.group && <div className="px-3 pb-1.5 text-xs font-medium text-muted lg:max-xl:hidden">{g.group}</div>}
-            {g.group && i > 0 && <div className="mx-2 mb-3 hidden h-px bg-sage-dark/70 lg:max-xl:block" aria-hidden />}
+            {g.group && <div className="px-3 pb-1.5 text-xs font-medium text-muted group-[.rail]/side:hidden">{g.group}</div>}
+            {g.group && i > 0 && <div className="mx-2 mb-3 hidden h-px bg-sage-dark/70 group-[.rail]/side:block" aria-hidden />}
             <ul className="space-y-0.5">
               {g.items
                 .filter((it) => !it.superOnly || isAdmin)
@@ -113,14 +136,14 @@ export default function Shell({ path, children }: { path: string; children: Reac
                         aria-current={active ? 'page' : undefined}
                         title={it.label}
                         className={cx(
-                          'relative flex h-9 items-center gap-3 rounded-lg px-3 text-sm transition-colors lg:max-xl:h-10 lg:max-xl:justify-center lg:max-xl:px-0 [&>svg]:h-[18px] [&>svg]:w-[18px]',
+                          'relative flex h-9 items-center gap-3 rounded-lg px-3 text-sm transition-colors group-[.rail]/side:h-10 group-[.rail]/side:justify-center group-[.rail]/side:px-0 [&>svg]:h-[18px] [&>svg]:w-[18px]',
                           active ? 'bg-surface font-medium text-forest shadow-sm' : 'text-ink/75 hover:bg-surface/50 hover:text-ink',
                         )}
                       >
                         {it.icon}
-                        <span className="flex-1 lg:max-xl:sr-only">{it.label}</span>
+                        <span className="flex-1 group-[.rail]/side:sr-only">{it.label}</span>
                         {!!it.badge && (
-                          <span className="rounded-full bg-bark px-1.5 text-[11px] font-semibold leading-5 text-white lg:max-xl:absolute lg:max-xl:right-1 lg:max-xl:top-0.5 lg:max-xl:px-1 lg:max-xl:text-[9px] lg:max-xl:leading-4">{it.badge}</span>
+                          <span className="rounded-full bg-bark px-1.5 text-[11px] font-semibold leading-5 text-white group-[.rail]/side:absolute group-[.rail]/side:right-1 group-[.rail]/side:top-0.5 group-[.rail]/side:px-1 group-[.rail]/side:text-[9px] group-[.rail]/side:leading-4">{it.badge}</span>
                         )}
                       </a>
                     </li>
@@ -130,19 +153,29 @@ export default function Shell({ path, children }: { path: string; children: Reac
           </div>
         ))}
       </div>
-      <div className="m-3 flex items-center gap-3 rounded-xl bg-surface/60 p-3 lg:max-xl:m-2 lg:max-xl:flex-col lg:max-xl:gap-1.5 lg:max-xl:p-2" title={me?.name}>
+      <div className="m-3 flex items-center gap-3 rounded-xl bg-surface/60 p-3 group-[.rail]/side:m-2 group-[.rail]/side:flex-col group-[.rail]/side:gap-1.5 group-[.rail]/side:p-2" title={me?.name}>
         <span className="flex h-9 w-9 items-center justify-center rounded-full bg-forest text-sm font-semibold text-white">
           {me?.name
             .split(' ')
             .map((x) => x[0])
             .join('')}
         </span>
-        <div className="min-w-0 flex-1 lg:max-xl:hidden">
+        <div className="min-w-0 flex-1 group-[.rail]/side:hidden">
           <div className="truncate text-sm font-medium">{me?.name}</div>
           <div className="text-xs text-muted">{me && t(`role.${me.role}`)}</div>
         </div>
         <SignOut />
       </div>
+      {/* Desktop only: collapse to the icon rail or expand again; the choice is remembered. */}
+      <button
+        onClick={() => setRailPref(rail ? 'full' : 'rail')}
+        aria-label={t(rail ? 'nav.expand' : 'nav.collapse')}
+        title={t(rail ? 'nav.expand' : 'nav.collapse')}
+        className="mx-3 mb-3 hidden h-8 items-center gap-2 rounded-lg px-3 text-xs text-muted transition-colors hover:bg-surface/50 hover:text-ink lg:flex group-[.rail]/side:mx-2 group-[.rail]/side:justify-center group-[.rail]/side:px-0"
+      >
+        {rail ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
+        <span className="group-[.rail]/side:hidden">{t('nav.collapse')}</span>
+      </button>
     </nav>
   )
 
@@ -150,7 +183,11 @@ export default function Shell({ path, children }: { path: string; children: Reac
 
   return (
     <div className="flex h-full">
-      <aside className="hidden w-60 shrink-0 border-r border-sage-dark/60 lg:block lg:max-xl:w-[76px]">{nav}</aside>
+      {!focus && (
+        <aside className={cx('group/side hidden shrink-0 border-r border-sage-dark/60 transition-[width] duration-200 lg:block', rail ? 'rail w-[76px]' : 'w-60')}>
+          {nav}
+        </aside>
+      )}
       {navOpen && (
         <div className="fixed inset-0 z-40 lg:hidden">
           <div className="absolute inset-0 bg-inverse/40" onClick={() => setNavOpen(false)} />
@@ -183,7 +220,7 @@ export default function Shell({ path, children }: { path: string; children: Reac
             {t('shell.offline')}
           </div>
         )}
-        <header className="flex h-16 shrink-0 items-center gap-2 px-4 md:px-8">
+        <header className={cx('flex h-16 shrink-0 items-center gap-2 px-4 md:px-8', focus && 'hidden')}>
           <IconButton label={t('nav.openMenu')} className="hidden md:inline-flex lg:hidden" onClick={() => setNavOpen(true)}>
             <Menu className="h-5 w-5" />
           </IconButton>
@@ -213,14 +250,14 @@ export default function Shell({ path, children }: { path: string; children: Reac
             onClose={() => setCmdOpen(false)}
           />
         )}
-        <main id="main" className="flex-1 overflow-y-auto px-4 pb-8 md:px-8 md:pb-16">
+        <main id="main" className={cx('flex-1 overflow-y-auto px-4 pb-8 md:px-8 md:pb-16', focus && 'pt-4 md:px-5 md:pb-6')}>
           {/* Fades each page in; keyed by section so changing week or filters doesn't replay it. */}
           <div key={path.split('/')[1] ?? ''} className="animate-page">
             {children}
           </div>
         </main>
         {/* Phone: the main places one tap away; everything else under "More". */}
-        <nav aria-label={t('nav.main')} className="grid shrink-0 grid-cols-5 border-t border-sage-dark/60 bg-surface pb-[env(safe-area-inset-bottom)] md:hidden">
+        <nav aria-label={t('nav.main')} className={cx('grid shrink-0 grid-cols-5 border-t border-sage-dark/60 bg-surface pb-[env(safe-area-inset-bottom)] md:hidden', focus && 'hidden')}>
           {[
             { to: '/dashboard', label: t('nav.today'), icon: LayoutDashboard, on: path === '/dashboard' || path === '/' },
             { to: '/schedule', label: t('nav.week'), icon: CalendarDays, on: path.startsWith('/schedule') || path === '/review' },

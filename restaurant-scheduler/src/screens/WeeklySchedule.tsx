@@ -1,7 +1,8 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import { AlertTriangle, CalendarRange, ClipboardList, Clock3, Crown, ChevronDown, Download, Scale, StickyNote, Wand2, Loader2, MapPin, Megaphone, MoreHorizontal, ChevronLeft, ChevronRight, Copy, Eye, Plus, Undo2, UserPlus, UserRoundCheck, Users } from 'lucide-react'
+import { AlertTriangle, CalendarRange, ClipboardList, Clock3, Crown, ChevronDown, Download, Scale, StickyNote, Wand2, Loader2, MapPin, Maximize2, Megaphone, Minimize2, MoreHorizontal, ChevronLeft, ChevronRight, Copy, Eye, Plus, Undo2, UserPlus, UserRoundCheck, Users } from 'lucide-react'
 import { branchChanges, useStore } from '../lib/store'
+import { useFocusMode } from '../lib/focus'
 import { useT } from '../i18n'
 import { conflictTitles, deptName, describeSlot } from '../i18n/format'
 import { navigate, useLoad } from '../lib/hooks'
@@ -102,7 +103,10 @@ export default function WeeklySchedule({ week }: { week: string | null }) {
     }
   }
 
-  // Keyboard: ← → change week, T jumps to this week, P opens Review & publish.
+  const { focus, toggleFocus, setFocus } = useFocusMode()
+  // Leaving the schedule always ends full screen.
+  useEffect(() => () => setFocus(false), [setFocus])
+  // Keyboard: ← → change week, T jumps to this week, P opens Review & publish, F full screen.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const el = e.target as HTMLElement
@@ -111,12 +115,14 @@ export default function WeeklySchedule({ week }: { week: string | null }) {
       else if (e.key === 'ArrowRight') navigate(`/schedule?week=${addDays(weekStart, 7)}`)
       else if (e.key.toLowerCase() === 't') navigate('/schedule')
       else if (e.key.toLowerCase() === 'p' && changes.length) navigate('/review')
+      else if (e.key.toLowerCase() === 'f' && window.innerWidth >= 1024) toggleFocus()
+      else if (e.key === 'Escape' && focus) setFocus(false)
       else return
       e.preventDefault()
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [weekStart, changes.length])
+  }, [weekStart, changes.length, toggleFocus, focus, setFocus])
   const stats = useMemo(() => {
     let needed = 0
     let filled = 0
@@ -245,6 +251,14 @@ export default function WeeklySchedule({ week }: { week: string | null }) {
             onChange={setDept}
             options={[{ value: 'All', label: t('common.all') }, ...depts.map((d) => ({ value: d.id, label: <><DeptDot id={d.id} className="h-1.5 w-1.5" />{d.name}</> }))]}
           />
+          <IconButton
+            label={`${t(focus ? 'schedule.exitFull' : 'schedule.full')} (F)`}
+            aria-pressed={focus}
+            onClick={toggleFocus}
+            className={cx('hidden h-10 w-10 ring-1 lg:inline-flex', focus ? 'bg-forest text-white ring-forest hover:bg-forest-600 hover:text-white' : 'bg-surface ring-line hover:bg-paper')}
+          >
+            {focus ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+          </IconButton>
           <MoreMenu
             exporting={exporting}
             canExport={team.length > 0}
