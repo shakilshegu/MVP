@@ -310,7 +310,7 @@ export function Dashboard() {
 }
 
 export function MonthlySchedule({ month }: { month: string | null }) {
-  const { s, branch } = useStore()
+  const { s, a, branch, can, toast } = useStore()
   const { t } = useT()
   const today = todayKey()
   const first = (month ?? today.slice(0, 7)) + '-01'
@@ -321,6 +321,9 @@ export function MonthlySchedule({ month }: { month: string | null }) {
   const weeks = Math.ceil((daysInclusive(gridStart, addDays(nextMonth, -1))) / 7)
   const cells = Array.from({ length: weeks * 7 }, (_, i) => addDays(gridStart, i))
   const title = fmtMonthYear(first)
+  const hasShifts = (weekStart: string) => s.assignments.some((x) => x.branchId === branch!.id && isActive(x) && x.date >= weekStart && x.date <= addDays(weekStart, 6))
+  // Weeks of this month from the current one on with nothing scheduled yet.
+  const unplanned = [...new Set(cells.filter((c) => c.slice(0, 7) === first.slice(0, 7)).map(startOfWeek))].filter((w) => addDays(w, 6) >= today && !hasShifts(w))
 
   let need = 0
   let got = 0
@@ -349,6 +352,29 @@ export function MonthlySchedule({ month }: { month: string | null }) {
           </div>
         }
       />
+      {unplanned.length > 0 && (
+        <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-xl bg-white/70 px-4 py-3 text-sm ring-1 ring-line">
+          <span className="font-medium">{t('month.unplanned', { count: unplanned.length })}</span>
+          {unplanned.map((w) => (
+            <span key={w} className="flex items-center gap-2">
+              <a href={`#/schedule?week=${w}`} className="text-forest hover:underline">
+                {t('month.planWeek', { date: fmtRange(w, addDays(w, 6)) })}
+              </a>
+              {can('editShifts') && hasShifts(addDays(w, -7)) && (
+                <button
+                  className="rounded-md bg-forest px-2 py-1 text-xs font-medium text-white hover:bg-forest-600"
+                  onClick={() => {
+                    const r = a.copyWeek(addDays(w, -7), w)
+                    toast(t('schedule.copied', { count: r.added }))
+                  }}
+                >
+                  {t('month.copyPrev')}
+                </button>
+              )}
+            </span>
+          ))}
+        </div>
+      )}
       <div className="panel overflow-hidden">
         <div className="grid grid-cols-7 border-b border-line bg-paper text-center text-xs font-medium text-muted">
           {WEEK.map((i) => (
@@ -394,7 +420,16 @@ export function MonthlySchedule({ month }: { month: string | null }) {
           })}
         </div>
       </div>
-      <p className="mt-3 text-xs text-muted">{t('month.hint')}</p>
+      <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-muted">
+        <span className="flex items-center gap-1.5">
+          <span className="h-1.5 w-6 rounded-full bg-forest" /> {t('month.legendFull')}
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="h-1.5 w-6 rounded-full bg-bark/70" /> {t('month.legendGaps')}
+        </span>
+        <span>{t('month.legendPeople')}</span>
+        <span>{t('month.hint')}</span>
+      </div>
     </div>
   )
 }
@@ -407,7 +442,7 @@ export function ShiftTemplates() {
   const [editing, setEditing] = useState<ShiftTemplate | 'new' | null>(null)
   const sorted = [...s.templates].sort((a, b) => toMin(a.start) - toMin(b.start))
   return (
-    <div className="mx-auto max-w-4xl">
+    <div className="mx-auto max-w-6xl">
       <PageHeader
         title={t('templates.title')}
         sub={t('templates.sub')}
@@ -458,7 +493,7 @@ export function ShiftTemplates() {
                       {s.departments.map((x) => x.id).filter((d) => tpl.needed[d]).map((d) => (
                         <span key={d} className="flex items-center gap-1 whitespace-nowrap" title={deptName(s, d)}>
                           <DeptDot id={d} className="h-1.5 w-1.5" />
-                          {tpl.needed[d]}
+                          {deptName(s, d)} {tpl.needed[d]}
                         </span>
                       ))}
                     </div>

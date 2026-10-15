@@ -46,7 +46,7 @@ export function History() {
   }, {})
 
   return (
-    <div className="mx-auto max-w-4xl">
+    <div className="mx-auto max-w-6xl">
       <PageHeader title={t('history.title')} sub={t('history.sub', { branch: branch!.name })} />
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <Segmented<Group>
@@ -113,7 +113,7 @@ export function Permissions() {
   if (!isAdmin) return <NoAccess what={t('permissions.what')} />
   const managers = s.managers.filter((m) => m.role === 'manager')
   return (
-    <div className="mx-auto max-w-4xl">
+    <div className="mx-auto max-w-6xl">
       <PageHeader title={t('permissions.title')} sub={t('permissions.sub')} />
       <section className="panel overflow-hidden">
         <div className="grid grid-cols-[1fr_96px_96px] border-b border-line bg-paper px-5 py-2.5 text-xs font-medium text-muted">
@@ -217,11 +217,14 @@ export function Settings({ tab: initial }: { tab: string | null }) {
   }
 
   return (
-    <div className="mx-auto max-w-3xl">
+    <div className="mx-auto max-w-6xl">
       <PageHeader title={t('settings.title')} />
       <div className="mb-6 overflow-x-auto">
         <Segmented label={t('settings.sectionA11y')} value={tab} onChange={setTab} options={tabs} />
       </div>
+
+      {/* Forms stay at a comfortable reading width inside the wider page. */}
+      <div className="max-w-3xl">
 
       {tab === 'restaurant' && (
         <form onSubmit={saveBranch} className="panel space-y-4 p-6">
@@ -384,6 +387,8 @@ export function Settings({ tab: initial }: { tab: string | null }) {
           )}
         </div>
       )}
+
+      </div>
 
       {adding && <AddBranch onClose={() => setAdding(false)} />}
       {confirmReset && (

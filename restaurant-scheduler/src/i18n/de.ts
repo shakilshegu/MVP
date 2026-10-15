@@ -154,6 +154,12 @@ export const de: Shape<typeof en> = {
     people: '{count} Pers.',
     notScheduled: 'Nicht geplant',
     hint: 'Klicke auf einen Tag, um die Woche zu öffnen.',
+    unplanned: { one: '{count} Woche noch nicht geplant:', other: '{count} Wochen noch nicht geplant:' },
+    planWeek: '{date} planen',
+    copyPrev: 'Vorwoche kopieren',
+    legendFull: 'Voll besetzt',
+    legendGaps: 'Offene Plätze',
+    legendPeople: 'Pers. = Personen im Dienst',
   },
   schedule: {
     thisWeek: 'Diese Woche',

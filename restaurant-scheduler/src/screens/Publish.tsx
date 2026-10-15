@@ -55,7 +55,7 @@ export function ReviewPublish() {
 
   if (changes.length === 0) {
     return (
-      <div className="mx-auto max-w-3xl">
+      <div className="mx-auto max-w-6xl">
         <PageHeader title={t('publish.title')} />
         <div className="panel">
           <EmptyState
@@ -70,7 +70,7 @@ export function ReviewPublish() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl">
+    <div className="mx-auto max-w-6xl">
       <PageHeader title={t('publish.title')} sub={t('publish.sub', { branch: branch!.name })} />
 
       <ol className="mb-6 flex items-center gap-2 overflow-x-auto text-[13px]" aria-label={t('publish.stepsLabel')}>

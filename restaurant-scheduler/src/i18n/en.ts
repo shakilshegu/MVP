@@ -152,6 +152,12 @@ export const en = {
     people: '{count} ppl',
     notScheduled: 'Not scheduled',
     hint: 'Click a day to open that week.',
+    unplanned: { one: '{count} week not planned yet:', other: '{count} weeks not planned yet:' },
+    planWeek: 'Plan {date}',
+    copyPrev: 'Copy previous week',
+    legendFull: 'Fully staffed',
+    legendGaps: 'Has open slots',
+    legendPeople: 'ppl = people working',
   },
   schedule: {
     thisWeek: 'This week',
