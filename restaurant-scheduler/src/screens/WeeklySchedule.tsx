@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
-import { AlertTriangle, CalendarRange, ClipboardList, Clock3, Crown, Download, Scale, StickyNote, Wand2, Loader2, MapPin, Megaphone, MoreHorizontal, ChevronLeft, ChevronRight, Copy, Eye, Plus, Undo2, UserPlus, UserRoundCheck, Users } from 'lucide-react'
+import { AlertTriangle, CalendarRange, ClipboardList, Clock3, Crown, ChevronDown, Download, Scale, StickyNote, Wand2, Loader2, MapPin, Megaphone, MoreHorizontal, ChevronLeft, ChevronRight, Copy, Eye, Plus, Undo2, UserPlus, UserRoundCheck, Users } from 'lucide-react'
 import { branchChanges, useStore } from '../lib/store'
 import { useT } from '../i18n'
 import { conflictTitles, deptName, describeSlot } from '../i18n/format'
@@ -55,6 +55,51 @@ export default function WeeklySchedule({ week }: { week: string | null }) {
   const affected = new Set(changes.map((c) => c.a.employeeId)).size
 
   const cellOf = (date: string, t: string, d: Dept) => inWeek.filter((x) => x.date === date && x.templateId === t && x.dept === d)
+  // Shifts a department never staffs this week (and nobody is on) are left out of the grid.
+  const rowsFor = (d: Dept) => s.templates.filter((tpl) => days.some((day) => neededAt(s, branch!.id, tpl, d, day) > 0 || cellOf(day, tpl.id, d).length > 0))
+  const deptSummary = (d: Dept) => {
+    let got = 0
+    let need = 0
+    for (const day of days)
+      for (const tpl of s.templates) {
+        const n = neededAt(s, branch!.id, tpl, d, day)
+        need += n
+        got += Math.min(n, cellOf(day, tpl.id, d).filter(isActive).length)
+      }
+    return { got, need }
+  }
+  const [folded, setFolded] = useState<Dept[]>(() => {
+    try {
+      return JSON.parse(localStorage.getItem('rota-folded') ?? '[]')
+    } catch {
+      return []
+    }
+  })
+  const toggleFold = (d: Dept) => {
+    const next = folded.includes(d) ? folded.filter((x) => x !== d) : [...folded, d]
+    setFolded(next)
+    try {
+      localStorage.setItem('rota-folded', JSON.stringify(next))
+    } catch {
+      /* private mode: folding just won't be remembered */
+    }
+  }
+
+  // Keyboard: ← → change week, T jumps to this week, P opens Review & publish.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const el = e.target as HTMLElement
+      if (e.metaKey || e.ctrlKey || e.altKey || el.closest('input, textarea, select, [contenteditable]') || document.querySelector('dialog[open]')) return
+      if (e.key === 'ArrowLeft') navigate(`/schedule?week=${addDays(weekStart, -7)}`)
+      else if (e.key === 'ArrowRight') navigate(`/schedule?week=${addDays(weekStart, 7)}`)
+      else if (e.key.toLowerCase() === 't') navigate('/schedule')
+      else if (e.key.toLowerCase() === 'p' && changes.length) navigate('/review')
+      else return
+      e.preventDefault()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [weekStart, changes.length])
   const stats = useMemo(() => {
     let needed = 0
     let filled = 0
@@ -163,7 +208,7 @@ export default function WeeklySchedule({ week }: { week: string | null }) {
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <div className="flex items-center rounded-lg bg-white ring-1 ring-line">
-            <IconButton label={t('schedule.prevWeek')} onClick={() => navigate(`/schedule?week=${addDays(weekStart, -7)}`)}>
+            <IconButton label={`${t('schedule.prevWeek')} (←)`} onClick={() => navigate(`/schedule?week=${addDays(weekStart, -7)}`)}>
               <ChevronLeft className="h-4 w-4" />
             </IconButton>
             <button
@@ -173,7 +218,7 @@ export default function WeeklySchedule({ week }: { week: string | null }) {
             >
               {t('common.today')}
             </button>
-            <IconButton label={t('schedule.nextWeek')} onClick={() => navigate(`/schedule?week=${addDays(weekStart, 7)}`)}>
+            <IconButton label={`${t('schedule.nextWeek')} (→)`} onClick={() => navigate(`/schedule?week=${addDays(weekStart, 7)}`)}>
               <ChevronRight className="h-4 w-4" />
             </IconButton>
           </div>
@@ -266,9 +311,10 @@ export default function WeeklySchedule({ week }: { week: string | null }) {
             </div>
           )}
 
-          <div className="panel hidden overflow-x-auto md:block">
+          {/* Scrolls inside its own box so the day header and totals stay in view (sticky). */}
+          <div className={cx('panel hidden overflow-auto md:block', changes.length && editable ? 'max-h-[calc(100dvh-20rem)]' : 'max-h-[calc(100dvh-12rem)]')}>
             <div className="grid min-w-[1060px]" style={{ gridTemplateColumns: '150px repeat(7, minmax(126px, 1fr))' }}>
-              <div className="sticky left-0 z-10 bg-white" />
+              <div className="sticky left-0 top-0 z-30 border-b border-line bg-white" />
               {days.map((d, i) => {
                 let need = 0
                 let got = 0
@@ -280,7 +326,7 @@ export default function WeeklySchedule({ week }: { week: string | null }) {
                   }
                 const isToday = d === today
                 return (
-                  <div key={d} className={cx('group/day border-l border-line px-3 pb-3 pt-4', d < today && 'bg-paper/60')}>
+                  <div key={d} className={cx('group/day sticky top-0 z-20 border-b border-l border-line px-3 pb-3 pt-4', d < today ? 'bg-paper' : 'bg-white')}>
                     <div className="flex items-baseline justify-between">
                       <div className="flex items-baseline gap-2">
                         <span className={cx('text-[13px]', isToday ? 'font-semibold text-forest' : 'text-muted')}>{dayShort(i)}</span>
@@ -308,8 +354,15 @@ export default function WeeklySchedule({ week }: { week: string | null }) {
                 )
               })}
               {visibleDepts.map((dp) => (
-                <DeptBand key={dp} dept={dp} count={team.filter((e) => e.dept === dp).length}>
-                  {s.templates.map((tpl) => (
+                <DeptBand
+                  key={dp}
+                  dept={dp}
+                  count={team.filter((e) => e.dept === dp).length}
+                  collapsed={folded.includes(dp)}
+                  onToggle={() => toggleFold(dp)}
+                  summary={deptSummary(dp)}
+                >
+                  {rowsFor(dp).map((tpl) => (
                     <Row key={tpl.id} tpl={tpl}>
                       {days.map((d) => (
                         <Cell key={d} {...cellProps} slot={{ date: d, templateId: tpl.id, dept: dp }} list={cellOf(d, tpl.id, dp)} needed={neededAt(s, branch!.id, tpl, dp, d)} extra={extraFor(s, branch!.id, tpl.id, dp, d)} tone={tpl.tone} />
@@ -318,7 +371,7 @@ export default function WeeklySchedule({ week }: { week: string | null }) {
                   ))}
                 </DeptBand>
               ))}
-              <div className="sticky left-0 z-10 border-t-2 border-line bg-paper px-4 py-3">
+              <div className="sticky bottom-0 left-0 z-30 border-t-2 border-line bg-paper px-4 py-3">
                 <div className="text-sm font-semibold">{t('schedule.totals')}</div>
                 <div className="text-xs text-muted">
                   {t('schedule.weekTotal')}: {t('common.people', { count: stats.people })}
@@ -326,7 +379,7 @@ export default function WeeklySchedule({ week }: { week: string | null }) {
                 <div className="text-xs text-muted">{t('schedule.hoursTotal', { hours: stats.hours })}</div>
               </div>
               {days.map((d, i) => (
-                <div key={d} className={cx('border-l border-t-2 border-line bg-paper px-3 py-3', d < today && 'text-muted')}>
+                <div key={d} className={cx('sticky bottom-0 z-20 border-l border-t-2 border-line bg-paper px-3 py-3', d < today && 'text-muted')}>
                   <div className="flex items-center gap-1.5 text-sm font-semibold">
                     <Users className="h-3.5 w-3.5 text-muted" aria-hidden />
                     {t('common.people', { count: stats.perDay[i].people })}
@@ -399,7 +452,7 @@ export default function WeeklySchedule({ week }: { week: string | null }) {
       )}
 
       {changes.length > 0 && (
-        <div className="sticky bottom-4 z-20 mt-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-ink px-5 py-3 text-white shadow-2xl">
+        <div className="sticky bottom-4 z-40 mt-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-ink px-5 py-3 text-white shadow-2xl">
           <div className="text-sm">
             <span className="font-semibold">{t('shell.unpublished', { count: changes.length })}</span>
             <span className="text-white/65">
@@ -548,17 +601,43 @@ function MoreMenu({
   )
 }
 
-function DeptBand({ dept, count, children }: { dept: Dept; count: number; children: ReactNode }) {
+function DeptBand({
+  dept,
+  count,
+  collapsed,
+  onToggle,
+  summary,
+  children,
+}: {
+  dept: Dept
+  count: number
+  collapsed: boolean
+  onToggle: () => void
+  summary: { got: number; need: number }
+  children: ReactNode
+}) {
   const { t } = useT()
   const { s } = useStore()
+  const open = summary.need - summary.got
   return (
     <>
-      <div className="sticky left-0 col-span-8 flex items-center gap-2 border-t border-line bg-paper px-4 py-2 text-sm">
+      <button
+        onClick={onToggle}
+        aria-expanded={!collapsed}
+        title={t(collapsed ? 'schedule.expandDept' : 'schedule.collapseDept')}
+        className="sticky left-0 col-span-8 flex items-center gap-2 border-t border-line bg-paper px-4 py-2 text-left text-sm hover:bg-sage/40"
+      >
+        <ChevronDown className={cx('h-4 w-4 text-muted transition-transform', collapsed && '-rotate-90')} aria-hidden />
         <DeptDot id={dept} />
         <span className="font-semibold">{deptName(s, dept)}</span>
         <span className="text-muted">· {t('common.people', { count })}</span>
-      </div>
-      {children}
+        {collapsed && (
+          <span className={cx('ml-2 text-xs', open > 0 ? 'font-medium text-bark' : 'text-muted')}>
+            {t('common.slotsFilled', { got: summary.got, need: summary.need })}
+          </span>
+        )}
+      </button>
+      {!collapsed && children}
     </>
   )
 }
@@ -847,6 +926,7 @@ function Legend() {
         {t('schedule.leader')}
       </span>
       <span className="hidden md:inline">{t('schedule.legendHint')}</span>
+      <span className="hidden lg:inline">{t('schedule.shortcuts')}</span>
     </div>
   )
 }
