@@ -25,7 +25,7 @@ export function Announcements() {
 
   if (loading.status === 'loading') return <PageSkeleton title={t('announce.title')} variant="cards" />
   return (
-    <div className="mx-auto max-w-6xl">
+    <div className="mx-auto max-w-6xl 2xl:max-w-[1500px]">
       <PageHeader
         title={t('announce.title')}
         sub={t('announce.sub', { branch: branch!.name })}
@@ -47,7 +47,7 @@ export function Announcements() {
           />
         </div>
       ) : (
-        <ul className="grid items-start gap-3 lg:grid-cols-2">
+        <ul className="grid items-start gap-3 xl:grid-cols-2">
           {upcoming.map((x) => (
             <Card key={x.id} x={x} editable={editable} onEdit={() => setEditing(x)} onDelete={() => setRemoving(x)} />
           ))}
@@ -60,7 +60,7 @@ export function Announcements() {
             {showPast ? t('announce.hidePast') : t('announce.showPast', { count: past.length })}
           </button>
           {showPast && (
-            <ul className="mt-3 grid items-start gap-3 opacity-70 lg:grid-cols-2">
+            <ul className="mt-3 grid items-start gap-3 opacity-70 xl:grid-cols-2">
               {past.map((x) => (
                 <Card key={x.id} x={x} editable={false} onEdit={() => {}} onDelete={() => {}} />
               ))}

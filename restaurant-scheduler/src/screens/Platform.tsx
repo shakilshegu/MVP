@@ -39,7 +39,7 @@ export function Platform() {
         </Button>
       </header>
 
-      <main className="mx-auto max-w-6xl px-4 py-10 md:px-8">
+      <main className="mx-auto max-w-6xl 2xl:max-w-[1500px] px-4 py-10 md:px-8">
         <PageHeader
           title={t('platform.title')}
           sub={t('platform.sub')}

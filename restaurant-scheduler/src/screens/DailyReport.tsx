@@ -58,7 +58,7 @@ export function DailyReport({ date }: { date: string | null }) {
 
   if (loading.status === 'loading') return <PageSkeleton title={t('report.title')} variant="cards" />
   return (
-    <div className="mx-auto max-w-6xl">
+    <div className="mx-auto max-w-6xl 2xl:max-w-[1500px]">
       <PageHeader
         title={t('report.title')}
         sub={`${fmtLong(day)} · ${branch!.name}`}

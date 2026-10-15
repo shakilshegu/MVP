@@ -64,7 +64,7 @@ export function Team({ openAdd }: { openAdd: boolean }) {
   )
 
   return (
-    <div className="mx-auto max-w-6xl">
+    <div className="mx-auto max-w-6xl 2xl:max-w-[1500px]">
       <PageHeader
         title={t('team.title')}
         sub={[
@@ -459,7 +459,7 @@ export function EmployeeProfile({ id }: { id: string }) {
   const checklist = s.checklists.find((c) => c.id === e.checklistId)
 
   return (
-    <div className="mx-auto max-w-6xl">
+    <div className="mx-auto max-w-6xl 2xl:max-w-[1500px]">
       <a href="#/team" className="mb-4 inline-flex items-center gap-1.5 text-sm text-muted hover:text-ink">
         <ArrowLeft className="h-4 w-4" /> {t('team.title')}
       </a>
@@ -487,7 +487,7 @@ export function EmployeeProfile({ id }: { id: string }) {
         </div>
       </div>
 
-      <div className="mt-6 grid gap-6 md:grid-cols-[1fr_300px] lg:grid-cols-[1fr_340px]">
+      <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_300px] xl:grid-cols-[1fr_340px]">
         <section className="panel">
           <div className="flex items-center justify-between border-b border-line px-5 py-3.5">
             <h2 className="text-sm font-semibold">{t('profile.thisWeek')}</h2>
@@ -529,7 +529,7 @@ export function EmployeeProfile({ id }: { id: string }) {
           )}
         </section>
 
-        <div className="space-y-6 md:row-span-2">
+        <div className="space-y-6 lg:row-span-2">
           <section className="panel p-5">
             <h2 className="text-sm font-semibold">{t('profile.skills')}</h2>
             <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2">

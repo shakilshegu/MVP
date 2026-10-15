@@ -87,17 +87,19 @@ export default function Shell({ path, children }: { path: string; children: Reac
 
   const nav = (
     <nav aria-label={t('nav.main')} className="flex h-full flex-col">
-      <div className="flex items-center gap-2.5 px-5 pb-6 pt-5">
+      {/* 1024–1279 px: the sidebar is a slim icon rail (labels as tooltips); full width from 1280 px. */}
+      <div className="flex items-center gap-2.5 px-5 pb-6 pt-5 lg:max-xl:justify-center lg:max-xl:px-0">
         <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-forest font-serif text-xl leading-none text-white">R</span>
-        <span className="min-w-0">
+        <span className="min-w-0 lg:max-xl:hidden">
           <span className="block text-[15px] font-semibold leading-tight text-forest">Rota</span>
           <span className="block truncate text-xs text-muted">{company?.name}</span>
         </span>
       </div>
-      <div className="flex-1 space-y-6 overflow-y-auto px-3">
+      <div className="flex-1 space-y-6 overflow-y-auto px-3 lg:max-xl:space-y-3 lg:max-xl:px-2">
         {items.map((g, i) => (
           <div key={i}>
-            {g.group && <div className="px-3 pb-1.5 text-xs font-medium text-muted">{g.group}</div>}
+            {g.group && <div className="px-3 pb-1.5 text-xs font-medium text-muted lg:max-xl:hidden">{g.group}</div>}
+            {g.group && i > 0 && <div className="mx-2 mb-3 hidden h-px bg-sage-dark/70 lg:max-xl:block" aria-hidden />}
             <ul className="space-y-0.5">
               {g.items
                 .filter((it) => !it.superOnly || isAdmin)
@@ -109,14 +111,17 @@ export default function Shell({ path, children }: { path: string; children: Reac
                         href={'#' + it.to}
                         onClick={() => setNavOpen(false)}
                         aria-current={active ? 'page' : undefined}
+                        title={it.label}
                         className={cx(
-                          'flex h-9 items-center gap-3 rounded-lg px-3 text-sm transition-colors [&>svg]:h-[18px] [&>svg]:w-[18px]',
+                          'relative flex h-9 items-center gap-3 rounded-lg px-3 text-sm transition-colors lg:max-xl:h-10 lg:max-xl:justify-center lg:max-xl:px-0 [&>svg]:h-[18px] [&>svg]:w-[18px]',
                           active ? 'bg-surface font-medium text-forest shadow-sm' : 'text-ink/75 hover:bg-surface/50 hover:text-ink',
                         )}
                       >
                         {it.icon}
-                        <span className="flex-1">{it.label}</span>
-                        {!!it.badge && <span className="rounded-full bg-bark px-1.5 text-[11px] font-semibold leading-5 text-white">{it.badge}</span>}
+                        <span className="flex-1 lg:max-xl:sr-only">{it.label}</span>
+                        {!!it.badge && (
+                          <span className="rounded-full bg-bark px-1.5 text-[11px] font-semibold leading-5 text-white lg:max-xl:absolute lg:max-xl:right-1 lg:max-xl:top-0.5 lg:max-xl:px-1 lg:max-xl:text-[9px] lg:max-xl:leading-4">{it.badge}</span>
+                        )}
                       </a>
                     </li>
                   )
@@ -125,14 +130,14 @@ export default function Shell({ path, children }: { path: string; children: Reac
           </div>
         ))}
       </div>
-      <div className="m-3 flex items-center gap-3 rounded-xl bg-surface/60 p-3">
+      <div className="m-3 flex items-center gap-3 rounded-xl bg-surface/60 p-3 lg:max-xl:m-2 lg:max-xl:flex-col lg:max-xl:gap-1.5 lg:max-xl:p-2" title={me?.name}>
         <span className="flex h-9 w-9 items-center justify-center rounded-full bg-forest text-sm font-semibold text-white">
           {me?.name
             .split(' ')
             .map((x) => x[0])
             .join('')}
         </span>
-        <div className="min-w-0 flex-1">
+        <div className="min-w-0 flex-1 lg:max-xl:hidden">
           <div className="truncate text-sm font-medium">{me?.name}</div>
           <div className="text-xs text-muted">{me && t(`role.${me.role}`)}</div>
         </div>
@@ -145,7 +150,7 @@ export default function Shell({ path, children }: { path: string; children: Reac
 
   return (
     <div className="flex h-full">
-      <aside className="hidden w-60 shrink-0 border-r border-sage-dark/60 lg:block">{nav}</aside>
+      <aside className="hidden w-60 shrink-0 border-r border-sage-dark/60 lg:block lg:max-xl:w-[76px]">{nav}</aside>
       {navOpen && (
         <div className="fixed inset-0 z-40 lg:hidden">
           <div className="absolute inset-0 bg-inverse/40" onClick={() => setNavOpen(false)} />

@@ -58,7 +58,7 @@ function DayWeatherInner({ w }: { w: DayWeather }) {
     <>
       <Icon className={cx('h-4 w-4 shrink-0', tint)} aria-hidden />
       <span className="font-medium text-ink">{w.max}°</span>
-      <span className="text-muted">{w.min}°</span>
+      <span className="hidden text-muted xl:inline">{w.min}°</span>
       {w.rain >= 40 && (
         <span className="ml-auto flex items-center gap-0.5 text-xs font-medium text-rain">
           <Droplets className="h-3 w-3" aria-hidden />

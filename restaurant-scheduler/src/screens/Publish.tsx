@@ -55,7 +55,7 @@ export function ReviewPublish() {
 
   if (changes.length === 0) {
     return (
-      <div className="mx-auto max-w-6xl">
+      <div className="mx-auto max-w-6xl 2xl:max-w-[1500px]">
         <PageHeader title={t('publish.title')} />
         <div className="panel">
           <EmptyState
@@ -70,7 +70,7 @@ export function ReviewPublish() {
   }
 
   return (
-    <div className="mx-auto max-w-6xl">
+    <div className="mx-auto max-w-6xl 2xl:max-w-[1500px]">
       <PageHeader title={t('publish.title')} sub={t('publish.sub', { branch: branch!.name })} />
 
       <ol className="mb-6 flex items-center gap-2 overflow-x-auto text-[13px]" aria-label={t('publish.stepsLabel')}>
@@ -93,7 +93,7 @@ export function ReviewPublish() {
         ))}
       </ol>
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
+      <div className="grid gap-6 xl:grid-cols-[1fr_320px]">
         <div className="space-y-4">
           {Object.entries(byDate).map(([date, list]) => (
             <section key={date} className="panel overflow-hidden">
@@ -194,9 +194,9 @@ export function ReviewPublish() {
           ))}
         </div>
 
-        <aside className="lg:sticky lg:top-4 lg:self-start">
+        <aside className="xl:sticky xl:top-4 xl:self-start">
           <div className="panel p-5">
-            <dl className="grid grid-cols-2 gap-2 text-center sm:grid-cols-4 lg:grid-cols-2">
+            <dl className="grid grid-cols-2 gap-2 text-center sm:grid-cols-4 xl:grid-cols-2">
               {[
                 [t('publish.added'), visible.filter((c) => c.kind === 'added').length] as const,
                 [t('publish.replaced'), replacedCount] as const,

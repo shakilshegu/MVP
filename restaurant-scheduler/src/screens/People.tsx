@@ -32,7 +32,7 @@ export function Availability({ week }: { week: string | null }) {
 
   if (loading.status === 'loading') return <PageSkeleton title={t('availability.title')} variant="list" />
   return (
-    <div className="mx-auto max-w-6xl">
+    <div className="mx-auto max-w-6xl 2xl:max-w-[1500px]">
       <PageHeader
         title={t('availability.title')}
         sub={t('availability.sub')}
@@ -72,7 +72,7 @@ export function Availability({ week }: { week: string | null }) {
       ) : (
         <>
         {/* Phone: one card per person with seven day pills instead of a sideways table. */}
-        <ul className="space-y-2 md:hidden">
+        <ul className="grid gap-2 md:grid-cols-2 lg:hidden">
           {team.map((e) => {
             const changed = view === 'week' && s.weekAvailability[e.id]?.[weekStart] != null
             return (
@@ -126,7 +126,7 @@ export function Availability({ week }: { week: string | null }) {
             )
           })}
         </ul>
-        <div className="panel hidden overflow-x-auto md:block">
+        <div className="panel hidden overflow-x-auto lg:block">
           <table className="w-full min-w-[760px] text-sm">
             <thead>
               <tr className="border-b border-line text-left text-xs text-muted">
@@ -349,7 +349,7 @@ export function LeaveRequests({ focus }: { focus?: string | null }) {
 
   if (loading.status === 'loading') return <PageSkeleton title={t('leave.title')} variant="cards" />
   return (
-    <div className="mx-auto max-w-6xl">
+    <div className="mx-auto max-w-6xl 2xl:max-w-[1500px]">
       <PageHeader title={t('leave.title')} sub={t('leave.sub')} />
       <div className="mb-4">
         <Segmented

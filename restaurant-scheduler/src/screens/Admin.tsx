@@ -49,7 +49,7 @@ export function History() {
 
   if (loading.status === 'loading') return <PageSkeleton title={t('history.title')} variant="list" />
   return (
-    <div className="mx-auto max-w-6xl">
+    <div className="mx-auto max-w-6xl 2xl:max-w-[1500px]">
       <PageHeader title={t('history.title')} sub={t('history.sub', { branch: branch!.name })} />
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <Segmented<Group>
@@ -116,7 +116,7 @@ export function Permissions() {
   if (!isAdmin) return <NoAccess what={t('permissions.what')} />
   const managers = s.managers.filter((m) => m.role === 'manager')
   return (
-    <div className="mx-auto max-w-6xl">
+    <div className="mx-auto max-w-6xl 2xl:max-w-[1500px]">
       <PageHeader title={t('permissions.title')} sub={t('permissions.sub')} />
       <section className="panel overflow-hidden">
         <div className="grid grid-cols-[1fr_96px_96px] border-b border-line bg-paper px-5 py-2.5 text-xs font-medium text-muted">
@@ -221,7 +221,7 @@ export function Settings({ tab: initial }: { tab: string | null }) {
   }
 
   return (
-    <div className="mx-auto max-w-6xl">
+    <div className="mx-auto max-w-6xl 2xl:max-w-[1500px]">
       <PageHeader title={t('settings.title')} />
       <div className="mb-6 overflow-x-auto">
         <Segmented label={t('settings.sectionA11y')} value={tab} onChange={setTab} options={tabs} />

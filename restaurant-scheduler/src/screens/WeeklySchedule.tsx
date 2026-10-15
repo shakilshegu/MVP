@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { AlertTriangle, CalendarRange, ClipboardList, Clock3, Crown, ChevronDown, Download, Scale, StickyNote, Wand2, Loader2, MapPin, Megaphone, MoreHorizontal, ChevronLeft, ChevronRight, Copy, Eye, Plus, Undo2, UserPlus, UserRoundCheck, Users } from 'lucide-react'
 import { branchChanges, useStore } from '../lib/store'
@@ -68,6 +68,23 @@ export default function WeeklySchedule({ week }: { week: string | null }) {
       }
     return { got, need }
   }
+  // The grid scrolls inside its own box; its height is measured so the day header, totals and
+  // the floating "unpublished changes" bar all fit on screen whatever the toolbar above does.
+  const gridBox = useRef<HTMLDivElement>(null)
+  const [gridMax, setGridMax] = useState<number | undefined>(undefined)
+  const barRoom = changes.length > 0 && editable ? 120 : 40
+  useLayoutEffect(() => {
+    const measure = () => {
+      const el = gridBox.current
+      if (!el || !el.offsetParent) return
+      const main = document.getElementById('main')
+      const top = el.getBoundingClientRect().top - (main?.getBoundingClientRect().top ?? 0) + (main?.scrollTop ?? 0)
+      setGridMax(Math.max(360, (main?.clientHeight ?? window.innerHeight) - top - barRoom))
+    }
+    measure()
+    window.addEventListener('resize', measure)
+    return () => window.removeEventListener('resize', measure)
+  })
   const [folded, setFolded] = useState<Dept[]>(() => {
     try {
       return JSON.parse(localStorage.getItem('rota-folded') ?? '[]')
@@ -182,7 +199,7 @@ export default function WeeklySchedule({ week }: { week: string | null }) {
   const isPastWeek = days[6] < today
 
   return (
-    <div className="mx-auto max-w-[1400px]">
+    <div className="mx-auto max-w-[1400px] 2xl:max-w-[1840px]">
       <div className="mb-5 flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="page-title">
@@ -312,8 +329,9 @@ export default function WeeklySchedule({ week }: { week: string | null }) {
           )}
 
           {/* Scrolls inside its own box so the day header and totals stay in view (sticky). */}
-          <div className={cx('panel hidden overflow-auto md:block', changes.length && editable ? 'max-h-[calc(100dvh-20rem)]' : 'max-h-[calc(100dvh-12rem)]')}>
-            <div className="grid min-w-[1060px]" style={{ gridTemplateColumns: '150px repeat(7, minmax(126px, 1fr))' }}>
+          <div ref={gridBox} style={{ maxHeight: gridMax }} className="panel hidden overflow-auto lg:block">
+            {/* Whole week fits from 1024 px (tighter columns until 1280 px); below that the day view is used. */}
+            <div className="grid min-w-[860px] grid-cols-[124px_repeat(7,minmax(104px,1fr))] xl:min-w-[940px] xl:grid-cols-[136px_repeat(7,minmax(114px,1fr))] 2xl:grid-cols-[150px_repeat(7,minmax(126px,1fr))]">
               <div className="sticky left-0 top-0 z-30 border-b border-line bg-surface" />
               {days.map((d, i) => {
                 let need = 0
@@ -326,9 +344,9 @@ export default function WeeklySchedule({ week }: { week: string | null }) {
                   }
                 const isToday = d === today
                 return (
-                  <div key={d} className={cx('group/day sticky top-0 z-20 border-b border-l border-line px-3 pb-3 pt-4', d < today ? 'bg-paper' : 'bg-surface')}>
-                    <div className="flex items-baseline justify-between">
-                      <div className="flex items-baseline gap-2">
+                  <div key={d} className={cx('group/day sticky top-0 z-20 border-b border-l border-line px-2.5 pb-3 pt-4 xl:px-3', d < today ? 'bg-paper' : 'bg-surface')}>
+                    <div className="flex flex-wrap items-baseline justify-between gap-x-2 gap-y-0.5">
+                      <div className="flex items-baseline gap-1.5 xl:gap-2">
                         <span className={cx('text-[13px]', isToday ? 'font-semibold text-forest' : 'text-muted')}>{dayShort(i)}</span>
                         <span
                           className={cx(
@@ -371,18 +389,22 @@ export default function WeeklySchedule({ week }: { week: string | null }) {
                   ))}
                 </DeptBand>
               ))}
-              <div className="sticky bottom-0 left-0 z-30 border-t-2 border-line bg-paper px-4 py-3">
+              <div className="sticky bottom-0 left-0 z-30 border-t-2 border-line bg-paper px-3 py-3 xl:px-4">
                 <div className="text-sm font-semibold">{t('schedule.totals')}</div>
                 <div className="text-xs text-muted">
-                  {t('schedule.weekTotal')}: {t('common.people', { count: stats.people })}
+                  <span className="hidden xl:inline">{t('schedule.weekTotal')}: </span>
+                  {t('common.people', { count: stats.people })}
                 </div>
                 <div className="text-xs text-muted">{t('schedule.hoursTotal', { hours: stats.hours })}</div>
               </div>
               {days.map((d, i) => (
-                <div key={d} className={cx('sticky bottom-0 z-20 border-l border-t-2 border-line bg-paper px-3 py-3', d < today && 'text-muted')}>
+                <div key={d} className={cx('sticky bottom-0 z-20 border-l border-t-2 border-line bg-paper px-2.5 py-3 xl:px-3', d < today && 'text-muted')}>
                   <div className="flex items-center gap-1.5 text-sm font-semibold">
                     <Users className="h-3.5 w-3.5 text-muted" aria-hidden />
-                    {t('common.people', { count: stats.perDay[i].people })}
+                    <span className="xl:hidden" title={t('common.people', { count: stats.perDay[i].people })}>
+                      {stats.perDay[i].people}
+                    </span>
+                    <span className="hidden xl:inline">{t('common.people', { count: stats.perDay[i].people })}</span>
                   </div>
                   <div className="mt-0.5 flex items-center gap-1.5 text-xs text-muted">
                     <Clock3 className="h-3.5 w-3.5" aria-hidden />
@@ -653,7 +675,7 @@ function DeptBand({
 function Row({ tpl, children }: { tpl: ShiftTemplate; children: ReactNode }) {
   return (
     <>
-      <div className="sticky left-0 z-10 flex gap-2.5 border-t border-line bg-surface px-4 py-3">
+      <div className="sticky left-0 z-10 flex gap-2.5 border-t border-line bg-surface px-3 py-3 xl:px-4">
         <span className={cx('w-1 shrink-0 rounded-full', toneCls[tpl.tone].split(' ')[0])} />
         <div>
           <div className="text-sm font-medium">{tpl.name}</div>
@@ -758,7 +780,7 @@ function Cell({ slot, list, needed, extra = 0, tone, today, editable, dragOver, 
             style={x.state === 'removed' ? undefined : { boxShadow: `inset 3px 0 0 ${e.color}` }}
             aria-label={x.state === 'added' ? t('schedule.a11yUnpublished', { name: e.name }) : x.state === 'removed' ? t('schedule.a11yRemoved', { name: e.name }) : e.name}
             className={cx(
-              'flex w-full items-center gap-1.5 rounded-md px-2 py-1 text-left text-[13px] font-medium transition-shadow',
+              'flex w-full items-center gap-1 rounded-md px-1.5 py-1 text-left text-xs font-medium transition-shadow xl:gap-1.5 xl:px-2 xl:text-[13px]',
               !seen.current.has(x.id) && 'animate-chip',
               canEdit && x.state !== 'removed' && 'cursor-grab active:cursor-grabbing',
               x.state === 'published' && !x.isLeader && `${toneCls[tone]} hover:shadow-sm`,
@@ -897,7 +919,7 @@ function MobileDay({ days, active, setActive, weather, children }: { days: strin
   const { t } = useT()
   const today = todayKey()
   return (
-    <div className="md:hidden">
+    <div className="lg:hidden">
       <div role="tablist" aria-label={t('schedule.day')} className="-mx-4 mb-3 flex gap-1.5 overflow-x-auto px-4 pb-1">
         {days.map((d, i) => (
           <button
