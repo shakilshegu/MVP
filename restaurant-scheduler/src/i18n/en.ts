@@ -452,6 +452,18 @@ export const en = {
     showLess: 'Show less',
     checklistDone: 'Checklist: {done} of {total} done',
   },
+  onboarding: {
+    title: 'Get {branch} ready',
+    progress: '{done} of {total} done',
+    hide: 'Hide this guide',
+    steps: {
+      details: { title: 'Add the address and city', body: 'Used on the printed rota and for the weather forecast.' },
+      shifts: { title: 'Check your shift times', body: 'Morning, Day, Evening and Night are ready; adjust times and staff needed.' },
+      team: { title: 'Add your team', body: 'Name, departments, max hours and pay. They get an invite by email.' },
+      plan: { title: 'Plan the first week', body: 'Click an open slot, or use auto-fill to staff the week in one go.' },
+      publish: { title: 'Publish the schedule', body: 'Your team only sees shifts once you publish them.' },
+    },
+  },
   command: {
     title: 'Quick search',
     search: 'Search',

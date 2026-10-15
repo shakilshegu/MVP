@@ -8,6 +8,7 @@ import { deptName } from '../i18n/format'
 import { breakMinutes, isActive, neededAt } from '../lib/validation'
 import { cityOf, shiftWeather, useWeather } from '../lib/weather'
 import { doneCount, shiftItems, shiftPhase } from '../lib/report'
+import { GetStarted } from '../components/onboarding'
 import { ShiftWeatherTag } from '../components/weather'
 import type { Dept, ShiftTemplate, Tone } from '../lib/types'
 import { Avatar, Badge, Button, cx, DeptDot, Drawer, EmptyState, Field, PageHeader, toneCls } from '../components/ui'
@@ -70,6 +71,7 @@ export function Dashboard() {
   return (
     <div className="mx-auto max-w-6xl">
       <PageHeader title={t(greet, { name: me?.name.split(' ')[0] ?? '' })} sub={`${fmtLong(today)} · ${branch!.name}`} />
+      <GetStarted />
 
       <div className="mb-6 grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4">
         <a href="#/schedule" className="panel p-3 transition-shadow hover:shadow-md sm:p-4">
@@ -94,7 +96,7 @@ export function Dashboard() {
                   {t('dashboard.firstGap', { date: fmtDay(firstGap) })}
                 </a>
               )}
-              {can('editShifts') && (
+              {can('editShifts') && s.employees.some((e) => e.branchId === branch!.id) && (
                 <button
                   className="flex items-center gap-1 text-forest hover:underline"
                   onClick={() => {

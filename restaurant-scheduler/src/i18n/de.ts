@@ -454,6 +454,18 @@ export const de: Shape<typeof en> = {
     showLess: 'Weniger anzeigen',
     checklistDone: 'Checkliste: {done} von {total} erledigt',
   },
+  onboarding: {
+    title: '{branch} startklar machen',
+    progress: '{done} von {total} erledigt',
+    hide: 'Anleitung ausblenden',
+    steps: {
+      details: { title: 'Adresse und Stadt eintragen', body: 'Für den gedruckten Dienstplan und die Wettervorhersage.' },
+      shifts: { title: 'Schichtzeiten prüfen', body: 'Früh, Tag, Abend und Nacht sind angelegt; Zeiten und Besetzung anpassen.' },
+      team: { title: 'Team hinzufügen', body: 'Name, Bereiche, Max-Stunden und Lohn. Sie erhalten eine Einladung per E-Mail.' },
+      plan: { title: 'Erste Woche planen', body: 'Klicke auf einen offenen Platz oder fülle die Woche automatisch.' },
+      publish: { title: 'Dienstplan veröffentlichen', body: 'Das Team sieht Schichten erst nach dem Veröffentlichen.' },
+    },
+  },
   command: {
     title: 'Schnellsuche',
     search: 'Suchen',
