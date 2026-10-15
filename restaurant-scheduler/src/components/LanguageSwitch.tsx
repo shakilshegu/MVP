@@ -17,7 +17,7 @@ export function LanguageMenu({ className }: { className?: string }) {
         }}
         aria-label={`${t('shell.language')}: ${current.label}`}
         aria-haspopup="dialog"
-        className={cx('inline-flex h-10 items-center gap-1.5 rounded-lg px-2.5 text-[13px] font-medium text-forest hover:bg-white/50', className)}
+        className={cx('inline-flex h-10 items-center gap-1.5 rounded-lg px-2.5 text-[13px] font-medium text-forest hover:bg-surface/50', className)}
       >
         <Languages className="h-4 w-4" />
         {current.short}

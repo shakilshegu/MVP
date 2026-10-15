@@ -44,7 +44,7 @@ export function TaskList({ x, editable }: { x: Assignment; editable: boolean }) 
                 onClick={() => a.toggleTask(x.id, task.id)}
                 className={cx(
                   'flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors',
-                  task.done ? 'border-forest bg-forest text-white' : 'border-sage-dark bg-white hover:border-forest',
+                  task.done ? 'border-forest bg-forest text-white' : 'border-sage-dark bg-surface hover:border-forest',
                 )}
               >
                 {task.done && <Check className="h-3 w-3" />}

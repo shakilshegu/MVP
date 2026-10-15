@@ -10,10 +10,10 @@ export const cx = (...c: (string | false | null | undefined)[]) => c.filter(Bool
 type BtnProps = ButtonHTMLAttributes<HTMLButtonElement> & { variant?: 'primary' | 'secondary' | 'ghost' | 'danger' | 'quiet'; size?: 'sm' | 'md' }
 const variants = {
   primary: 'bg-forest text-white hover:bg-forest-600 active:bg-forest-700',
-  secondary: 'bg-white text-ink border border-line hover:border-sage-dark hover:bg-paper',
+  secondary: 'bg-surface text-ink border border-line hover:border-sage-dark hover:bg-paper',
   ghost: 'text-muted hover:text-ink hover:bg-forest-50',
   quiet: 'bg-forest-50 text-forest hover:bg-forest-100',
-  danger: 'bg-white text-danger border border-danger/30 hover:bg-danger-50',
+  danger: 'bg-surface text-danger border border-danger/30 hover:bg-danger-50',
 }
 export function Button({ variant = 'secondary', size = 'md', className, type = 'button', ...p }: BtnProps) {
   return (
@@ -78,7 +78,7 @@ export function Modal({
   const d = useDialog(onClose)
   const { t } = useT()
   return (
-    <dialog {...d} className={cx('max-h-[calc(100dvh-32px)] w-[calc(100%-32px)] animate-pop overflow-y-auto rounded-2xl bg-white p-0 text-ink shadow-2xl', width)}>
+    <dialog {...d} className={cx('max-h-[calc(100dvh-32px)] w-[calc(100%-32px)] animate-pop overflow-y-auto rounded-2xl bg-surface p-0 text-ink shadow-2xl', width)}>
       <div className="flex items-start justify-between gap-4 px-6 pt-6">
         <div>
           <h2 className="text-lg font-semibold">{title}</h2>
@@ -101,7 +101,7 @@ export function Drawer({ title, onClose, children, footer }: { title: ReactNode;
   return (
     <dialog
       {...d}
-      className="m-0 ml-auto flex h-full max-h-none w-full max-w-md animate-slide flex-col bg-white p-0 text-ink shadow-2xl"
+      className="m-0 ml-auto flex h-full max-h-none w-full max-w-md animate-slide flex-col bg-surface p-0 text-ink shadow-2xl"
     >
       <div className="flex items-center justify-between border-b border-line px-6 py-4">
         <h2 className="text-lg font-semibold">{title}</h2>
@@ -130,7 +130,7 @@ export function Popover({ anchor, onClose, children, width = 340 }: { anchor: DO
   }, [anchor, width, sheet, d.ref])
   if (sheet) {
     return (
-      <dialog {...d} className="m-0 mt-auto max-h-[85vh] w-full max-w-none animate-rise overflow-hidden rounded-t-2xl bg-white p-0 text-ink shadow-2xl">
+      <dialog {...d} className="m-0 mt-auto max-h-[85vh] w-full max-w-none animate-rise overflow-hidden rounded-t-2xl bg-surface p-0 text-ink shadow-2xl">
         <div className="mx-auto mt-2 h-1 w-10 rounded-full bg-sage-dark" />
         {children}
       </dialog>
@@ -139,7 +139,7 @@ export function Popover({ anchor, onClose, children, width = 340 }: { anchor: DO
   return (
     <dialog
       {...d}
-      className="bare fixed m-0 max-h-[min(560px,calc(100vh-16px))] overflow-y-auto rounded-xl border border-line bg-white p-0 text-ink shadow-xl"
+      className="bare fixed m-0 max-h-[min(560px,calc(100vh-16px))] overflow-y-auto rounded-xl border border-line bg-surface p-0 text-ink shadow-xl"
       style={{ width, top: pos?.top ?? anchor.bottom + 6, left: pos?.left ?? anchor.left, visibility: pos ? 'visible' : 'hidden' }}
     >
       {children}
@@ -198,8 +198,8 @@ export function Badge({ tone = 'neutral', children }: { tone?: 'neutral' | 'gree
   const c = {
     neutral: 'bg-paper text-muted border-line',
     green: 'bg-forest-50 text-forest border-forest-100',
-    warn: 'bg-warn-50 text-warn border-[#F3DFAE]',
-    danger: 'bg-danger-50 text-danger border-[#F6CFCA]',
+    warn: 'bg-warn-50 text-warn border-warn/20',
+    danger: 'bg-danger-50 text-danger border-danger/20',
     dark: 'bg-forest text-white border-forest',
   }[tone]
   return <span className={cx('inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium', c)}>{children}</span>
@@ -219,7 +219,7 @@ export function Field({ label, hint, error, children, htmlFor }: { label: string
 
 export function Segmented<T extends string>({ value, options, onChange, label }: { value: T; options: { value: T; label: ReactNode }[]; onChange: (v: T) => void; label: string }) {
   return (
-    <div role="radiogroup" aria-label={label} className="inline-flex rounded-lg bg-white/70 p-1 ring-1 ring-line">
+    <div role="radiogroup" aria-label={label} className="inline-flex rounded-lg bg-surface/70 p-1 ring-1 ring-line">
       {options.map((o) => (
         <button
           key={o.value}
@@ -248,7 +248,7 @@ export function Switch({ checked, onChange, label, disabled }: { checked: boolea
       onClick={() => onChange(!checked)}
       className={cx('relative h-6 w-10 shrink-0 rounded-full transition-colors disabled:opacity-50', checked ? 'bg-forest' : 'bg-sage-dark')}
     >
-      <span className={cx('absolute left-0 top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform', checked ? 'translate-x-[18px]' : 'translate-x-0.5')} />
+      <span className={cx('absolute left-0 top-0.5 h-5 w-5 rounded-full bg-surface shadow transition-transform', checked ? 'translate-x-[18px]' : 'translate-x-0.5')} />
     </button>
   )
 }
@@ -299,7 +299,7 @@ export function Toaster() {
   return (
     <div aria-live="polite" className="pointer-events-none fixed inset-x-0 bottom-4 z-50 flex flex-col items-center gap-2 px-4">
       {toasts.map((t) => (
-        <div key={t.id} className="pointer-events-auto flex animate-pop items-center gap-4 rounded-xl bg-ink px-4 py-3 text-sm text-white shadow-xl">
+        <div key={t.id} className="pointer-events-auto flex animate-pop items-center gap-4 rounded-xl bg-inverse px-4 py-3 text-sm text-white shadow-xl">
           <span>{t.msg}</span>
           {[t.action, t.action2].filter((x) => !!x).map((act) => (
             <button
@@ -327,7 +327,7 @@ export function PageSkeleton({ title, variant = 'list' }: { title: string; varia
       {variant === 'grid' ? (
         <div className="panel grid grid-cols-7 gap-px overflow-hidden p-0">
           {Array.from({ length: 35 }, (_, i) => (
-            <div key={i} className="h-24 bg-white p-2">
+            <div key={i} className="h-24 bg-surface p-2">
               <Skeleton className="h-3 w-6" />
               <Skeleton className="mt-4 h-1.5 w-full" />
             </div>

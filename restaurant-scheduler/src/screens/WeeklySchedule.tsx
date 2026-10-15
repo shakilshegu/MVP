@@ -207,7 +207,7 @@ export default function WeeklySchedule({ week }: { week: string | null }) {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <div className="flex items-center rounded-lg bg-white ring-1 ring-line">
+          <div className="flex items-center rounded-lg bg-surface ring-1 ring-line">
             <IconButton label={`${t('schedule.prevWeek')} (←)`} onClick={() => navigate(`/schedule?week=${addDays(weekStart, -7)}`)}>
               <ChevronLeft className="h-4 w-4" />
             </IconButton>
@@ -261,7 +261,7 @@ export default function WeeklySchedule({ week }: { week: string | null }) {
       </div>
 
       {!editable && (
-        <div className="mb-4 flex items-center gap-2 rounded-xl bg-white/70 px-4 py-3 text-sm text-muted ring-1 ring-line">
+        <div className="mb-4 flex items-center gap-2 rounded-xl bg-surface/70 px-4 py-3 text-sm text-muted ring-1 ring-line">
           <Eye className="h-4 w-4" /> {t('schedule.viewOnly')}
         </div>
       )}
@@ -299,7 +299,7 @@ export default function WeeklySchedule({ week }: { week: string | null }) {
               </div>
               {prevWeekHasShifts && (
                 <Button
-                  className="bg-white text-forest hover:bg-forest-50"
+                  className="bg-surface text-forest hover:bg-forest-50"
                   onClick={() => {
                     const r = a.copyWeek(addDays(weekStart, -7), weekStart)
                     toast([t('schedule.copied', { count: r.added }), r.skipped ? t('schedule.copiedSkipped', { count: r.skipped }) : ''].filter(Boolean).join(' · '))
@@ -314,7 +314,7 @@ export default function WeeklySchedule({ week }: { week: string | null }) {
           {/* Scrolls inside its own box so the day header and totals stay in view (sticky). */}
           <div className={cx('panel hidden overflow-auto md:block', changes.length && editable ? 'max-h-[calc(100dvh-20rem)]' : 'max-h-[calc(100dvh-12rem)]')}>
             <div className="grid min-w-[1060px]" style={{ gridTemplateColumns: '150px repeat(7, minmax(126px, 1fr))' }}>
-              <div className="sticky left-0 top-0 z-30 border-b border-line bg-white" />
+              <div className="sticky left-0 top-0 z-30 border-b border-line bg-surface" />
               {days.map((d, i) => {
                 let need = 0
                 let got = 0
@@ -326,7 +326,7 @@ export default function WeeklySchedule({ week }: { week: string | null }) {
                   }
                 const isToday = d === today
                 return (
-                  <div key={d} className={cx('group/day sticky top-0 z-20 border-b border-l border-line px-3 pb-3 pt-4', d < today ? 'bg-paper' : 'bg-white')}>
+                  <div key={d} className={cx('group/day sticky top-0 z-20 border-b border-l border-line px-3 pb-3 pt-4', d < today ? 'bg-paper' : 'bg-surface')}>
                     <div className="flex items-baseline justify-between">
                       <div className="flex items-baseline gap-2">
                         <span className={cx('text-[13px]', isToday ? 'font-semibold text-forest' : 'text-muted')}>{dayShort(i)}</span>
@@ -394,7 +394,7 @@ export default function WeeklySchedule({ week }: { week: string | null }) {
           </div>
 
           <MobileDay days={days} active={mobileDay} setActive={setMobileDay} weather={weather.data}>
-            <div className="flex items-center justify-between rounded-xl bg-white/70 px-4 py-2.5 text-sm ring-1 ring-line">
+            <div className="flex items-center justify-between rounded-xl bg-surface/70 px-4 py-2.5 text-sm ring-1 ring-line">
               <span className="font-medium">{t('schedule.totals')}</span>
               <span className="text-muted">
                 {t('common.people', { count: stats.perDay[mobileDay].people })} · {t('schedule.hoursTotal', { hours: stats.perDay[mobileDay].hours })}
@@ -452,7 +452,7 @@ export default function WeeklySchedule({ week }: { week: string | null }) {
       )}
 
       {changes.length > 0 && (
-        <div className="sticky bottom-4 z-40 mt-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-ink px-5 py-3 text-white shadow-2xl">
+        <div className="sticky bottom-4 z-40 mt-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-inverse px-5 py-3 text-white shadow-2xl">
           <div className="text-sm">
             <span className="font-semibold">{t('shell.unpublished', { count: changes.length })}</span>
             <span className="text-white/65">
@@ -462,10 +462,10 @@ export default function WeeklySchedule({ week }: { week: string | null }) {
             </span>
           </div>
           <div className="flex gap-2">
-            <Button size="sm" variant="ghost" className="text-white/80 hover:bg-white/10 hover:text-white" onClick={() => setConfirmDiscard(true)}>
+            <Button size="sm" variant="ghost" className="text-white/80 hover:bg-surface/10 hover:text-white" onClick={() => setConfirmDiscard(true)}>
               {t('schedule.discard')}
             </Button>
-            <Button size="sm" className="bg-white text-forest hover:bg-forest-50" onClick={() => navigate('/review')}>
+            <Button size="sm" className="bg-surface text-forest hover:bg-forest-50" onClick={() => navigate('/review')}>
               {t('schedule.reviewPublish')}
             </Button>
           </div>
@@ -540,7 +540,7 @@ function MoreMenu({
       <IconButton
         label={t('schedule.moreOptions')}
         aria-haspopup="menu"
-        className="h-10 w-10 bg-white ring-1 ring-line hover:bg-paper"
+        className="h-10 w-10 bg-surface ring-1 ring-line hover:bg-paper"
         onClick={(e) => {
           const r = e.currentTarget.getBoundingClientRect()
           setRect(new DOMRect(r.right - 240, r.top, 240, r.height))
@@ -645,7 +645,7 @@ function DeptBand({
 function Row({ tpl, children }: { tpl: ShiftTemplate; children: ReactNode }) {
   return (
     <>
-      <div className="sticky left-0 z-10 flex gap-2.5 border-t border-line bg-white px-4 py-3">
+      <div className="sticky left-0 z-10 flex gap-2.5 border-t border-line bg-surface px-4 py-3">
         <span className={cx('w-1 shrink-0 rounded-full', toneCls[tpl.tone].split(' ')[0])} />
         <div>
           <div className="text-sm font-medium">{tpl.name}</div>
@@ -716,7 +716,7 @@ function Cell({ slot, list, needed, extra = 0, tone, today, editable, dragOver, 
           title={[t('common.slotsFilled', { got: Math.min(filled, needed), need: needed }), extra ? t('schedule.extraFromAnnouncement', { count: extra }) : ''].filter(Boolean).join(' · ')}
         >
           {extra > 0 && (
-            <span className="flex items-center gap-0.5 text-[#7A4F12]">
+            <span className="flex items-center gap-0.5 text-note">
               <Megaphone className="h-2.5 w-2.5" aria-hidden />+{extra}
             </span>
           )}
@@ -745,7 +745,7 @@ function Cell({ slot, list, needed, extra = 0, tone, today, editable, dragOver, 
               x.state === 'published' && !x.isLeader && `${toneCls[tone]} hover:shadow-sm`,
               x.state === 'published' && x.isLeader && 'bg-forest text-white hover:shadow-sm',
               x.state === 'added' && x.isLeader && 'font-semibold',
-              x.state === 'added' && 'border-[1.5px] border-dashed border-forest bg-white text-forest',
+              x.state === 'added' && 'border-[1.5px] border-dashed border-forest bg-surface text-forest',
               x.state === 'removed' && 'bg-transparent text-muted line-through decoration-bark/70',
             )}
           >
@@ -888,7 +888,7 @@ function MobileDay({ days, active, setActive, weather, children }: { days: strin
             onClick={() => setActive(i)}
             className={cx(
               'flex w-14 shrink-0 flex-col items-center rounded-xl py-2 text-xs transition-colors',
-              i === active ? 'bg-forest text-white' : 'bg-white/60 text-muted',
+              i === active ? 'bg-forest text-white' : 'bg-surface/60 text-muted',
               d === today && i !== active && 'ring-1 ring-forest',
             )}
           >
@@ -911,7 +911,7 @@ function Legend() {
         <span className="h-3 w-5 rounded bg-day" /> {t('schedule.legendPublished')}
       </span>
       <span className="flex items-center gap-1.5">
-        <span className="h-3 w-5 rounded border-[1.5px] border-dashed border-forest bg-white" /> {t('schedule.legendUnpublished')}
+        <span className="h-3 w-5 rounded border-[1.5px] border-dashed border-forest bg-surface" /> {t('schedule.legendUnpublished')}
       </span>
       <span className="flex items-center gap-1.5">
         <span className="line-through decoration-bark">{t('schedule.legendName')}</span> {t('schedule.legendRemoved')}

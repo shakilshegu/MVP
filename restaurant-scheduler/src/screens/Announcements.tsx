@@ -261,7 +261,7 @@ export function AnnouncementPill({ x }: { x: Announcement }) {
     <a
       href="#/announcements"
       title={[x.title, x.body].filter(Boolean).join('\n')}
-      className="mt-1.5 flex w-full items-start gap-1.5 rounded-md bg-bar/10 px-1.5 py-1 text-left text-xs leading-snug text-[#7A4F12] hover:bg-bar/20"
+      className="mt-1.5 flex w-full items-start gap-1.5 rounded-md bg-bar/10 px-1.5 py-1 text-left text-xs leading-snug text-note hover:bg-bar/20"
     >
       <Megaphone className="mt-px h-3 w-3 shrink-0" aria-label={t('announce.one')} />
       <span className="min-w-0">

@@ -45,7 +45,7 @@ export function Availability({ week }: { week: string | null }) {
       />
       {view === 'week' && (
         <div className="mb-3 flex flex-wrap items-center gap-2">
-          <div className="flex items-center rounded-lg bg-white ring-1 ring-line">
+          <div className="flex items-center rounded-lg bg-surface ring-1 ring-line">
             <IconButton label={t('schedule.prevWeek')} onClick={() => goWeek(-7)}>
               <ChevronLeft className="h-4 w-4" />
             </IconButton>
@@ -106,7 +106,7 @@ export function Availability({ week }: { week: string | null }) {
                         }}
                         className={cx(
                           'flex flex-col items-center rounded-lg py-1.5 text-[11px] font-medium disabled:opacity-70',
-                          leave ? 'bg-[#F6EEEC] text-[#8B4A42]' : on ? 'bg-forest-50 text-forest' : 'bg-bark-50 text-bark/70',
+                          leave ? 'bg-bark-50 text-bark' : on ? 'bg-forest-50 text-forest' : 'bg-bark-50 text-bark/70',
                           differs && 'ring-2 ring-bar',
                         )}
                       >
@@ -204,7 +204,7 @@ export function Availability({ week }: { week: string | null }) {
                       if (leaveOn(s, e.id, d))
                         return (
                           <td key={i} className="px-1 py-2.5 text-center">
-                            <span title={t('availability.onLeave')} className="inline-flex h-8 w-10 items-center justify-center rounded-lg bg-[#F6EEEC] text-[#8B4A42]">
+                            <span title={t('availability.onLeave')} className="inline-flex h-8 w-10 items-center justify-center rounded-lg bg-bark-50 text-bark">
                               <Plane className="h-4 w-4" aria-label={t('availability.onLeave')} />
                             </span>
                           </td>
@@ -239,7 +239,7 @@ export function Availability({ week }: { week: string | null }) {
                           disabled={!editable}
                           value={e.preferred}
                           onChange={(ev) => a.setPreferred(e.id, ev.target.value as Preferred)}
-                          className="h-8 rounded-lg border border-line bg-white px-2 text-[13px]"
+                          className="h-8 rounded-lg border border-line bg-surface px-2 text-[13px]"
                         >
                           {PREFERRED.map((p) => (
                             <option key={p} value={p}>
@@ -266,7 +266,7 @@ export function Availability({ week }: { week: string | null }) {
               <span className="h-3 w-4 rounded ring-2 ring-bar" /> {t('availability.changed')}
             </span>
             <span className="flex items-center gap-1.5">
-              <Plane className="h-3.5 w-3.5 text-[#8B4A42]" /> {t('availability.onLeave')}
+              <Plane className="h-3.5 w-3.5 text-bark" /> {t('availability.onLeave')}
             </span>
           </>
         )}
@@ -328,7 +328,7 @@ function DayToggle({ on, differs, disabled, label, onClick }: { on: boolean; dif
       aria-label={label}
       className={cx(
         'inline-flex h-8 w-10 items-center justify-center rounded-lg transition-colors disabled:cursor-default disabled:opacity-60',
-        on ? 'bg-forest-50 text-forest hover:bg-forest-100' : 'bg-bark-50 text-bark/70 hover:bg-[#EEDDD9]',
+        on ? 'bg-forest-50 text-forest hover:bg-forest-100' : 'bg-bark-50 text-bark/70 hover:bg-bark-50',
         differs && 'ring-2 ring-bar',
       )}
     >

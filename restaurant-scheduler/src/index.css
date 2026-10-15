@@ -3,6 +3,76 @@
 @tailwind utilities;
 
 @layer base {
+  :root {
+    --c-forest: 30 64 52;
+    --c-forest-700: 22 48 38;
+    --c-forest-600: 42 86 70;
+    --c-forest-100: 220 232 224;
+    --c-forest-50: 238 243 239;
+    --c-sage: 221 229 222;
+    --c-sage-dark: 196 206 199;
+    --c-bark: 84 48 44;
+    --c-bark-50: 246 238 236;
+    --c-paper: 247 248 246;
+    --c-ink: 23 34 29;
+    --c-muted: 98 108 102;
+    --c-line: 226 231 227;
+    --c-danger: 180 35 24;
+    --c-danger-50: 253 237 235;
+    --c-warn: 138 83 0;
+    --c-warn-50: 255 244 220;
+    --c-morning: 244 227 174;
+    --c-morning-ink: 101 74 8;
+    --c-day: 210 230 216;
+    --c-day-ink: 30 64 52;
+    --c-evening: 237 213 204;
+    --c-evening-ink: 84 48 44;
+    --c-night: 214 218 234;
+    --c-night-ink: 44 52 87;
+    --c-bar: 183 121 31;
+    --c-service: 47 122 100;
+    --c-kitchen: 138 75 66;
+    --c-rain: 58 111 158;
+    --c-surface: 255 255 255;
+    --c-inverse: 23 34 29;
+    --c-note: 122 79 18;
+    color-scheme: light;
+  }
+  :root.dark {
+    --c-forest: 63 144 112;
+    --c-forest-700: 124 195 163;
+    --c-forest-600: 78 156 123;
+    --c-forest-100: 36 57 47;
+    --c-forest-50: 26 42 35;
+    --c-sage: 15 21 19;
+    --c-sage-dark: 42 53 48;
+    --c-bark: 224 164 153;
+    --c-bark-50: 46 31 28;
+    --c-paper: 21 28 25;
+    --c-ink: 229 236 232;
+    --c-muted: 154 165 159;
+    --c-line: 38 48 43;
+    --c-danger: 242 139 126;
+    --c-danger-50: 58 28 24;
+    --c-warn: 232 180 90;
+    --c-warn-50: 51 39 15;
+    --c-morning: 74 63 28;
+    --c-morning-ink: 244 227 174;
+    --c-day: 30 58 43;
+    --c-day-ink: 207 229 214;
+    --c-evening: 70 48 42;
+    --c-evening-ink: 237 213 204;
+    --c-night: 42 47 71;
+    --c-night-ink: 214 218 234;
+    --c-bar: 217 160 80;
+    --c-service: 91 179 148;
+    --c-kitchen: 201 130 120;
+    --c-rain: 127 176 219;
+    --c-surface: 26 34 32;
+    --c-inverse: 11 16 14;
+    --c-note: 232 196 138;
+    color-scheme: dark;
+  }
   html,
   body,
   #root {
@@ -13,11 +83,11 @@
     font-feature-settings: 'tnum' 1;
   }
   :focus-visible {
-    outline: 2px solid #1e4034;
+    outline: 2px solid rgb(var(--c-forest));
     outline-offset: 2px;
   }
   dialog::backdrop {
-    background: rgb(23 34 29 / 0.38);
+    background: rgb(var(--c-inverse) / 0.45);
   }
   dialog.bare::backdrop {
     background: transparent;
@@ -26,13 +96,13 @@
 
 @layer components {
   .input {
-    @apply h-10 w-full rounded-lg border border-line bg-white px-3 text-sm text-ink placeholder:text-muted/70 transition-colors hover:border-sage-dark focus:border-forest focus:outline-none focus:ring-2 focus:ring-forest/15;
+    @apply h-10 w-full rounded-lg border border-line bg-surface px-3 text-sm text-ink placeholder:text-muted/70 transition-colors hover:border-sage-dark focus:border-forest focus:outline-none focus:ring-2 focus:ring-forest/15;
   }
   .page-title {
     @apply font-serif text-[34px] leading-[1.05] text-forest md:text-[42px];
   }
   .panel {
-    @apply rounded-2xl border border-line bg-white;
+    @apply rounded-2xl border border-line bg-surface;
   }
 }
 

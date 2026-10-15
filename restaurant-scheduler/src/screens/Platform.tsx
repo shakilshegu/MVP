@@ -20,7 +20,7 @@ export function Platform() {
 
   return (
     <div className="min-h-full bg-paper">
-      <header className="flex h-16 items-center gap-3 border-b border-line bg-white px-4 md:px-8">
+      <header className="flex h-16 items-center gap-3 border-b border-line bg-surface px-4 md:px-8">
         <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-forest font-serif text-xl leading-none text-white">R</span>
         <span className="text-[15px] font-semibold text-forest">Rota</span>
         <span className="rounded-full bg-forest-50 px-2 py-0.5 text-xs font-medium text-forest">{t('role.owner')}</span>

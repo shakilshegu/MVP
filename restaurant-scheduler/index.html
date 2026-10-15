@@ -12,6 +12,13 @@
       rel="stylesheet"
     />
     <title>Rota — Restaurant scheduling</title>
+    <script>
+      // Apply the saved theme before the first paint so there is no flash.
+      try {
+        var th = localStorage.getItem('rota-theme') || 'system'
+        if (th === 'dark' || (th === 'system' && matchMedia('(prefers-color-scheme: dark)').matches)) document.documentElement.classList.add('dark')
+      } catch (e) {}
+    </script>
   </head>
   <body>
     <div id="root"></div>

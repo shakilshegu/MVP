@@ -14,6 +14,7 @@ import type { HistoryAction } from '../lib/types'
 import { NoAccess } from '../components/Shell'
 import { CityOptions } from '../components/weather'
 import { settingsOf } from '../lib/settings'
+import { useTheme } from '../lib/theme'
 import { Badge, Button, EmptyState, Field, Modal, PageHeader, PageSkeleton, Segmented, Switch } from '../components/ui'
 
 const GROUPS = {
@@ -197,6 +198,7 @@ export function Settings({ tab: initial }: { tab: string | null }) {
   const { s, a, me, branch, can, toast, company } = useStore()
   const { t } = useT()
   const rules = settingsOf(company)
+  const [theme, setTheme] = useTheme()
   const isAdmin = me != null && me.role !== 'manager'
   const tabs: { value: Tab; label: string }[] = (['restaurant', 'hours', 'departments', 'staff', ...(can('manageBranches') ? ['branches' as const] : []), 'account'] as Tab[]).map((v) => ({
     value: v,
@@ -375,6 +377,16 @@ export function Settings({ tab: initial }: { tab: string | null }) {
             <div className="text-sm font-medium">{t('settings.language')}</div>
             <div className="mb-3 text-[13px] text-muted">{t('settings.languageHint')}</div>
             <LanguageToggle />
+          </div>
+          <div className="panel p-6">
+            <div className="text-sm font-medium">{t('settings.theme')}</div>
+            <div className="mb-3 text-[13px] text-muted">{t('settings.themeHint')}</div>
+            <Segmented
+              label={t('settings.theme')}
+              value={theme}
+              onChange={setTheme}
+              options={(['system', 'light', 'dark'] as const).map((v) => ({ value: v, label: t(`settings.themes.${v}`) }))}
+            />
           </div>
           {backend.kind === 'mock' && (
           <div className="panel flex flex-wrap items-center justify-between gap-3 p-6">

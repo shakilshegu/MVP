@@ -83,7 +83,7 @@ export function CommandPalette({ pages, onClose }: { pages: CommandPage[]; onClo
       }}
       onMouseDown={(e) => e.target === ref.current && onClose()}
       aria-label={t('command.title')}
-      className="mt-[12vh] w-[calc(100%-32px)] max-w-lg animate-pop overflow-hidden rounded-2xl bg-white p-0 text-ink shadow-2xl backdrop:bg-ink/30"
+      className="mt-[12vh] w-[calc(100%-32px)] max-w-lg animate-pop overflow-hidden rounded-2xl bg-surface p-0 text-ink shadow-2xl backdrop:bg-inverse/30"
     >
       <label className="flex items-center gap-3 border-b border-line px-4">
         <Search className="h-4 w-4 shrink-0 text-muted" aria-hidden />

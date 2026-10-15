@@ -111,7 +111,7 @@ export default function Shell({ path, children }: { path: string; children: Reac
                         aria-current={active ? 'page' : undefined}
                         className={cx(
                           'flex h-9 items-center gap-3 rounded-lg px-3 text-sm transition-colors [&>svg]:h-[18px] [&>svg]:w-[18px]',
-                          active ? 'bg-white font-medium text-forest shadow-sm' : 'text-ink/75 hover:bg-white/50 hover:text-ink',
+                          active ? 'bg-surface font-medium text-forest shadow-sm' : 'text-ink/75 hover:bg-surface/50 hover:text-ink',
                         )}
                       >
                         {it.icon}
@@ -125,7 +125,7 @@ export default function Shell({ path, children }: { path: string; children: Reac
           </div>
         ))}
       </div>
-      <div className="m-3 flex items-center gap-3 rounded-xl bg-white/60 p-3">
+      <div className="m-3 flex items-center gap-3 rounded-xl bg-surface/60 p-3">
         <span className="flex h-9 w-9 items-center justify-center rounded-full bg-forest text-sm font-semibold text-white">
           {me?.name
             .split(' ')
@@ -148,7 +148,7 @@ export default function Shell({ path, children }: { path: string; children: Reac
       <aside className="hidden w-60 shrink-0 border-r border-sage-dark/60 lg:block">{nav}</aside>
       {navOpen && (
         <div className="fixed inset-0 z-40 lg:hidden">
-          <div className="absolute inset-0 bg-ink/40" onClick={() => setNavOpen(false)} />
+          <div className="absolute inset-0 bg-inverse/40" onClick={() => setNavOpen(false)} />
           <aside className="absolute inset-y-0 left-0 w-72 animate-pop bg-sage shadow-2xl">
             <IconButton label={t('nav.closeMenu')} className="absolute right-3 top-4" onClick={() => setNavOpen(false)}>
               <X className="h-5 w-5" />
@@ -187,14 +187,14 @@ export default function Shell({ path, children }: { path: string; children: Reac
           <button
             onClick={() => setCmdOpen(true)}
             aria-label={t('command.title')}
-            className="flex h-9 items-center gap-2 rounded-lg bg-white/70 px-2.5 text-[13px] text-muted ring-1 ring-line hover:text-ink sm:pr-1.5"
+            className="flex h-9 items-center gap-2 rounded-lg bg-surface/70 px-2.5 text-[13px] text-muted ring-1 ring-line hover:text-ink sm:pr-1.5"
           >
             <Search className="h-4 w-4" aria-hidden />
             <span className="hidden sm:inline">{t('command.search')}</span>
-            <kbd className="hidden rounded border border-line bg-white px-1.5 text-[11px] sm:inline">{navigator.platform.includes('Mac') ? '⌘K' : 'Ctrl K'}</kbd>
+            <kbd className="hidden rounded border border-line bg-surface px-1.5 text-[11px] sm:inline">{navigator.platform.includes('Mac') ? '⌘K' : 'Ctrl K'}</kbd>
           </button>
           {changes > 0 && path !== '/review' && (
-            <a href="#/review" className="hidden items-center gap-2 rounded-full bg-white px-3 py-1.5 text-[13px] font-medium text-forest ring-1 ring-forest/20 hover:ring-forest/50 sm:inline-flex">
+            <a href="#/review" className="hidden items-center gap-2 rounded-full bg-surface px-3 py-1.5 text-[13px] font-medium text-forest ring-1 ring-forest/20 hover:ring-forest/50 sm:inline-flex">
               <span className="h-2 w-2 rounded-full bg-bark" />
               {t('shell.unpublished', { count: changes })}
             </a>
@@ -212,7 +212,7 @@ export default function Shell({ path, children }: { path: string; children: Reac
           {children}
         </main>
         {/* Phone: the main places one tap away; everything else under "More". */}
-        <nav aria-label={t('nav.main')} className="grid shrink-0 grid-cols-5 border-t border-sage-dark/60 bg-white pb-[env(safe-area-inset-bottom)] md:hidden">
+        <nav aria-label={t('nav.main')} className="grid shrink-0 grid-cols-5 border-t border-sage-dark/60 bg-surface pb-[env(safe-area-inset-bottom)] md:hidden">
           {[
             { to: '/dashboard', label: t('nav.today'), icon: LayoutDashboard, on: path === '/dashboard' || path === '/' },
             { to: '/schedule', label: t('nav.week'), icon: CalendarDays, on: path.startsWith('/schedule') || path === '/review' },
@@ -264,7 +264,7 @@ function BranchSwitcher() {
         ref={btn}
         disabled={!multi && !isAdmin}
         onClick={() => setRect(btn.current!.getBoundingClientRect())}
-        className="flex min-w-0 items-center gap-2 rounded-lg px-2 py-1.5 text-left hover:bg-white/50 disabled:hover:bg-transparent"
+        className="flex min-w-0 items-center gap-2 rounded-lg px-2 py-1.5 text-left hover:bg-surface/50 disabled:hover:bg-transparent"
         aria-haspopup="dialog"
       >
         <Store className="h-4 w-4 shrink-0 text-forest" />
@@ -338,7 +338,7 @@ function Notifications() {
         ref={btn}
         aria-label={unread ? t('shell.notificationsUnread', { count: unread }) : t('shell.notifications')}
         onClick={() => setRect(btn.current!.getBoundingClientRect())}
-        className="relative inline-flex h-10 w-10 items-center justify-center rounded-lg text-forest hover:bg-white/50"
+        className="relative inline-flex h-10 w-10 items-center justify-center rounded-lg text-forest hover:bg-surface/50"
       >
         <Bell className="h-5 w-5" />
         {unread > 0 && (
@@ -382,7 +382,7 @@ function Notifications() {
                   <button onClick={() => open(n)} className="flex w-full gap-3 border-b border-line/70 px-4 py-3 text-left last:border-0 hover:bg-paper">
                     <span className={cx('relative mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full', n.read ? 'bg-paper text-muted' : 'bg-forest-50 text-forest')}>
                       <Icon className="h-4 w-4" aria-hidden />
-                      {!n.read && <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-bark ring-2 ring-white" />}
+                      {!n.read && <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-bark ring-2 ring-surface" />}
                     </span>
                     <span className="min-w-0 flex-1">
                       <span className={cx('block text-sm', !n.read && 'font-medium')}>{text.title}</span>

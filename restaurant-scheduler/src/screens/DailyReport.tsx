@@ -64,7 +64,7 @@ export function DailyReport({ date }: { date: string | null }) {
         sub={`${fmtLong(day)} · ${branch!.name}`}
         actions={
           <>
-            <div className="flex items-center rounded-lg bg-white ring-1 ring-line">
+            <div className="flex items-center rounded-lg bg-surface ring-1 ring-line">
               <IconButton label={t('report.prevDay')} onClick={() => go(addDays(day, -1))}>
                 <ChevronLeft className="h-4 w-4" />
               </IconButton>
@@ -120,7 +120,7 @@ export function DailyReport({ date }: { date: string | null }) {
 
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <Segmented label={t('common.department')} value={dept} onChange={setDept} options={[{ value: 'All', label: t('common.all') }, ...depts.map((d) => ({ value: d.id, label: d.name }))]} />
-        <select aria-label={t('report.employee')} value={person} onChange={(e) => setPerson(e.target.value)} className="h-10 rounded-lg border border-line bg-white px-3 text-[13px]">
+        <select aria-label={t('report.employee')} value={person} onChange={(e) => setPerson(e.target.value)} className="h-10 rounded-lg border border-line bg-surface px-3 text-[13px]">
           <option value="">{t('report.everyone')}</option>
           {people.map((e) => (
             <option key={e.id} value={e.id}>
@@ -136,7 +136,7 @@ export function DailyReport({ date }: { date: string | null }) {
 
       {settingsOf(company).leadersSeeReport && <p className="-mt-1 mb-4 text-xs text-muted">{t('report.leadersSee')}</p>}
       {!onlyOpen && completeCount > 0 && (
-        <button onClick={() => setShowComplete((v) => !v)} className="mb-4 flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-sage-dark py-2.5 text-[13px] font-medium text-forest hover:bg-white/60">
+        <button onClick={() => setShowComplete((v) => !v)} className="mb-4 flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-sage-dark py-2.5 text-[13px] font-medium text-forest hover:bg-surface/60">
           <CheckCircle2 className="h-4 w-4" aria-hidden />
           {showComplete ? t('report.hideComplete') : t('report.showComplete', { count: completeCount })}
         </button>
@@ -213,7 +213,7 @@ function ShiftCard({ r, canTick, onTick }: { r: ReportRow; canTick: boolean; onT
                   aria-label={i.title}
                   className={cx(
                     'mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded border-2 transition-colors disabled:cursor-default',
-                    i.tick ? 'border-forest bg-forest text-white' : late ? 'border-bark/60 bg-white' : 'border-sage-dark bg-white',
+                    i.tick ? 'border-forest bg-forest text-white' : late ? 'border-bark/60 bg-surface' : 'border-sage-dark bg-surface',
                   )}
                 >
                   {i.tick && <Check className="h-3.5 w-3.5" strokeWidth={3} />}

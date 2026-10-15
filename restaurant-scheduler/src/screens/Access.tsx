@@ -50,7 +50,7 @@ export function Login() {
     <div className="grid min-h-full lg:grid-cols-[1.1fr_1fr]">
       <div className="relative hidden flex-col justify-between overflow-hidden bg-forest p-12 text-white lg:flex">
         <div className="flex items-center gap-2.5">
-          <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-white font-serif text-2xl leading-none text-forest">R</span>
+          <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-surface font-serif text-2xl leading-none text-forest">R</span>
           <span className="text-lg font-semibold">Rota</span>
         </div>
         <div aria-hidden className="space-y-3">
@@ -103,16 +103,16 @@ export function Login() {
             <div className="mt-8 rounded-xl border border-dashed border-sage-dark p-4">
               <div className="text-xs font-medium text-muted">{t('auth.demoAccounts')}</div>
               <div className="mt-2 grid gap-2">
-                <button onClick={() => demo('priya@harborhouse.co')} className="rounded-lg bg-white px-3 py-2 text-left text-sm ring-1 ring-line hover:ring-forest/40">
+                <button onClick={() => demo('priya@harborhouse.co')} className="rounded-lg bg-surface px-3 py-2 text-left text-sm ring-1 ring-line hover:ring-forest/40">
                   <span className="font-medium">Priya Raman</span> <span className="text-muted">· {t('auth.demoManager')}</span>
                 </button>
-                <button onClick={() => demo('daniel@harborhouse.co')} className="rounded-lg bg-white px-3 py-2 text-left text-sm ring-1 ring-line hover:ring-forest/40">
+                <button onClick={() => demo('daniel@harborhouse.co')} className="rounded-lg bg-surface px-3 py-2 text-left text-sm ring-1 ring-line hover:ring-forest/40">
                   <span className="font-medium">Daniel Okafor</span> <span className="text-muted">· {t('auth.demoSuper')}</span>
                 </button>
-                <button onClick={() => demo('lena@cafe-mueller.de')} className="rounded-lg bg-white px-3 py-2 text-left text-sm ring-1 ring-line hover:ring-forest/40">
+                <button onClick={() => demo('lena@cafe-mueller.de')} className="rounded-lg bg-surface px-3 py-2 text-left text-sm ring-1 ring-line hover:ring-forest/40">
                   <span className="font-medium">Lena Hoffmann</span> <span className="text-muted">· {t('auth.demoCafe')}</span>
                 </button>
-                <button onClick={() => demo('owner@rota.app')} className="rounded-lg bg-white px-3 py-2 text-left text-sm ring-1 ring-line hover:ring-forest/40">
+                <button onClick={() => demo('owner@rota.app')} className="rounded-lg bg-surface px-3 py-2 text-left text-sm ring-1 ring-line hover:ring-forest/40">
                   <span className="font-medium">Alex Morgan</span> <span className="text-muted">· {t('auth.demoOwner')}</span>
                 </button>
               </div>

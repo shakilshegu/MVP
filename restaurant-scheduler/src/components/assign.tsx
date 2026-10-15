@@ -102,7 +102,7 @@ export function AssignPanel({ slot, anchor, onPick, onClose }: { slot: Slot; anc
       }}
       onMouseDown={(e) => e.target === ref.current && onClose()}
       aria-label={t('assign.panelTitle', { shift: tpl.name, dept: deptName(s, slot.dept) })}
-      className={cx('m-0 flex h-full max-h-none w-full max-w-[440px] flex-col bg-white p-0 text-ink shadow-2xl backdrop:bg-ink/10', left ? 'mr-auto animate-slide-left' : 'ml-auto animate-slide')}
+      className={cx('m-0 flex h-full max-h-none w-full max-w-[440px] flex-col bg-surface p-0 text-ink shadow-2xl backdrop:bg-inverse/10', left ? 'mr-auto animate-slide-left' : 'ml-auto animate-slide')}
       onKeyDown={onKeyDown}
     >
       <header className="border-b border-line px-5 pb-4 pt-5">
@@ -149,7 +149,7 @@ export function AssignPanel({ slot, anchor, onPick, onClose }: { slot: Slot; anc
                 const e = s.employees.find((x) => x.id === a.employeeId)
                 if (!e) return null
                 return (
-                  <li key={a.id} className={cx('flex items-center gap-1.5 rounded-full py-0.5 pl-0.5 pr-2.5 text-xs font-medium', a.isLeader ? 'bg-forest text-white' : 'bg-white ring-1 ring-line', a.state === 'added' && 'ring-1 ring-dashed ring-forest')}>
+                  <li key={a.id} className={cx('flex items-center gap-1.5 rounded-full py-0.5 pl-0.5 pr-2.5 text-xs font-medium', a.isLeader ? 'bg-forest text-white' : 'bg-surface ring-1 ring-line', a.state === 'added' && 'ring-1 ring-dashed ring-forest')}>
                     <Avatar e={e} size={20} />
                     {e.name.split(' ')[0]}
                     {a.isLeader && <Crown className="h-3 w-3 text-[#E8C15A]" aria-label={t('schedule.leader')} />}
@@ -164,7 +164,7 @@ export function AssignPanel({ slot, anchor, onPick, onClose }: { slot: Slot; anc
             </p>
           )}
           {extra > 0 && (
-            <p className="mt-2 flex items-start gap-1.5 text-xs text-[#7A4F12]">
+            <p className="mt-2 flex items-start gap-1.5 text-xs text-note">
               <Megaphone className="mt-px h-3.5 w-3.5 shrink-0" aria-hidden />
               {t('assign.extraFor', { count: extra, title: events.map((x) => x.title).join(', ') })}
             </p>

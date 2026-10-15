@@ -80,10 +80,10 @@ export function ReviewPublish() {
               aria-current={i === step ? 'step' : undefined}
               className={cx(
                 'flex items-center gap-2 rounded-full py-1 pl-1 pr-3',
-                i < step ? 'text-forest' : i === step ? 'bg-white font-medium text-ink ring-1 ring-line' : 'text-muted',
+                i < step ? 'text-forest' : i === step ? 'bg-surface font-medium text-ink ring-1 ring-line' : 'text-muted',
               )}
             >
-              <span className={cx('flex h-5 w-5 items-center justify-center rounded-full text-[11px] font-semibold', i < step ? 'bg-forest text-white' : i === step ? 'bg-ink text-white' : 'bg-sage-dark text-white')}>
+              <span className={cx('flex h-5 w-5 items-center justify-center rounded-full text-[11px] font-semibold', i < step ? 'bg-forest text-white' : i === step ? 'bg-inverse text-white' : 'bg-sage-dark text-white')}>
                 {i < step ? <Check className="h-3 w-3" /> : i + 1}
               </span>
               {t(`publish.steps.${label}`)}
@@ -109,7 +109,7 @@ export function ReviewPublish() {
                           <span className="opacity-60">
                             <Avatar e={prev} size={34} />
                           </span>
-                          <span className="ring-2 ring-white rounded-full">
+                          <span className="ring-2 ring-surface rounded-full">
                             <Avatar e={e} size={34} />
                           </span>
                         </span>

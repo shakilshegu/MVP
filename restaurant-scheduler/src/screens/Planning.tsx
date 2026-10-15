@@ -343,7 +343,7 @@ export function MonthlySchedule({ month }: { month: string | null }) {
         title={title}
         sub={t('month.summary', { pct: need ? Math.round((got / need) * 100) : 0, open: need - got })}
         actions={
-          <div className="flex items-center rounded-lg bg-white ring-1 ring-line">
+          <div className="flex items-center rounded-lg bg-surface ring-1 ring-line">
             <button aria-label={t('month.prev')} onClick={() => navigate(`/month?m=${prevMonth.slice(0, 7)}`)} className="inline-flex h-9 w-9 items-center justify-center text-muted hover:text-ink">
               <ChevronLeft className="h-4 w-4" />
             </button>
@@ -357,7 +357,7 @@ export function MonthlySchedule({ month }: { month: string | null }) {
         }
       />
       {unplanned.length > 0 && (
-        <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-xl bg-white/70 px-4 py-3 text-sm ring-1 ring-line">
+        <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-xl bg-surface/70 px-4 py-3 text-sm ring-1 ring-line">
           <span className="font-medium">{t('month.unplanned', { count: unplanned.length })}</span>
           {unplanned.map((w) => (
             <span key={w} className="flex items-center gap-2">
@@ -591,13 +591,13 @@ function ShiftDrawer({ t, onClose }: { t: ShiftTemplate | null; onClose: () => v
                   {deptName(s, d)}
                 </span>
                 <div className="flex items-center gap-1">
-                  <button aria-label={tt('templates.fewer', { dept: deptName(s, d) })} onClick={() => setNeed(d, (f.needed[d] ?? 0) - 1)} className="h-8 w-8 rounded-lg bg-white text-lg leading-none ring-1 ring-line hover:ring-forest/40">
+                  <button aria-label={tt('templates.fewer', { dept: deptName(s, d) })} onClick={() => setNeed(d, (f.needed[d] ?? 0) - 1)} className="h-8 w-8 rounded-lg bg-surface text-lg leading-none ring-1 ring-line hover:ring-forest/40">
                     −
                   </button>
                   <span className="w-8 text-center text-sm font-semibold" aria-live="polite">
                     {f.needed[d] ?? 0}
                   </span>
-                  <button aria-label={tt('templates.more', { dept: deptName(s, d) })} onClick={() => setNeed(d, (f.needed[d] ?? 0) + 1)} className="h-8 w-8 rounded-lg bg-white text-lg leading-none ring-1 ring-line hover:ring-forest/40">
+                  <button aria-label={tt('templates.more', { dept: deptName(s, d) })} onClick={() => setNeed(d, (f.needed[d] ?? 0) + 1)} className="h-8 w-8 rounded-lg bg-surface text-lg leading-none ring-1 ring-line hover:ring-forest/40">
                     +
                   </button>
                 </div>
@@ -692,7 +692,7 @@ function PerDayGrid({ f, setF }: { f: ShiftTemplate; setF: (fn: (p: ShiftTemplat
                     value={v}
                     aria-label={t('templates.perDayA11y', { dept: deptName(s, d), day: dayShort(i) })}
                     onChange={(e) => set(d, i, Number(e.target.value))}
-                    className="h-8 w-full min-w-[30px] rounded-md border border-line bg-white text-center text-sm focus:border-forest focus:outline-none"
+                    className="h-8 w-full min-w-[30px] rounded-md border border-line bg-surface text-center text-sm focus:border-forest focus:outline-none"
                   />
                 </td>
               ))}

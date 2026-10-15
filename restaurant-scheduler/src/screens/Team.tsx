@@ -100,7 +100,7 @@ export function Team({ openAdd }: { openAdd: boolean }) {
                   aria-pressed={quick === k}
                   className={cx(
                     'rounded-full px-3 py-1 text-xs font-medium ring-1 transition-colors',
-                    quick === k ? 'bg-forest text-white ring-forest' : 'bg-white text-muted ring-line hover:text-ink',
+                    quick === k ? 'bg-forest text-white ring-forest' : 'bg-surface text-muted ring-line hover:text-ink',
                     k === 'over' && quick !== k && 'text-danger',
                   )}
                 >
@@ -299,7 +299,7 @@ export function EmployeeForm({ employee, onClose }: { employee?: Employee; onClo
         <div className="flex items-center gap-4">
           <label className="group relative cursor-pointer">
             <Avatar e={{ name: f.name || '?', color: f.color, photo: f.photo }} size={56} />
-            <span className="absolute inset-0 flex items-center justify-center rounded-full bg-ink/50 text-white opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+            <span className="absolute inset-0 flex items-center justify-center rounded-full bg-inverse/50 text-white opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
               <Camera className="h-5 w-5" />
             </span>
             <input type="file" accept="image/*" className="sr-only" onChange={(e) => onPhoto(e.target.files?.[0])} aria-label={t('employeeForm.uploadPhoto')} />
@@ -333,7 +333,7 @@ export function EmployeeForm({ employee, onClose }: { employee?: Employee; onClo
                   onClick={() => toggleSkill(d.id)}
                   className={cx(
                     'inline-flex h-9 items-center gap-2 rounded-lg border px-3 text-sm font-medium transition-colors',
-                    on ? 'border-forest bg-forest-50 text-forest' : 'border-line bg-white text-muted hover:border-sage-dark',
+                    on ? 'border-forest bg-forest-50 text-forest' : 'border-line bg-surface text-muted hover:border-sage-dark',
                   )}
                 >
                   <span className="h-2.5 w-2.5 rounded-full" style={{ background: d.color }} />
@@ -415,7 +415,7 @@ export function EmployeeForm({ employee, onClose }: { employee?: Employee; onClo
             <ul className="mt-2 divide-y divide-line rounded-xl border border-line bg-paper">
               {checklist.items.map((i) => (
                 <li key={i.id} className="flex gap-3 px-3 py-2.5">
-                  <span className="mt-0.5 h-4 w-4 shrink-0 rounded border border-sage-dark bg-white" aria-hidden />
+                  <span className="mt-0.5 h-4 w-4 shrink-0 rounded border border-sage-dark bg-surface" aria-hidden />
                   <span>
                     <span className="block text-sm font-medium">{i.title}</span>
                     {i.detail && <span className="block text-[13px] text-muted">{i.detail}</span>}

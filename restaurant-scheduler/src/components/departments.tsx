@@ -28,7 +28,7 @@ export function DepartmentsPanel() {
           const inUse = a.departmentUse(d.id)
           return (
             <li key={d.id} className="flex flex-wrap items-center gap-3 px-5 py-3">
-              <label className="relative h-7 w-7 shrink-0 cursor-pointer rounded-full ring-2 ring-white ring-offset-1 ring-offset-line" style={{ background: d.color }}>
+              <label className="relative h-7 w-7 shrink-0 cursor-pointer rounded-full ring-2 ring-surface ring-offset-1 ring-offset-line" style={{ background: d.color }}>
                 <span className="sr-only">{t('settings.deptColour', { name: d.name })}</span>
                 <input
                   type="color"
