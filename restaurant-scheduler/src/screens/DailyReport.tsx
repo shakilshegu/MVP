@@ -120,7 +120,7 @@ export function DailyReport({ date }: { date: string | null }) {
 
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <Segmented label={t('common.department')} value={dept} onChange={setDept} options={[{ value: 'All', label: t('common.all') }, ...depts.map((d) => ({ value: d.id, label: d.name }))]} />
-        <select aria-label={t('report.employee')} value={person} onChange={(e) => setPerson(e.target.value)} className="h-10 rounded-lg border border-line bg-surface px-3 text-[13px]">
+        <select aria-label={t('report.employee')} value={person} onChange={(e) => setPerson(e.target.value)} className="input w-auto min-w-[200px] text-[13px]">
           <option value="">{t('report.everyone')}</option>
           {people.map((e) => (
             <option key={e.id} value={e.id}>

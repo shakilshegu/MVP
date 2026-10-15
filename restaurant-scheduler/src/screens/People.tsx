@@ -239,7 +239,7 @@ export function Availability({ week }: { week: string | null }) {
                           disabled={!editable}
                           value={e.preferred}
                           onChange={(ev) => a.setPreferred(e.id, ev.target.value as Preferred)}
-                          className="h-8 rounded-lg border border-line bg-surface px-2 text-[13px]"
+                          className="input h-8 w-auto min-w-[130px] px-2.5 text-[13px] disabled:opacity-60"
                         >
                           {PREFERRED.map((p) => (
                             <option key={p} value={p}>

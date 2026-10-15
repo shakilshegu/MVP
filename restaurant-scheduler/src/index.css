@@ -36,6 +36,7 @@
     --c-surface: 255 255 255;
     --c-inverse: 23 34 29;
     --c-note: 122 79 18;
+    --chevron: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20viewBox%3D%270%200%2024%2024%27%20fill%3D%27none%27%20stroke%3D%27%23626C66%27%20stroke-width%3D%272%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%3E%3Cpath%20d%3D%27m6%209%206%206%206-6%27/%3E%3C/svg%3E");
     color-scheme: light;
   }
   :root.dark {
@@ -71,6 +72,7 @@
     --c-surface: 26 34 32;
     --c-inverse: 11 16 14;
     --c-note: 232 196 138;
+    --chevron: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20viewBox%3D%270%200%2024%2024%27%20fill%3D%27none%27%20stroke%3D%27%239AA59F%27%20stroke-width%3D%272%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%3E%3Cpath%20d%3D%27m6%209%206%206%206-6%27/%3E%3C/svg%3E");
     color-scheme: dark;
   }
   html,
@@ -85,6 +87,21 @@
   :focus-visible {
     outline: 2px solid rgb(var(--c-forest));
     outline-offset: 2px;
+  }
+  /* One look for every dropdown: our own chevron with room to breathe, in both themes. */
+  select {
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: var(--chevron);
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+    background-size: 1rem;
+    padding-right: 2.25rem !important;
+    cursor: pointer;
+    text-overflow: ellipsis;
+  }
+  select:disabled {
+    cursor: default;
   }
   dialog::backdrop {
     background: rgb(var(--c-inverse) / 0.45);

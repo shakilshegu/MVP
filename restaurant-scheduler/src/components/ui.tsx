@@ -46,7 +46,17 @@ function useDialog(onClose: () => void) {
   const ref = useRef<HTMLDialogElement>(null)
   useEffect(() => {
     const d = ref.current
-    if (d && !d.open) d.showModal()
+    if (!d || d.open) return
+    d.showModal()
+    // Start in the first field; with none, focus the dialog itself rather than ringing the close button.
+    const field =
+      d.querySelector<HTMLElement>('[autofocus]') ??
+      d.querySelector<HTMLElement>('input:not([type=hidden]):not([type=file]):not([type=checkbox]):not([type=radio]):not([disabled]), select:not([disabled]), textarea')
+    if (field) field.focus()
+    else {
+      d.tabIndex = -1
+      d.focus()
+    }
   }, [])
   return {
     ref,
