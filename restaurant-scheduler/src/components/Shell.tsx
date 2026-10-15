@@ -22,12 +22,16 @@ import {
   Megaphone,
   ClipboardCheck,
   Search,
+  Send,
+  Hourglass,
+  UserPlus,
 } from 'lucide-react'
 import { branchChanges, useStore } from '../lib/store'
 import { navigate, useOnline } from '../lib/hooks'
 import { relTime } from '../lib/date'
 import { useT } from '../i18n'
 import { noticeText } from '../i18n/format'
+import type { Notice, NoticeKind } from '../lib/types'
 import { LanguageMenu } from './LanguageSwitch'
 import { CommandPalette } from './command'
 import { Badge, cx, IconButton, Popover } from './ui'
@@ -299,12 +303,35 @@ function BranchSwitcher() {
   )
 }
 
+const NOTICE_GROUP: Record<NoticeKind, 'leave' | 'team' | 'schedule'> = {
+  leaveRequested: 'leave',
+  inviteNotAccepted: 'team',
+  availabilityUpdated: 'team',
+  published: 'schedule',
+  approvalRequested: 'schedule',
+}
+const NOTICE_ICON: Record<NoticeKind, typeof Bell> = { leaveRequested: Plane, inviteNotAccepted: UserPlus, availabilityUpdated: UserRoundCheck, published: Send, approvalRequested: Hourglass }
+
 function Notifications() {
-  const { s, a } = useStore()
+  const { s, a, branch } = useStore()
   const { t } = useT()
   const btn = useRef<HTMLButtonElement>(null)
   const [rect, setRect] = useState<DOMRect | null>(null)
+  const [tab, setTab] = useState<'all' | 'unread' | 'leave' | 'team' | 'schedule'>('all')
   const unread = s.notices.filter((n) => !n.read).length
+  const list = s.notices.filter((n) => (tab === 'all' ? true : tab === 'unread' ? !n.read : NOTICE_GROUP[n.kind] === tab))
+  const tabs = (['all', 'unread', 'leave', 'team', 'schedule'] as const).filter((k) => k === 'all' || (k === 'unread' ? unread > 0 : s.notices.some((n) => NOTICE_GROUP[n.kind] === k)))
+
+  /** Opens the exact item: switches to the notice's branch first, then focuses the person or change. */
+  const open = (n: Notice) => {
+    a.markRead(n.id)
+    setRect(null)
+    const other = typeof n.params.branch === 'string' ? s.branches.find((b) => b.name === n.params.branch && b.id !== branch?.id) : undefined
+    if (other) a.selectBranch(other.id)
+    if (n.kind === 'leaveRequested') navigate(`/leave?focus=${encodeURIComponent(String(n.params.name))}`)
+    else if (n.href) navigate(n.href)
+  }
+
   return (
     <>
       <button
@@ -321,7 +348,7 @@ function Notifications() {
         )}
       </button>
       {rect && (
-        <Popover anchor={new DOMRect(rect.right - 360, rect.top, 360, rect.height)} onClose={() => setRect(null)} width={360}>
+        <Popover anchor={new DOMRect(rect.right - 380, rect.top, 380, rect.height)} onClose={() => setRect(null)} width={380}>
           <div className="flex items-center justify-between border-b border-line px-4 py-3">
             <h2 className="text-sm font-semibold">{t('shell.notifications')}</h2>
             {unread > 0 && (
@@ -330,28 +357,40 @@ function Notifications() {
               </button>
             )}
           </div>
-          <ul className="max-h-[420px] overflow-y-auto">
-            {s.notices.length === 0 && <li className="px-4 py-10 text-center text-sm text-muted">{t('shell.caughtUp')}</li>}
-            {s.notices.map((n) => {
-              const text = noticeText(t, n)
-              return (
-              <li key={n.id}>
+          {tabs.length > 2 && (
+            <div className="flex gap-1 overflow-x-auto border-b border-line px-3 py-2" role="group" aria-label={t('shell.noticeFilter')}>
+              {tabs.map((k) => (
                 <button
-                  onClick={() => {
-                    a.markRead(n.id)
-                    setRect(null)
-                    if (n.href) navigate(n.href)
-                  }}
-                  className="flex w-full gap-3 border-b border-line/70 px-4 py-3 text-left last:border-0 hover:bg-paper"
+                  key={k}
+                  onClick={() => setTab(k)}
+                  aria-pressed={tab === k}
+                  className={cx('shrink-0 rounded-full px-2.5 py-1 text-xs font-medium', tab === k ? 'bg-forest text-white' : 'text-muted hover:bg-paper hover:text-ink')}
                 >
-                  <span className={cx('mt-1.5 h-2 w-2 shrink-0 rounded-full', n.read ? 'bg-transparent' : 'bg-bark')} />
-                  <span className="min-w-0 flex-1">
-                    <span className={cx('block text-sm', !n.read && 'font-medium')}>{text.title}</span>
-                    <span className="block text-[13px] text-muted">{text.body}</span>
-                  </span>
-                  <span className="shrink-0 text-xs text-muted">{relTime(n.at)}</span>
+                  {t(`shell.noticeTabs.${k}`)}
+                  {k === 'unread' && <span className="ml-1 opacity-80">{unread}</span>}
                 </button>
-              </li>
+              ))}
+            </div>
+          )}
+          <ul className="max-h-[420px] overflow-y-auto">
+            {list.length === 0 && <li className="px-4 py-10 text-center text-sm text-muted">{t('shell.caughtUp')}</li>}
+            {list.map((n) => {
+              const text = noticeText(t, n)
+              const Icon = NOTICE_ICON[n.kind]
+              return (
+                <li key={n.id}>
+                  <button onClick={() => open(n)} className="flex w-full gap-3 border-b border-line/70 px-4 py-3 text-left last:border-0 hover:bg-paper">
+                    <span className={cx('relative mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full', n.read ? 'bg-paper text-muted' : 'bg-forest-50 text-forest')}>
+                      <Icon className="h-4 w-4" aria-hidden />
+                      {!n.read && <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-bark ring-2 ring-white" />}
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className={cx('block text-sm', !n.read && 'font-medium')}>{text.title}</span>
+                      <span className="block text-[13px] text-muted">{text.body}</span>
+                    </span>
+                    <span className="shrink-0 text-xs text-muted">{relTime(n.at)}</span>
+                  </button>
+                </li>
               )
             })}
           </ul>

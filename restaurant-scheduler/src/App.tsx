@@ -45,7 +45,7 @@ function Screen() {
       page = <Availability week={query.get('week')} />
       break
     case 'leave':
-      page = <LeaveRequests />
+      page = <LeaveRequests focus={query.get('focus')} />
       break
     case 'report':
       page = <DailyReport date={query.get('date')} />

@@ -65,6 +65,8 @@ export const en = {
     notifications: 'Notifications',
     notificationsUnread: 'Notifications, {count} unread',
     markAllRead: 'Mark all as read',
+    noticeFilter: 'Filter notifications',
+    noticeTabs: { all: 'All', unread: 'Unread', leave: 'Leave', team: 'Team', schedule: 'Schedule' },
     caughtUp: 'You’re all caught up.',
     language: 'Language',
     noAccessTitle: 'You don’t have access to {what}',

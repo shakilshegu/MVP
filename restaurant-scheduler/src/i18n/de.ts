@@ -67,6 +67,8 @@ export const de: Shape<typeof en> = {
     notifications: 'Benachrichtigungen',
     notificationsUnread: 'Benachrichtigungen, {count} ungelesen',
     markAllRead: 'Alle als gelesen markieren',
+    noticeFilter: 'Benachrichtigungen filtern',
+    noticeTabs: { all: 'Alle', unread: 'Ungelesen', leave: 'Urlaub', team: 'Team', schedule: 'Dienstplan' },
     caughtUp: 'Du bist auf dem neuesten Stand.',
     language: 'Sprache',
     noAccessTitle: 'Kein Zugriff auf {what}',

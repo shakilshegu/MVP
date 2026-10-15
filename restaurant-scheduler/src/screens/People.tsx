@@ -335,7 +335,7 @@ function DayToggle({ on, differs, disabled, label, onClick }: { on: boolean; dif
   )
 }
 
-export function LeaveRequests() {
+export function LeaveRequests({ focus }: { focus?: string | null }) {
   const { s, a, branch, can, toast } = useStore()
   const { t } = useT()
   const [tab, setTab] = useState<Leave['status']>('pending')
@@ -374,7 +374,16 @@ export function LeaveRequests() {
             const clashes = s.assignments.filter((x) => x.employeeId === e.id && isActive(x) && x.date >= l.from && x.date <= l.to)
             const days = daysInclusive(l.from, l.to)
             return (
-              <li key={l.id} className="panel p-5">
+              <li
+                key={l.id}
+                ref={(el) => {
+                  if (el && focus && e.name === focus && !el.dataset.focused) {
+                    el.dataset.focused = '1'
+                    el.scrollIntoView({ block: 'center', behavior: 'smooth' })
+                  }
+                }}
+                className={cx('panel p-5', focus && e.name === focus && 'ring-2 ring-forest')}
+              >
                 <div className="flex flex-wrap items-start gap-4">
                   <Avatar e={e} size={40} />
                   <div className="min-w-0 flex-1">
