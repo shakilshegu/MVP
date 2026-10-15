@@ -209,7 +209,10 @@ export default function Shell({ path, children }: { path: string; children: Reac
           />
         )}
         <main id="main" className="flex-1 overflow-y-auto px-4 pb-8 md:px-8 md:pb-16">
-          {children}
+          {/* Fades each page in; keyed by section so changing week or filters doesn't replay it. */}
+          <div key={path.split('/')[1] ?? ''} className="animate-page">
+            {children}
+          </div>
         </main>
         {/* Phone: the main places one tap away; everything else under "More". */}
         <nav aria-label={t('nav.main')} className="grid shrink-0 grid-cols-5 border-t border-sage-dark/60 bg-surface pb-[env(safe-area-inset-bottom)] md:hidden">

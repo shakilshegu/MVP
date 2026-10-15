@@ -105,7 +105,7 @@ export function branchChanges(s: Data, branchId: string): Change[] {
 const describe = (s: Data, a: Pick<Assignment, 'templateId' | 'date' | 'dept'>) => describeSlot(tr, s, a)
 
 type ToastAction = { label: string; run: () => void }
-type Toast = { id: string; msg: string; action?: ToastAction; action2?: ToastAction }
+type Toast = { id: string; msg: string; action?: ToastAction; action2?: ToastAction; leaving?: boolean }
 
 function makeActions(get: () => Data, set: (s: Data) => void) {
   const me = () => get().managers.find((m) => m.id === get().session.userId)
@@ -738,7 +738,11 @@ export function StoreProvider({
     [],
   )
 
-  const dismiss = useCallback((id: string) => setToasts((t) => t.filter((x) => x.id !== id)), [])
+  // Fade out first, then remove.
+  const dismiss = useCallback((id: string) => {
+    setToasts((t) => t.map((x) => (x.id === id ? { ...x, leaving: true } : x)))
+    setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 180)
+  }, [])
   const toast = useCallback(
     (msg: string, action?: ToastAction, action2?: ToastAction) => {
       const id = uid()

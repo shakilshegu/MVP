@@ -74,7 +74,7 @@ export function Dashboard() {
       <GetStarted />
 
       <div className="mb-6 grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4">
-        <a href="#/schedule" className="panel p-3 transition-shadow hover:shadow-md sm:p-4">
+        <a href="#/schedule" className="panel p-3 transition duration-200 hover:-translate-y-0.5 hover:shadow-md sm:p-4">
           <div className="text-xs text-muted sm:text-[13px]">{t('dashboard.workingToday')}</div>
           <div className="mt-1 flex items-baseline gap-2">
             <span className="text-xl font-semibold sm:text-2xl">{new Set(todays.map((r) => r.e.id)).size}</span>
@@ -111,7 +111,7 @@ export function Dashboard() {
             </div>
           )}
         </div>
-        <a href="#/report" className="panel p-3 transition-shadow hover:shadow-md sm:p-4">
+        <a href="#/report" className="panel p-3 transition duration-200 hover:-translate-y-0.5 hover:shadow-md sm:p-4">
           <div className="text-xs text-muted sm:text-[13px]">{t('dashboard.checklists')}</div>
           <div className="mt-1 flex items-baseline gap-2">
             <span className="text-xl font-semibold sm:text-2xl">
@@ -120,10 +120,10 @@ export function Dashboard() {
             {checks.total > 0 && <span className="text-xs text-muted">{Math.round((checks.done / checks.total) * 100)}%</span>}
           </div>
           <div className="mt-2 h-1 overflow-hidden rounded-full bg-line">
-            <div className="h-full rounded-full bg-forest" style={{ width: `${checks.total ? (checks.done / checks.total) * 100 : 0}%` }} />
+            <div className="h-full rounded-full bg-forest origin-left animate-grow-x transition-[width] duration-300" style={{ width: `${checks.total ? (checks.done / checks.total) * 100 : 0}%` }} />
           </div>
         </a>
-        <a href="#/leave" className="panel p-3 transition-shadow hover:shadow-md sm:p-4">
+        <a href="#/leave" className="panel p-3 transition duration-200 hover:-translate-y-0.5 hover:shadow-md sm:p-4">
           <div className="text-xs text-muted sm:text-[13px]">{t('dashboard.leaveToReview')}</div>
           <div className={cx('mt-1 text-xl font-semibold sm:text-2xl', pendingLeave.length > 0 && 'text-bark')}>{pendingLeave.length}</div>
         </a>
@@ -297,7 +297,7 @@ export function Dashboard() {
                 return (
                   <a key={d} href={`#/schedule?week=${startOfWeek(d)}`} className="group flex flex-1 flex-col items-center gap-1.5" title={t('common.slotsFilled', { got: c.got, need: c.need })}>
                     <span className="relative h-16 w-full overflow-hidden rounded-md bg-paper">
-                      <span className={cx('absolute inset-x-0 bottom-0 rounded-md', pct < 1 ? 'bg-bark/70' : 'bg-forest')} style={{ height: `${pct * 100}%` }} />
+                      <span className={cx('absolute inset-x-0 bottom-0 rounded-md origin-bottom animate-grow-y transition-[height] duration-300', pct < 1 ? 'bg-bark/70' : 'bg-forest')} style={{ height: `${pct * 100}%` }} />
                     </span>
                     <span className={cx('text-[11px]', d === today ? 'font-semibold text-forest' : 'text-muted')}>{dayShort(weekdayIndex(d))}</span>
                   </a>
@@ -410,7 +410,7 @@ export function MonthlySchedule({ month }: { month: string | null }) {
                     ) : (
                       <>
                         <div className="h-1.5 overflow-hidden rounded-full bg-line">
-                          <div className={cx('h-full rounded-full', pct < 1 ? 'bg-bark/70' : 'bg-forest')} style={{ width: `${pct * 100}%` }} />
+                          <div className={cx('h-full rounded-full origin-left animate-grow-x transition-[width] duration-300', pct < 1 ? 'bg-bark/70' : 'bg-forest')} style={{ width: `${pct * 100}%` }} />
                         </div>
                         <div className={cx('mt-1 text-[11px]', pct < 1 ? 'text-bark' : 'text-muted')}>
                           {c.got}/{c.need}

@@ -65,7 +65,7 @@ export function EarningsHistory({ e }: { e: Employee }) {
             <div key={w.start} role="listitem" className="flex flex-1 flex-col items-center gap-1" title={`${fmtShort(w.start)}: ${w.hours} h${canSeePay ? ` · ${money(w.amount, cur)}` : ''}`}>
               <span className="text-[10px] tabular-nums text-muted">{w.hours || ''}</span>
               <div className="flex h-16 w-full items-end rounded bg-paper">
-                <div className={cx('w-full rounded', w.start === ws ? 'bg-forest' : 'bg-forest/35')} style={{ height: `${(w.hours / peak) * 100}%` }} />
+                <div className={cx('w-full rounded origin-bottom animate-grow-y transition-[height] duration-300', w.start === ws ? 'bg-forest' : 'bg-forest/35')} style={{ height: `${(w.hours / peak) * 100}%` }} />
               </div>
               <span className="text-[10px] text-muted">{fmtShort(w.start)}</span>
             </div>

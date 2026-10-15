@@ -109,7 +109,7 @@ export function DailyReport({ date }: { date: string | null }) {
             {total > 0 && <span className="text-sm text-muted">{Math.round((done / total) * 100)}%</span>}
           </div>
           <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-line">
-            <div className="h-full rounded-full bg-forest" style={{ width: `${total ? (done / total) * 100 : 0}%` }} />
+            <div className="h-full rounded-full bg-forest origin-left animate-grow-x transition-[width] duration-300" style={{ width: `${total ? (done / total) * 100 : 0}%` }} />
           </div>
         </div>
         <div className={cx('panel p-3 sm:p-4', missed > 0 && 'border-bark/30')}>
@@ -179,6 +179,7 @@ function ShiftCard({ r, canTick, onTick }: { r: ReportRow; canTick: boolean; onT
   const { t } = useT()
   const { e, items, phase, done } = r
   const complete = items.length > 0 && done === items.length
+  const [justTicked, setJustTicked] = useState<string | null>(null)
   return (
     <article className={cx('panel overflow-hidden', phase === 'over' && !complete && items.length > 0 && 'border-bark/30')}>
       <header className="flex items-center gap-3 border-b border-line px-4 py-3">
@@ -204,10 +205,16 @@ function ShiftCard({ r, canTick, onTick }: { r: ReportRow; canTick: boolean; onT
           {items.map((i) => {
             const late = !i.tick && phase === 'over'
             return (
-              <li key={i.id} className={cx('flex items-start gap-3 px-4 py-2.5', late && 'bg-bark-50/70')}>
+              <li key={i.id} className={cx('flex items-start gap-3 px-4 py-2.5 transition-colors', late && 'bg-bark-50/70', justTicked === i.id && 'animate-flash')}>
                 <button
                   disabled={!canTick || phase === 'upcoming'}
-                  onClick={() => onTick(i.id, !i.tick)}
+                  onClick={() => {
+                    if (!i.tick) {
+                      setJustTicked(i.id)
+                      setTimeout(() => setJustTicked(null), 700)
+                    }
+                    onTick(i.id, !i.tick)
+                  }}
                   role="checkbox"
                   aria-checked={!!i.tick}
                   aria-label={i.title}
@@ -216,7 +223,7 @@ function ShiftCard({ r, canTick, onTick }: { r: ReportRow; canTick: boolean; onT
                     i.tick ? 'border-forest bg-forest text-white' : late ? 'border-bark/60 bg-surface' : 'border-sage-dark bg-surface',
                   )}
                 >
-                  {i.tick && <Check className="h-3.5 w-3.5" strokeWidth={3} />}
+                  {i.tick && <Check className="tick h-3.5 w-3.5" strokeWidth={3} />}
                 </button>
                 <div className="min-w-0 flex-1">
                   <div className={cx('text-sm', i.tick ? 'text-ink' : late ? 'font-medium text-bark' : 'text-ink')}>

@@ -21,7 +21,7 @@ export function Button({ variant = 'secondary', size = 'md', className, type = '
       type={type}
       {...p}
       className={cx(
-        'inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-lg font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-45',
+        'inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-lg font-medium transition duration-150 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-45 disabled:active:scale-100',
         size === 'sm' ? 'h-8 px-3 text-[13px]' : 'h-10 px-4 text-sm',
         variants[variant],
         className,
@@ -37,7 +37,7 @@ export function IconButton({ label, className, ...p }: ButtonHTMLAttributes<HTML
       aria-label={label}
       title={label}
       {...p}
-      className={cx('inline-flex h-9 w-9 items-center justify-center rounded-lg text-muted transition-colors hover:bg-forest-50 hover:text-ink', className)}
+      className={cx('inline-flex h-9 w-9 items-center justify-center rounded-lg text-muted transition duration-150 hover:bg-forest-50 hover:text-ink active:scale-90', className)}
     />
   )
 }
@@ -290,7 +290,7 @@ export function ErrorState({ what, onRetry }: { what: string; onRetry: () => voi
   )
 }
 
-export const Skeleton = ({ className }: { className?: string }) => <div className={cx('animate-pulse rounded-md bg-sage/70', className)} />
+export const Skeleton = ({ className }: { className?: string }) => <div className={cx('skeleton', className)} />
 
 export function PageHeader({ title, sub, actions }: { title: ReactNode; sub?: ReactNode; actions?: ReactNode }) {
   return (
@@ -309,7 +309,7 @@ export function Toaster() {
   return (
     <div aria-live="polite" className="pointer-events-none fixed inset-x-0 bottom-4 z-50 flex flex-col items-center gap-2 px-4">
       {toasts.map((t) => (
-        <div key={t.id} className="pointer-events-auto flex animate-pop items-center gap-4 rounded-xl bg-inverse px-4 py-3 text-sm text-white shadow-xl">
+        <div key={t.id} className={cx('pointer-events-auto flex items-center gap-4 rounded-xl bg-inverse px-4 py-3 text-sm text-white shadow-xl', t.leaving ? 'animate-toast-out' : 'animate-toast-in')}>
           <span>{t.msg}</span>
           {[t.action, t.action2].filter((x) => !!x).map((act) => (
             <button

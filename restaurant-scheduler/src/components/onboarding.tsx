@@ -38,7 +38,7 @@ export function GetStarted() {
           <h2 className="text-sm font-semibold">{t('onboarding.title', { branch: branch!.name })}</h2>
           <p className="text-[13px] text-muted">{t('onboarding.progress', { done, total: steps.length })}</p>
           <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-line">
-            <div className="h-full rounded-full bg-forest transition-all" style={{ width: `${(done / steps.length) * 100}%` }} />
+            <div className="h-full rounded-full bg-forest origin-left animate-grow-x transition-[width] duration-300" style={{ width: `${(done / steps.length) * 100}%` }} />
           </div>
         </div>
         <IconButton

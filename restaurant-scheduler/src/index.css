@@ -121,6 +121,22 @@
   .panel {
     @apply rounded-2xl border border-line bg-surface;
   }
+  /* Loading placeholder with a soft moving sheen. */
+  .skeleton {
+    background: linear-gradient(90deg, rgb(var(--c-sage) / 0.7) 25%, rgb(var(--c-paper)) 50%, rgb(var(--c-sage) / 0.7) 75%);
+    background-size: 200% 100%;
+    @apply animate-shimmer rounded-md;
+  }
+  /* Rows of a department fading in when it's unfolded. */
+  .band-open > * {
+    @apply animate-page;
+  }
+  /* Draws a checkmark's stroke when it appears. */
+  .tick path,
+  .tick polyline {
+    stroke-dasharray: 24;
+    @apply animate-tick;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

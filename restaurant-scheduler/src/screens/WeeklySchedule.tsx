@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { AlertTriangle, CalendarRange, ClipboardList, Clock3, Crown, ChevronDown, Download, Scale, StickyNote, Wand2, Loader2, MapPin, Megaphone, MoreHorizontal, ChevronLeft, ChevronRight, Copy, Eye, Plus, Undo2, UserPlus, UserRoundCheck, Users } from 'lucide-react'
 import { branchChanges, useStore } from '../lib/store'
@@ -619,10 +619,17 @@ function DeptBand({
   const { t } = useT()
   const { s } = useStore()
   const open = summary.need - summary.got
+  const [opened, setOpened] = useState(false)
   return (
     <>
       <button
-        onClick={onToggle}
+        onClick={() => {
+          if (collapsed) {
+            setOpened(true)
+            setTimeout(() => setOpened(false), 400)
+          }
+          onToggle()
+        }}
         aria-expanded={!collapsed}
         title={t(collapsed ? 'schedule.expandDept' : 'schedule.collapseDept')}
         className="sticky left-0 col-span-8 flex items-center gap-2 border-t border-line bg-paper px-4 py-2 text-left text-sm hover:bg-sage/40"
@@ -637,7 +644,8 @@ function DeptBand({
           </span>
         )}
       </button>
-      {!collapsed && children}
+      {/* The wrapper adds no box (display: contents); its children are still the grid's cells and fade in on opening. */}
+      {!collapsed && <div className={cx('contents', opened && 'band-open')}>{children}</div>}
     </>
   )
 }
@@ -688,8 +696,17 @@ function Cell({ slot, list, needed, extra = 0, tone, today, editable, dragOver, 
   const filled = list.filter(isActive).length
   const needsLeader = s.departments.find((d) => d.id === slot.dept)?.needsLeader
   const openSlots = Math.max(0, needed - filled)
+  // Names added after the grid appeared pop in, and the cell flashes once so you see where they landed.
+  const seen = useRef(new Set(list.map((x) => x.id)))
+  const prevFilled = useRef(filled)
+  const [flash, setFlash] = useState(0)
+  useEffect(() => {
+    if (filled > prevFilled.current) setFlash((n) => n + 1)
+    prevFilled.current = filled
+  }, [filled])
   return (
     <div
+      key={flash ? `flash-${flash}` : undefined}
       onDragOver={(e) => {
         if (!canEdit) return
         e.preventDefault()
@@ -708,6 +725,7 @@ function Cell({ slot, list, needed, extra = 0, tone, today, editable, dragOver, 
         !bare && past && 'bg-paper/60',
         dragOver === key && 'bg-forest-50 ring-2 ring-inset ring-forest',
         activeKey === key && 'bg-forest-50/70 ring-2 ring-inset ring-forest',
+        flash > 0 && activeKey !== key && dragOver !== key && 'animate-flash',
       )}
     >
       {needed > 0 && (
@@ -741,6 +759,7 @@ function Cell({ slot, list, needed, extra = 0, tone, today, editable, dragOver, 
             aria-label={x.state === 'added' ? t('schedule.a11yUnpublished', { name: e.name }) : x.state === 'removed' ? t('schedule.a11yRemoved', { name: e.name }) : e.name}
             className={cx(
               'flex w-full items-center gap-1.5 rounded-md px-2 py-1 text-left text-[13px] font-medium transition-shadow',
+              !seen.current.has(x.id) && 'animate-chip',
               canEdit && x.state !== 'removed' && 'cursor-grab active:cursor-grabbing',
               x.state === 'published' && !x.isLeader && `${toneCls[tone]} hover:shadow-sm`,
               x.state === 'published' && x.isLeader && 'bg-forest text-white hover:shadow-sm',

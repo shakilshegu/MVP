@@ -304,8 +304,8 @@ function PersonRow({ r, length, tplName, best, onPick }: { r: Row; length: numbe
             <span className={cx('font-semibold', over ? 'text-danger' : 'text-ink')}>{after}</span>/{r.e.maxHours}h
           </span>
           <span className="relative h-1 w-14 overflow-hidden rounded-full bg-line">
-            <span className={cx('absolute inset-y-0 left-0 rounded-full', over ? 'bg-danger/60' : 'bg-forest/35')} style={{ width: `${Math.min(1, after / r.e.maxHours) * 100}%` }} />
-            <span className="absolute inset-y-0 left-0 rounded-full bg-forest" style={{ width: `${Math.min(1, r.hours / r.e.maxHours) * 100}%` }} />
+            <span className={cx('absolute inset-y-0 left-0 rounded-full origin-left animate-grow-x transition-[width] duration-300', over ? 'bg-danger/60' : 'bg-forest/35')} style={{ width: `${Math.min(1, after / r.e.maxHours) * 100}%` }} />
+            <span className="absolute inset-y-0 left-0 rounded-full bg-forest origin-left animate-grow-x transition-[width] duration-300" style={{ width: `${Math.min(1, r.hours / r.e.maxHours) * 100}%` }} />
           </span>
         </span>
         <span className={cx('flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-colors', hard ? 'text-muted' : 'bg-forest text-white opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 max-sm:opacity-100')} aria-hidden>
@@ -325,7 +325,7 @@ export function Hours({ used, max }: { used: number; max: number }) {
         <span className="font-medium text-ink">{used}</span>/{max}h
       </span>
       <span className="h-1 w-12 overflow-hidden rounded-full bg-line">
-        <span className={cx('block h-full rounded-full', pct >= 0.95 ? 'bg-bark' : 'bg-forest')} style={{ width: `${pct * 100}%` }} />
+        <span className={cx('block h-full rounded-full origin-left animate-grow-x transition-[width] duration-300', pct >= 0.95 ? 'bg-bark' : 'bg-forest')} style={{ width: `${pct * 100}%` }} />
       </span>
     </span>
   )

@@ -61,7 +61,7 @@ export function HoursDrawer({ weekStart, depts, onClose }: { weekStart: string; 
                     <span className="text-muted"> / {e.maxHours}h</span>
                   </div>
                   <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-line">
-                    <div className={cx('h-full rounded-full', hours > e.maxHours ? 'bg-danger' : pct >= 0.9 ? 'bg-bark' : 'bg-forest')} style={{ width: `${pct * 100}%` }} />
+                    <div className={cx('h-full rounded-full origin-left animate-grow-x transition-[width] duration-300', hours > e.maxHours ? 'bg-danger' : pct >= 0.9 ? 'bg-bark' : 'bg-forest')} style={{ width: `${pct * 100}%` }} />
                   </div>
                 </div>
               </div>

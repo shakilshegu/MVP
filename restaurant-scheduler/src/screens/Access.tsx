@@ -171,7 +171,7 @@ export function SelectBranch() {
                     a.selectBranch(b.id)
                     navigate('/dashboard')
                   }}
-                  className="panel flex w-full items-center gap-4 p-5 text-left transition-shadow hover:shadow-md"
+                  className="panel flex w-full items-center gap-4 p-5 text-left transition duration-200 hover:-translate-y-0.5 hover:shadow-md"
                 >
                   <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-forest-50 text-forest">
                     <Store className="h-5 w-5" />
