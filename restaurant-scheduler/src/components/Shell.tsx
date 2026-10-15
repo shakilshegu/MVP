@@ -162,7 +162,7 @@ export default function Shell({ path, children }: { path: string; children: Reac
           </div>
         )}
         <header className="flex h-16 shrink-0 items-center gap-2 px-4 md:px-8">
-          <IconButton label={t('nav.openMenu')} className="lg:hidden" onClick={() => setNavOpen(true)}>
+          <IconButton label={t('nav.openMenu')} className="hidden md:inline-flex lg:hidden" onClick={() => setNavOpen(true)}>
             <Menu className="h-5 w-5" />
           </IconButton>
           <BranchSwitcher />
@@ -176,9 +176,28 @@ export default function Shell({ path, children }: { path: string; children: Reac
           <LanguageMenu />
           <Notifications />
         </header>
-        <main id="main" className="flex-1 overflow-y-auto px-4 pb-16 md:px-8">
+        <main id="main" className="flex-1 overflow-y-auto px-4 pb-8 md:px-8 md:pb-16">
           {children}
         </main>
+        {/* Phone: the main places one tap away; everything else under "More". */}
+        <nav aria-label={t('nav.main')} className="grid shrink-0 grid-cols-5 border-t border-sage-dark/60 bg-white pb-[env(safe-area-inset-bottom)] md:hidden">
+          {[
+            { to: '/dashboard', label: t('nav.today'), icon: LayoutDashboard, on: path === '/dashboard' || path === '/' },
+            { to: '/schedule', label: t('nav.week'), icon: CalendarDays, on: path.startsWith('/schedule') || path === '/review' },
+            { to: '/team', label: t('nav.team'), icon: Users, on: path.startsWith('/team') },
+            { to: '/report', label: t('nav.reportShort'), icon: ClipboardCheck, on: path === '/report' },
+          ].map((x) => (
+            <a key={x.to} href={`#${x.to}`} aria-current={x.on ? 'page' : undefined} className={cx('flex flex-col items-center gap-0.5 py-2 text-[11px] font-medium', x.on ? 'text-forest' : 'text-muted')}>
+              <x.icon className="h-5 w-5" aria-hidden />
+              {x.label}
+            </a>
+          ))}
+          <button onClick={() => setNavOpen(true)} className="relative flex flex-col items-center gap-0.5 py-2 text-[11px] font-medium text-muted">
+            <Menu className="h-5 w-5" aria-hidden />
+            {t('nav.more')}
+            {pendingLeave.length > 0 && <span className="absolute right-[calc(50%-18px)] top-1.5 h-2 w-2 rounded-full bg-bark" aria-hidden />}
+          </button>
+        </nav>
       </div>
     </div>
   )

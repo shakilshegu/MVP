@@ -42,7 +42,7 @@ export function Availability({ week }: { week: string | null }) {
         }
       />
       {view === 'week' && (
-        <div className="mb-3 flex items-center gap-2">
+        <div className="mb-3 flex flex-wrap items-center gap-2">
           <div className="flex items-center rounded-lg bg-white ring-1 ring-line">
             <IconButton label={t('schedule.prevWeek')} onClick={() => goWeek(-7)}>
               <ChevronLeft className="h-4 w-4" />
@@ -56,7 +56,7 @@ export function Availability({ week }: { week: string | null }) {
           </div>
           <span className="text-sm font-medium">{fmtRangeYear(weekStart, days[6])}</span>
           {days[6] >= today && (
-            <span className={cx('ml-auto flex items-center gap-1.5 text-[13px]', deadlinePassed(deadline) ? 'text-muted' : 'text-forest')}>
+            <span className={cx('flex w-full items-center gap-1.5 text-[13px] sm:ml-auto sm:w-auto', deadlinePassed(deadline) ? 'text-muted' : 'text-forest')}>
               <Clock3 className="h-4 w-4" aria-hidden />
               {t(deadlinePassed(deadline) ? 'availability.deadlinePassed' : 'availability.deadlineOpen', { date: fmtDay(deadline.date), time: deadline.time })}
             </span>
@@ -68,7 +68,63 @@ export function Availability({ week }: { week: string | null }) {
           <EmptyState icon={<CalendarCheck2 className="h-5 w-5" />} title={t('availability.emptyTitle')} body={t('availability.emptyBody')} />
         </div>
       ) : (
-        <div className="panel overflow-x-auto">
+        <>
+        {/* Phone: one card per person with seven day pills instead of a sideways table. */}
+        <ul className="space-y-2 md:hidden">
+          {team.map((e) => {
+            const changed = view === 'week' && s.weekAvailability[e.id]?.[weekStart] != null
+            return (
+              <li key={e.id} className="panel p-3">
+                <div className="flex items-center gap-2.5">
+                  <Avatar e={e} size={28} />
+                  <a href={`#/team/${e.id}`} className="min-w-0 flex-1 truncate text-sm font-medium">
+                    {e.name}
+                  </a>
+                  <span className="text-xs text-muted">
+                    {view === 'week' ? `${weekHours(s, e.id, weekStart)}/${e.maxHours}h` : t(`preferred.${e.preferred}`)}
+                  </span>
+                </div>
+                <div className="mt-2.5 grid grid-cols-7 gap-1">
+                  {WEEK.map((i) => {
+                    const d = days[i]
+                    const leave = view === 'week' && leaveOn(s, e.id, d)
+                    const on = view === 'pattern' ? e.availability[i] : weekPattern(s, e, weekStart)[i]
+                    const w = on ? e.availTimes?.[i] : null
+                    const differs = view === 'week' && on !== e.availability[i]
+                    const disabled = !editable || (view === 'week' && d < today) || !!leave
+                    return (
+                      <button
+                        key={i}
+                        disabled={disabled}
+                        aria-pressed={on}
+                        aria-label={t('availability.cellA11y', { name: e.name, day: view === 'week' ? fmtDay(d) : dayShort(i), state: leave ? t('availability.onLeave') : stateOf(on) })}
+                        onClick={() => {
+                          if (view === 'pattern') a.setAvailability(e.id, i, !on)
+                          else a.setWeekAvailability(e.id, weekStart, i, !on)
+                        }}
+                        className={cx(
+                          'flex flex-col items-center rounded-lg py-1.5 text-[11px] font-medium disabled:opacity-70',
+                          leave ? 'bg-[#F6EEEC] text-[#8B4A42]' : on ? 'bg-forest-50 text-forest' : 'bg-bark-50 text-bark/70',
+                          differs && 'ring-2 ring-bar',
+                        )}
+                      >
+                        {dayShort(i).slice(0, 2)}
+                        {leave ? <Plane className="mt-0.5 h-3.5 w-3.5" /> : on ? <Check className="mt-0.5 h-3.5 w-3.5" /> : <X className="mt-0.5 h-3.5 w-3.5" />}
+                        {w && <span className="mt-0.5 text-[9px] leading-none tabular-nums">{w.from.slice(0, 2)}–{w.to.slice(0, 2)}</span>}
+                      </button>
+                    )
+                  })}
+                </div>
+                {changed && editable && (
+                  <button className="mt-2 text-xs font-medium text-bar" onClick={() => a.resetWeekAvailability(e.id, weekStart)}>
+                    {t('availability.changed')} · {t('availability.reset')}
+                  </button>
+                )}
+              </li>
+            )
+          })}
+        </ul>
+        <div className="panel hidden overflow-x-auto md:block">
           <table className="w-full min-w-[760px] text-sm">
             <thead>
               <tr className="border-b border-line text-left text-xs text-muted">
@@ -197,6 +253,7 @@ export function Availability({ week }: { week: string | null }) {
             </tbody>
           </table>
         </div>
+        </>
       )}
       {timeAt && <HoursEditor {...timeAt} onClose={() => setTimeAt(null)} />}
       <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-muted">
