@@ -4,7 +4,7 @@ import { branchChanges, missingLeaders, useStore } from '../lib/store'
 import { useT } from '../i18n'
 import { conflictTitles, describeSlot } from '../i18n/format'
 import type { Change } from '../lib/store'
-import type { Task } from '../lib/types'
+import type { Assignment, Task } from '../lib/types'
 import { navigate, useOnline } from '../lib/hooks'
 import { fmtLong, relTime } from '../lib/date'
 import { Avatar, Badge, Button, cx, EmptyState, PageHeader } from '../components/ui'
@@ -24,9 +24,31 @@ export function ReviewPublish() {
   const taskChanges = changes.filter((c) => c.kind === 'tasks').length
   const missing = missingLeaders(s, branch!.id)
   const blocked = missing.length > 0
-  const step = confirmed ? 3 : 1
+  // Super admins publish straight away: no approval step and no extra tick box.
+  const isAdmin = me != null && me.role !== 'manager'
+  const steps = canPublish ? STEPS.filter((x) => x !== 'approve') : STEPS
+  const ready = isAdmin || confirmed
+  const step = canPublish ? (ready ? steps.length - 1 : 1) : waiting ? 2 : 1
 
-  const byDate = changes.reduce<Record<string, Change[]>>((m, c) => {
+  // Someone removed and someone else added on the same shift reads as one swap.
+  type Row = Change | { kind: 'replaced'; a: Assignment; from: Assignment }
+  const rows: Row[] = []
+  const used = new Set<string>()
+  for (const c of changes) {
+    if (c.kind === 'added') {
+      const out = changes.find((r) => r.kind === 'removed' && !used.has(r.a.id) && r.a.date === c.a.date && r.a.templateId === c.a.templateId && r.a.dept === c.a.dept)
+      if (out) {
+        used.add(out.a.id)
+        rows.push({ kind: 'replaced', a: c.a, from: out.a })
+        continue
+      }
+    }
+    rows.push(c)
+  }
+  const visible = rows.filter((r) => !(r.kind === 'removed' && used.has(r.a.id)))
+  const replacedCount = visible.filter((r) => r.kind === 'replaced').length
+
+  const byDate = visible.reduce<Record<string, Row[]>>((m, c) => {
     ;(m[c.a.date] ??= []).push(c)
     return m
   }, {})
@@ -52,7 +74,7 @@ export function ReviewPublish() {
       <PageHeader title={t('publish.title')} sub={t('publish.sub', { branch: branch!.name })} />
 
       <ol className="mb-6 flex items-center gap-2 overflow-x-auto text-[13px]" aria-label={t('publish.stepsLabel')}>
-        {STEPS.map((label, i) => (
+        {steps.map((label, i) => (
           <li key={label} className="flex shrink-0 items-center gap-2">
             <span
               aria-current={i === step ? 'step' : undefined}
@@ -66,7 +88,7 @@ export function ReviewPublish() {
               </span>
               {t(`publish.steps.${label}`)}
             </span>
-            {i < STEPS.length - 1 && <span className="h-px w-6 bg-sage-dark" />}
+            {i < steps.length - 1 && <span className="h-px w-6 bg-sage-dark" />}
           </li>
         ))}
       </ol>
@@ -79,6 +101,46 @@ export function ReviewPublish() {
               <ul>
                 {list.map((c) => {
                   const e = s.employees.find((x) => x.id === c.a.employeeId)!
+                  if (c.kind === 'replaced') {
+                    const prev = s.employees.find((x) => x.id === c.from.employeeId)!
+                    return (
+                      <li key={c.a.id} className="flex items-start gap-3 border-b border-line px-5 py-3.5 last:border-0">
+                        <span className="flex -space-x-2">
+                          <span className="opacity-60">
+                            <Avatar e={prev} size={34} />
+                          </span>
+                          <span className="ring-2 ring-white rounded-full">
+                            <Avatar e={e} size={34} />
+                          </span>
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-2 text-sm">
+                            <span className="text-muted line-through">{prev.name}</span>
+                            <ArrowRight className="h-3.5 w-3.5 text-muted" aria-hidden />
+                            <span className="font-medium">{e.name}</span>
+                            <Badge tone="dark">{t('publish.replaced')}</Badge>
+                          </div>
+                          <div className="mt-0.5 text-[13px] text-muted">{describeSlot(t, s, c.a)}</div>
+                          {c.a.overridden && (
+                            <div className="mt-1 flex items-center gap-1.5 text-[13px] text-warn">
+                              <AlertTriangle className="h-3.5 w-3.5" /> {t('schedule.despite', { list: conflictTitles(t, c.a.overridden) })}
+                            </div>
+                          )}
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => {
+                            a.remove(c.a.id)
+                            a.undoRemove(c.from.id)
+                          }}
+                          aria-label={t('publish.undoFor', { name: e.name })}
+                        >
+                          <Undo2 className="h-3.5 w-3.5" /> {t('common.undo')}
+                        </Button>
+                      </li>
+                    )
+                  }
                   return (
                     <li key={c.a.id} className="flex items-start gap-3 border-b border-line px-5 py-3.5 last:border-0">
                       <Avatar e={e} size={34} />
@@ -134,13 +196,16 @@ export function ReviewPublish() {
 
         <aside className="lg:sticky lg:top-4 lg:self-start">
           <div className="panel p-5">
-            <dl className={cx('grid gap-2 text-center', taskChanges ? 'grid-cols-4' : 'grid-cols-3')}>
+            <dl className="grid grid-cols-2 gap-2 text-center sm:grid-cols-4 lg:grid-cols-2">
               {[
-                [t('publish.added'), changes.filter((c) => c.kind === 'added').length] as const,
-                [t('publish.moved'), changes.filter((c) => c.kind === 'moved').length] as const,
-                [t('publish.removed'), changes.filter((c) => c.kind === 'removed').length] as const,
+                [t('publish.added'), visible.filter((c) => c.kind === 'added').length] as const,
+                [t('publish.replaced'), replacedCount] as const,
+                [t('publish.moved'), visible.filter((c) => c.kind === 'moved').length] as const,
+                [t('publish.removed'), visible.filter((c) => c.kind === 'removed').length] as const,
                 ...(taskChanges ? [[t('publish.tasks'), taskChanges] as const] : []),
-              ].map(([k, v]) => (
+              ]
+                .filter(([, v], i) => v > 0 || i !== 1)
+                .map(([k, v]) => (
                 <div key={k} className="rounded-xl bg-paper py-3">
                   <dd className="text-xl font-semibold">{v}</dd>
                   <dt className="text-xs text-muted">{k}</dt>
@@ -201,14 +266,16 @@ export function ReviewPublish() {
               {canPublish ? (
                 <>
                   {waiting && <p className="mb-3 text-[13px] text-muted">{t('publish.sentByManager')}</p>}
-                  <label className="flex cursor-pointer items-start gap-3 text-sm">
-                    <input type="checkbox" checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} className="mt-0.5 h-4 w-4 accent-forest" />
-                    {t('publish.confirm')}
-                  </label>
+                  {!isAdmin && (
+                    <label className="mb-4 flex cursor-pointer items-start gap-3 text-sm">
+                      <input type="checkbox" checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} className="mt-0.5 h-4 w-4 accent-forest" />
+                      {t('publish.confirm')}
+                    </label>
+                  )}
                   <Button
                     variant="primary"
-                    className="mt-4 w-full"
-                    disabled={!confirmed || !online || blocked}
+                    className="w-full"
+                    disabled={!ready || !online || blocked}
                     onClick={() => {
                       a.publish()
                       navigate('/published')

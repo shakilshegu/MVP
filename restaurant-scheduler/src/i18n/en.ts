@@ -322,6 +322,7 @@ export const en = {
     emptyBody: 'There are no unpublished changes. Edits you make on the schedule show up here before they go out to your team.',
     goToSchedule: 'Go to schedule',
     added: 'Added',
+    replaced: 'Replaced',
     removed: 'Removed',
     moved: 'Moved',
     tasks: 'Tasks',

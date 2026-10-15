@@ -324,6 +324,7 @@ export const de: Shape<typeof en> = {
     emptyBody: 'Es gibt keine unveröffentlichten Änderungen. Änderungen im Dienstplan erscheinen hier, bevor sie an dein Team gehen.',
     goToSchedule: 'Zum Dienstplan',
     added: 'Hinzugefügt',
+    replaced: 'Ersetzt',
     removed: 'Entfernt',
     moved: 'Verschoben',
     tasks: 'Aufgaben',
