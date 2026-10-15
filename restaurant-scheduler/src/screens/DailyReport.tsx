@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Check, CheckCircle2, ChevronLeft, ChevronRight, ClipboardCheck, Crown, Download, Loader2 } from 'lucide-react'
 import { useStore } from '../lib/store'
-import { navigate } from '../lib/hooks'
+import { navigate, useLoad } from '../lib/hooks'
 import { addDays, fmtLong, fmtTime, todayKey, toMin } from '../lib/date'
 import { isActive } from '../lib/validation'
 import { doneCount, shiftItems, shiftPhase } from '../lib/report'
@@ -9,7 +9,7 @@ import { settingsOf } from '../lib/settings'
 import type { ReportItem, ShiftPhase } from '../lib/report'
 import type { Assignment, Dept, Employee, ShiftTemplate } from '../lib/types'
 import { useT } from '../i18n'
-import { Avatar, Badge, Button, cx, DeptTag, EmptyState, IconButton, PageHeader, Segmented, toneCls } from '../components/ui'
+import { Avatar, Badge, Button, DeptTag, EmptyState, IconButton, PageHeader, PageSkeleton, Segmented, cx, toneCls } from '../components/ui'
 
 const isComplete = (r: { items: unknown[]; done: number }) => r.items.length > 0 && r.done === r.items.length
 
@@ -19,6 +19,7 @@ export type ReportRow = { a: Assignment; e: Employee; tpl: ShiftTemplate; items:
 export function DailyReport({ date }: { date: string | null }) {
   const { s, a, branch, me, can, toast, depts, company } = useStore()
   const { t } = useT()
+  const loading = useLoad('report' + branch!.id)
   const today = todayKey()
   const day = date && /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : today
   const [dept, setDept] = useState<'All' | Dept>('All')
@@ -55,6 +56,7 @@ export function DailyReport({ date }: { date: string | null }) {
   }, [])
   const go = (d: string) => navigate(d === today ? '/report' : `/report?date=${d}`)
 
+  if (loading.status === 'loading') return <PageSkeleton title={t('report.title')} variant="cards" />
   return (
     <div className="mx-auto max-w-6xl">
       <PageHeader

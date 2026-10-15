@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { ChevronLeft, ChevronRight, Clock3, Crown, Hourglass, Megaphone, Plus, Send, Trash2, Wand2 } from 'lucide-react'
 import { branchChanges, useStore } from '../lib/store'
-import { navigate } from '../lib/hooks'
+import { navigate, useLoad } from '../lib/hooks'
 import { addDays, dayShort, daysInclusive, fmtDay, fmtLong, fmtMonthYear, fmtRange, fromKey, hoursBetween, pad, startOfWeek, todayKey, toKey, toMin, WEEK, weekdayIndex } from '../lib/date'
 import { useT } from '../i18n'
 import { deptName } from '../i18n/format'
@@ -11,7 +11,7 @@ import { doneCount, shiftItems, shiftPhase } from '../lib/report'
 import { GetStarted } from '../components/onboarding'
 import { ShiftWeatherTag } from '../components/weather'
 import type { Dept, ShiftTemplate, Tone } from '../lib/types'
-import { Avatar, Badge, Button, cx, DeptDot, Drawer, EmptyState, Field, PageHeader, toneCls } from '../components/ui'
+import { Avatar, Badge, Button, DeptDot, Drawer, EmptyState, Field, PageHeader, PageSkeleton, cx, toneCls } from '../components/ui'
 
 function coverage(s: ReturnType<typeof useStore>['s'], branchId: string, date: string) {
   let need = 0
@@ -316,6 +316,7 @@ export function MonthlySchedule({ month }: { month: string | null }) {
   const { t } = useT()
   const today = todayKey()
   const first = (month ?? today.slice(0, 7)) + '-01'
+  const loading = useLoad('month' + branch!.id + first)
   const d0 = fromKey(first)
   const gridStart = startOfWeek(first)
   const nextMonth = toKey(new Date(d0.getFullYear(), d0.getMonth() + 1, 1))
@@ -335,6 +336,7 @@ export function MonthlySchedule({ month }: { month: string | null }) {
     got += c.got
   }
 
+  if (loading.status === 'loading') return <PageSkeleton title={title} variant="grid" />
   return (
     <div className="mx-auto max-w-6xl">
       <PageHeader

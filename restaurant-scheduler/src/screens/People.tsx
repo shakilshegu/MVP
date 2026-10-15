@@ -5,14 +5,15 @@ import { useStore } from '../lib/store'
 import { addDays, dayLong, dayShort, daysInclusive, fmtDay, fmtRange, fmtRangeYear, fromKey, relTime, startOfWeek, todayKey, WEEK, weekDays, weekdayIndex } from '../lib/date'
 import { useT } from '../i18n'
 import { isActive, leaveOn, weekHours, weekPattern } from '../lib/validation'
-import { navigate } from '../lib/hooks'
+import { navigate, useLoad } from '../lib/hooks'
 import { PREFERRED } from '../lib/types'
 import type { Dept, Employee, Leave, Preferred } from '../lib/types'
-import { Avatar, Badge, Button, cx, EmptyState, Field, IconButton, PageHeader, Popover, Segmented } from '../components/ui'
+import { Avatar, Badge, Button, EmptyState, Field, IconButton, PageHeader, PageSkeleton, Popover, Segmented, cx } from '../components/ui'
 
 export function Availability({ week }: { week: string | null }) {
   const { s, a, branch, can, toast, depts, company } = useStore()
   const { t } = useT()
+  const loading = useLoad('availability' + branch!.id)
   const [dept, setDept] = useState<'All' | Dept>('All')
   const [view, setView] = useState<'week' | 'pattern'>('week')
   const [timeAt, setTimeAt] = useState<{ e: Employee; day: number; rect: DOMRect } | null>(null)
@@ -29,6 +30,7 @@ export function Availability({ week }: { week: string | null }) {
   const deadline = availabilityDeadline(weekStart, settingsOf(company))
   const goWeek = (n: number) => navigate(`/availability?week=${addDays(weekStart, n)}`)
 
+  if (loading.status === 'loading') return <PageSkeleton title={t('availability.title')} variant="list" />
   return (
     <div className="mx-auto max-w-6xl">
       <PageHeader
@@ -338,12 +340,14 @@ function DayToggle({ on, differs, disabled, label, onClick }: { on: boolean; dif
 export function LeaveRequests({ focus }: { focus?: string | null }) {
   const { s, a, branch, can, toast } = useStore()
   const { t } = useT()
+  const loading = useLoad('leave' + branch!.id)
   const [tab, setTab] = useState<Leave['status']>('pending')
   const ids = new Set(s.employees.filter((e) => e.branchId === branch!.id).map((e) => e.id))
   const all = s.leaves.filter((l) => ids.has(l.employeeId))
   const list = all.filter((l) => l.status === tab).sort((x, y) => (tab === 'pending' ? x.from.localeCompare(y.from) : y.from.localeCompare(x.from)))
   const count = (st: Leave['status']) => all.filter((l) => l.status === st).length
 
+  if (loading.status === 'loading') return <PageSkeleton title={t('leave.title')} variant="cards" />
   return (
     <div className="mx-auto max-w-6xl">
       <PageHeader title={t('leave.title')} sub={t('leave.sub')} />

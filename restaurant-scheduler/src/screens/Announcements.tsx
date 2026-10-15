@@ -2,16 +2,18 @@ import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { Megaphone, Pencil, Plus, Send, Trash2, UserPlus } from 'lucide-react'
 import { useStore } from '../lib/store'
+import { useLoad } from '../lib/hooks'
 import { addDays, fmt, fmtLong, fromKey, relTime, todayKey, toMin } from '../lib/date'
 import type { Announcement, Dept } from '../lib/types'
 import { useT } from '../i18n'
 import { deptName } from '../i18n/format'
-import { Badge, Button, cx, DeptDot, EmptyState, Field, IconButton, Modal, PageHeader } from '../components/ui'
+import { Badge, Button, DeptDot, EmptyState, Field, IconButton, Modal, PageHeader, PageSkeleton, cx } from '../components/ui'
 
 /** Special occasions staff should know about, e.g. a private party (CR-05). */
 export function Announcements() {
   const { s, a, branch, can, toast } = useStore()
   const { t } = useT()
+  const loading = useLoad('announce' + branch!.id)
   const [editing, setEditing] = useState<Announcement | 'new' | null>(null)
   const [removing, setRemoving] = useState<Announcement | null>(null)
   const [showPast, setShowPast] = useState(false)
@@ -21,6 +23,7 @@ export function Announcements() {
   const upcoming = mine.filter((x) => x.date >= today).sort((x, y) => x.date.localeCompare(y.date) || (x.start ?? '').localeCompare(y.start ?? ''))
   const past = mine.filter((x) => x.date < today).sort((x, y) => y.date.localeCompare(x.date))
 
+  if (loading.status === 'loading') return <PageSkeleton title={t('announce.title')} variant="cards" />
   return (
     <div className="mx-auto max-w-6xl">
       <PageHeader

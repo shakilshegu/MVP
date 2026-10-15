@@ -2,7 +2,7 @@ import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { ArrowRight, History as HistoryIcon, LogOut, Plus, RotateCcw, Search, Store } from 'lucide-react'
 import { useStore } from '../lib/store'
-import { navigate } from '../lib/hooks'
+import { navigate, useLoad } from '../lib/hooks'
 import { dayLong, fmtDayHeading, fmtStamp, fmtTime, relTime, WEEK } from '../lib/date'
 import { useT } from '../i18n'
 import { historyText } from '../i18n/format'
@@ -14,7 +14,7 @@ import type { HistoryAction } from '../lib/types'
 import { NoAccess } from '../components/Shell'
 import { CityOptions } from '../components/weather'
 import { settingsOf } from '../lib/settings'
-import { Badge, Button, EmptyState, Field, Modal, PageHeader, Segmented, Switch } from '../components/ui'
+import { Badge, Button, EmptyState, Field, Modal, PageHeader, PageSkeleton, Segmented, Switch } from '../components/ui'
 
 const GROUPS = {
   Schedule: ['assigned', 'removed', 'tasksUpdated', 'moved', 'published', 'shiftEdited', 'shiftCreated', 'announcement'],
@@ -27,6 +27,7 @@ type Group = 'All' | keyof typeof GROUPS
 export function History() {
   const { s, branch } = useStore()
   const { t } = useT()
+  const loading = useLoad('history' + branch!.id)
   const [group, setGroup] = useState<Group>('All')
   const [q, setQ] = useState('')
   const list = s.history
@@ -45,6 +46,7 @@ export function History() {
     return m
   }, {})
 
+  if (loading.status === 'loading') return <PageSkeleton title={t('history.title')} variant="list" />
   return (
     <div className="mx-auto max-w-6xl">
       <PageHeader title={t('history.title')} sub={t('history.sub', { branch: branch!.name })} />

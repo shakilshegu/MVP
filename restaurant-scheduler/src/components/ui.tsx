@@ -318,3 +318,45 @@ export function Toaster() {
     </div>
   )
 }
+
+/** Placeholder page shown while a screen's data loads: same header, then list, cards or a calendar grid. */
+export function PageSkeleton({ title, variant = 'list' }: { title: string; variant?: 'list' | 'cards' | 'grid' }) {
+  return (
+    <div className="mx-auto max-w-6xl" aria-busy="true">
+      <PageHeader title={title} />
+      {variant === 'grid' ? (
+        <div className="panel grid grid-cols-7 gap-px overflow-hidden p-0">
+          {Array.from({ length: 35 }, (_, i) => (
+            <div key={i} className="h-24 bg-white p-2">
+              <Skeleton className="h-3 w-6" />
+              <Skeleton className="mt-4 h-1.5 w-full" />
+            </div>
+          ))}
+        </div>
+      ) : variant === 'cards' ? (
+        <div className="grid gap-3 lg:grid-cols-2">
+          {Array.from({ length: 4 }, (_, i) => (
+            <div key={i} className="panel space-y-3 p-5">
+              <Skeleton className="h-4 w-1/2" />
+              <Skeleton className="h-3 w-3/4" />
+              <Skeleton className="h-3 w-2/3" />
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="panel divide-y divide-line">
+          {Array.from({ length: 7 }, (_, i) => (
+            <div key={i} className="flex items-center gap-3 px-5 py-4">
+              <Skeleton className="h-9 w-9 rounded-full" />
+              <div className="flex-1 space-y-2">
+                <Skeleton className="h-3.5 w-40" />
+                <Skeleton className="h-3 w-24" />
+              </div>
+              <Skeleton className="h-6 w-24" />
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
