@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import {
   Bell,
@@ -21,6 +21,7 @@ import {
   X,
   Megaphone,
   ClipboardCheck,
+  Search,
 } from 'lucide-react'
 import { branchChanges, useStore } from '../lib/store'
 import { navigate, useOnline } from '../lib/hooks'
@@ -28,6 +29,7 @@ import { relTime } from '../lib/date'
 import { useT } from '../i18n'
 import { noticeText } from '../i18n/format'
 import { LanguageMenu } from './LanguageSwitch'
+import { CommandPalette } from './command'
 import { Badge, cx, IconButton, Popover } from './ui'
 
 type Item = { to: string; label: string; icon: ReactNode; match: (p: string) => boolean; badge?: number; superOnly?: boolean }
@@ -38,6 +40,17 @@ export default function Shell({ path, children }: { path: string; children: Reac
   const { t } = useT()
   const online = useOnline()
   const [navOpen, setNavOpen] = useState(false)
+  const [cmdOpen, setCmdOpen] = useState(false)
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault()
+        setCmdOpen((v) => !v)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
 
   const items: { group?: string; items: Item[] }[] = [
     {
@@ -167,6 +180,15 @@ export default function Shell({ path, children }: { path: string; children: Reac
           </IconButton>
           <BranchSwitcher />
           <div className="flex-1" />
+          <button
+            onClick={() => setCmdOpen(true)}
+            aria-label={t('command.title')}
+            className="flex h-9 items-center gap-2 rounded-lg bg-white/70 px-2.5 text-[13px] text-muted ring-1 ring-line hover:text-ink sm:pr-1.5"
+          >
+            <Search className="h-4 w-4" aria-hidden />
+            <span className="hidden sm:inline">{t('command.search')}</span>
+            <kbd className="hidden rounded border border-line bg-white px-1.5 text-[11px] sm:inline">{navigator.platform.includes('Mac') ? '⌘K' : 'Ctrl K'}</kbd>
+          </button>
           {changes > 0 && path !== '/review' && (
             <a href="#/review" className="hidden items-center gap-2 rounded-full bg-white px-3 py-1.5 text-[13px] font-medium text-forest ring-1 ring-forest/20 hover:ring-forest/50 sm:inline-flex">
               <span className="h-2 w-2 rounded-full bg-bark" />
@@ -176,6 +198,12 @@ export default function Shell({ path, children }: { path: string; children: Reac
           <LanguageMenu />
           <Notifications />
         </header>
+        {cmdOpen && (
+          <CommandPalette
+            pages={items.flatMap((g) => g.items).filter((x) => !x.superOnly || isAdmin).map((x) => ({ to: x.to, label: x.label, icon: x.icon }))}
+            onClose={() => setCmdOpen(false)}
+          />
+        )}
         <main id="main" className="flex-1 overflow-y-auto px-4 pb-8 md:px-8 md:pb-16">
           {children}
         </main>
