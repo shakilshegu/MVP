@@ -69,7 +69,7 @@ export function Dashboard() {
   const pos = (m: number) => `${(Math.max(0, Math.min(axisLen, m - axisStart)) / axisLen) * 100}%`
 
   return (
-    <div className="mx-auto max-w-6xl 2xl:max-w-[1500px]">
+    <div className="mx-auto max-w-[1500px]">
       <PageHeader title={t(greet, { name: me?.name.split(' ')[0] ?? '' })} sub={`${fmtLong(today)} · ${branch!.name}`} />
       <GetStarted />
 
@@ -338,7 +338,7 @@ export function MonthlySchedule({ month }: { month: string | null }) {
 
   if (loading.status === 'loading') return <PageSkeleton title={title} variant="grid" />
   return (
-    <div className="mx-auto max-w-6xl 2xl:max-w-[1500px]">
+    <div className="mx-auto max-w-[1500px]">
       <PageHeader
         title={title}
         sub={t('month.summary', { pct: need ? Math.round((got / need) * 100) : 0, open: need - got })}
@@ -446,7 +446,7 @@ export function ShiftTemplates() {
   const [editing, setEditing] = useState<ShiftTemplate | 'new' | null>(null)
   const sorted = [...s.templates].sort((a, b) => toMin(a.start) - toMin(b.start))
   return (
-    <div className="mx-auto max-w-6xl 2xl:max-w-[1500px]">
+    <div className="mx-auto max-w-[1500px]">
       <PageHeader
         title={t('templates.title')}
         sub={t('templates.sub')}

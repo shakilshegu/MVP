@@ -25,7 +25,7 @@ export function Announcements() {
 
   if (loading.status === 'loading') return <PageSkeleton title={t('announce.title')} variant="cards" />
   return (
-    <div className="mx-auto max-w-6xl 2xl:max-w-[1500px]">
+    <div className="mx-auto max-w-[1500px]">
       <PageHeader
         title={t('announce.title')}
         sub={t('announce.sub', { branch: branch!.name })}

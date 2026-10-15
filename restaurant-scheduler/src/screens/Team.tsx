@@ -64,7 +64,7 @@ export function Team({ openAdd }: { openAdd: boolean }) {
   )
 
   return (
-    <div className="mx-auto max-w-6xl 2xl:max-w-[1500px]">
+    <div className="mx-auto max-w-[1500px]">
       <PageHeader
         title={t('team.title')}
         sub={[
@@ -459,7 +459,7 @@ export function EmployeeProfile({ id }: { id: string }) {
   const checklist = s.checklists.find((c) => c.id === e.checklistId)
 
   return (
-    <div className="mx-auto max-w-6xl 2xl:max-w-[1500px]">
+    <div className="mx-auto max-w-[1500px]">
       <a href="#/team" className="mb-4 inline-flex items-center gap-1.5 text-sm text-muted hover:text-ink">
         <ArrowLeft className="h-4 w-4" /> {t('team.title')}
       </a>

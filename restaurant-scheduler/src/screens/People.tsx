@@ -32,7 +32,7 @@ export function Availability({ week }: { week: string | null }) {
 
   if (loading.status === 'loading') return <PageSkeleton title={t('availability.title')} variant="list" />
   return (
-    <div className="mx-auto max-w-6xl 2xl:max-w-[1500px]">
+    <div className="mx-auto max-w-[1500px]">
       <PageHeader
         title={t('availability.title')}
         sub={t('availability.sub')}
@@ -349,7 +349,7 @@ export function LeaveRequests({ focus }: { focus?: string | null }) {
 
   if (loading.status === 'loading') return <PageSkeleton title={t('leave.title')} variant="cards" />
   return (
-    <div className="mx-auto max-w-6xl 2xl:max-w-[1500px]">
+    <div className="mx-auto max-w-[1500px]">
       <PageHeader title={t('leave.title')} sub={t('leave.sub')} />
       <div className="mb-4">
         <Segmented

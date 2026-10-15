@@ -332,7 +332,7 @@ export function Toaster() {
 /** Placeholder page shown while a screen's data loads: same header, then list, cards or a calendar grid. */
 export function PageSkeleton({ title, variant = 'list' }: { title: string; variant?: 'list' | 'cards' | 'grid' }) {
   return (
-    <div className="mx-auto max-w-6xl 2xl:max-w-[1500px]" aria-busy="true">
+    <div className="mx-auto max-w-[1500px]" aria-busy="true">
       <PageHeader title={title} />
       {variant === 'grid' ? (
         <div className="panel grid grid-cols-7 gap-px overflow-hidden p-0">
