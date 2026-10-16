@@ -55,7 +55,97 @@ body {
   background: var(--color-forest-100);
 }
 
+/* ---------- Motion ---------- */
+
+/* Scroll reveals: content rises in once; images also settle from a slight zoom. */
+.reveal {
+  opacity: 0;
+  transform: translateY(18px);
+  transition: opacity 0.7s cubic-bezier(0.2, 0.8, 0.2, 1), transform 0.7s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.reveal-image { transform: translateY(24px) scale(0.97); }
+.reveal.is-shown { opacity: 1; transform: none; }
+
+/* Hero intro: one short sequence on load. */
+.intro > * { animation: rise 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.intro > *:nth-child(2) { animation-delay: 0.08s; }
+.intro > *:nth-child(3) { animation-delay: 0.16s; }
+.intro > *:nth-child(4) { animation-delay: 0.24s; }
+.intro-board { animation: rise 0.8s 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+
+/* Faint rota-paper grid behind the hero, fading out towards the edges. */
+.rota-grid {
+  background-image:
+    linear-gradient(to right, rgb(30 64 52 / 0.07) 1px, transparent 1px),
+    linear-gradient(to bottom, rgb(30 64 52 / 0.07) 1px, transparent 1px);
+  background-size: 56px 56px;
+  mask-image: radial-gradient(ellipse 70% 65% at 60% 40%, black 30%, transparent 80%);
+}
+
+/* Shift ticker below the hero. */
+.ticker { mask-image: linear-gradient(to right, transparent, black 8%, black 92%, transparent); }
+.ticker-track { animation: ticker 60s linear infinite; }
+.ticker:hover .ticker-track { animation-play-state: paused; }
+@keyframes ticker { to { transform: translateX(-50%); } }
+
+/* Week rail: day labels brighten once reached. */
+.day-mark { color: var(--color-sage-dark); transition: color 0.4s ease; }
+[data-reached] .day-mark { color: var(--color-brass); }
+[data-reached] .day-mark > span { border-color: var(--color-brass); background: var(--color-brass); }
+
+/* Rules: the checkmark draws itself when shown. */
+.checked path { stroke-dasharray: 1; stroke-dashoffset: 1; transition: stroke-dashoffset 0.5s ease-out var(--d, 0ms); }
+.checked.is-shown path { stroke-dashoffset: 0; }
+.checked { opacity: 0.35; transition: opacity 0.5s ease var(--d, 0ms); }
+.checked.is-shown { opacity: 1; }
+
+/* Price card: the dotted leader draws across to the price. */
+.leader {
+  height: 2px;
+  background-image: radial-gradient(circle, var(--color-sage-dark) 1px, transparent 1.5px);
+  background-size: 7px 2px;
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.9s cubic-bezier(0.2, 0.8, 0.2, 1) 0.15s;
+}
+.leader.is-shown { transform: none; }
+
+/* Header: underline the section you're reading. */
+header a[data-section] { position: relative; }
+header a[data-section]::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -6px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--color-forest);
+  transform: scaleX(0);
+  transition: transform 0.3s ease;
+}
+header a[data-current] { color: var(--color-ink); }
+header a[data-current]::after { transform: none; }
+
+/* FAQ: answers open and close smoothly where the browser supports it. */
+:root { interpolate-size: allow-keywords; }
+details::details-content {
+  block-size: 0;
+  overflow: hidden;
+  transition: block-size 0.35s ease, content-visibility 0.35s allow-discrete;
+}
+details[open]::details-content { block-size: auto; }
+
+/* Buttons: a small lift on hover, a press on click. */
+.btn-motion { transition: background-color 0.2s, box-shadow 0.2s, transform 0.15s; }
+.btn-motion:hover { transform: translateY(-1px); box-shadow: 0 10px 24px -12px rgb(30 64 52 / 0.55); }
+.btn-motion:active { transform: translateY(0) scale(0.98); }
+
 @media (prefers-reduced-motion: reduce) {
+  .reveal, .checked { opacity: 1; transform: none; }
+  .checked path { stroke-dashoffset: 0; }
+  .leader { transform: none; }
+  .ticker-track { animation: none; }
   html { scroll-behavior: auto; }
   *, *::before, *::after {
     animation-duration: 0.01ms !important;

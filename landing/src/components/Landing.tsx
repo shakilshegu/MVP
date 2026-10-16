@@ -1,12 +1,13 @@
 import { copy, site } from '@/content'
 import type { Lang } from '@/content'
 import { ShiftBoard } from './ShiftBoard'
+import { CheckedRule, DayMark, HeaderShell, Leader, MobileCta, Reveal, WeekRail } from './motion'
 
 const demoHref = (subject: string) => site.appUrl || `mailto:${site.email}?subject=${encodeURIComponent(subject)}`
 const talkHref = (subject: string) => `mailto:${site.email}?subject=${encodeURIComponent(subject)}`
 const external = Boolean(site.appUrl)
 
-const btn = 'inline-flex h-12 items-center justify-center rounded-lg px-5 text-[15px] font-medium transition-colors'
+const btn = 'btn-motion inline-flex h-12 items-center justify-center rounded-lg px-5 text-[15px] font-medium'
 const primary = `${btn} bg-forest text-white hover:bg-forest-600`
 const secondary = `${btn} bg-white text-forest ring-1 ring-line hover:ring-forest/40`
 
@@ -23,32 +24,34 @@ export function Landing({ lang }: { lang: Lang }) {
         {t.nav.skip}
       </a>
 
-      <header className="sticky top-0 z-40 border-b border-sage-dark/50 bg-sage/85 backdrop-blur">
+      <HeaderShell>
         <nav className="mx-auto flex h-16 max-w-6xl items-center gap-6 px-5 sm:px-8" aria-label="Main">
           <a href={lang === 'de' ? '/de' : '/'} className="flex items-center gap-2.5" aria-label="Rota">
             <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-forest font-serif text-xl leading-none text-white">R</span>
             <span className="text-[17px] font-semibold text-forest">Rota</span>
           </a>
           <div className="ml-4 hidden items-center gap-6 text-[15px] text-ink/75 md:flex">
-            <a href="#week" className="hover:text-ink">{t.nav.features}</a>
-            <a href="#pricing" className="hover:text-ink">{t.nav.pricing}</a>
-            <a href="#faq" className="hover:text-ink">{t.nav.faq}</a>
+            <a href="#week" data-section="week" className="hover:text-ink">{t.nav.features}</a>
+            <a href="#pricing" data-section="pricing" className="hover:text-ink">{t.nav.pricing}</a>
+            <a href="#faq" data-section="faq" className="hover:text-ink">{t.nav.faq}</a>
           </div>
           <div className="ml-auto flex items-center gap-4">
             <a href={t.nav.langHref} className="text-sm text-ink/70 hover:text-ink" hrefLang={lang === 'de' ? 'en' : 'de'}>
               {t.nav.lang}
             </a>
-            <a href={demoHref('Rota demo')} {...(external && { target: '_blank', rel: 'noopener' })} className="hidden h-10 items-center rounded-lg bg-forest px-4 text-sm font-medium text-white hover:bg-forest-600 sm:inline-flex">
+            <a href={demoHref('Rota demo')} {...(external && { target: '_blank', rel: 'noopener' })} className="btn-motion hidden h-10 items-center rounded-lg bg-forest px-4 text-sm font-medium text-white hover:bg-forest-600 sm:inline-flex">
               {t.nav.demo}
             </a>
           </div>
         </nav>
-      </header>
+      </HeaderShell>
 
       <main id="main">
         {/* Hero: the headline, and a rota that fills itself in */}
-        <section className="mx-auto grid max-w-6xl items-center gap-12 px-5 pb-20 pt-14 sm:px-8 md:pt-20 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:gap-14 lg:pb-28">
-          <div className="animate-rise">
+        <section id="hero" className="relative -mt-16 overflow-hidden pt-16">
+          <div aria-hidden className="rota-grid pointer-events-none absolute inset-0" />
+          <div className="relative mx-auto grid max-w-6xl items-center gap-12 px-5 pb-16 pt-14 sm:px-8 md:pt-20 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:gap-14 lg:pb-20">
+          <div className="intro">
             <h1 className="font-serif text-[44px] leading-[1.02] tracking-[-0.01em] text-forest sm:text-6xl lg:text-[64px]">{t.hero.title}</h1>
             <p className="mt-6 max-w-[34rem] text-lg leading-relaxed text-ink/80">{t.hero.lead}</p>
             <div className="mt-8 flex flex-wrap gap-3">
@@ -61,7 +64,25 @@ export function Landing({ lang }: { lang: Lang }) {
             </div>
             <p className="mt-5 text-sm text-muted">{t.hero.note}</p>
           </div>
-          <ShiftBoard t={t.hero.board} />
+          <div className="intro-board">
+            <ShiftBoard t={t.hero.board} />
+          </div>
+          </div>
+
+          {/* A slow ticker of shifts being planned; pauses on hover */}
+          <div className="ticker relative overflow-hidden border-y border-sage-dark/50 bg-white/40 py-3" aria-hidden>
+            <div className="ticker-track flex w-max gap-3">
+              {[...t.ticker, ...t.ticker].map(([name, shift, time, tone], i) => (
+                <span key={i} className="flex shrink-0 items-center gap-2 rounded-full bg-white px-3 py-1.5 text-sm ring-1 ring-line">
+                  <span className={`h-2.5 w-2.5 rounded-full ${tone === 'morning' ? 'bg-morning' : tone === 'evening' ? 'bg-evening' : tone === 'night' ? 'bg-night' : 'bg-day'} ring-1 ring-black/5`} />
+                  <span className="font-medium">{name}</span>
+                  <span className="text-muted">
+                    {shift} {time}
+                  </span>
+                </span>
+              ))}
+            </div>
+          </div>
         </section>
 
         {/* A restaurant week, day by day */}
@@ -69,27 +90,27 @@ export function Landing({ lang }: { lang: Lang }) {
           <div className="mx-auto max-w-6xl px-5 py-20 sm:px-8 lg:py-28">
             <h2 className="max-w-2xl font-serif text-4xl leading-[1.08] text-forest sm:text-5xl">{t.week.title}</h2>
             <p className="mt-4 max-w-xl text-lg leading-relaxed text-ink/75">{t.week.lead}</p>
-            <ol className="mt-14 space-y-20 lg:space-y-24">
-              {t.week.days.map((d) => (
-                <li key={d.img} className="grid gap-6 lg:grid-cols-[7rem_minmax(0,4fr)_minmax(0,7fr)] lg:gap-10">
-                  <div className="font-serif text-5xl leading-none text-brass lg:text-6xl" aria-hidden>
-                    {d.day}
-                  </div>
+            <div className="mt-14">
+            <WeekRail count={t.week.days.length}>
+              {t.week.days.map((d, i) => (
+                <li key={d.img} data-day className="grid gap-6 lg:grid-cols-[9rem_minmax(0,4fr)_minmax(0,7fr)] lg:gap-10">
+                  <DayMark index={i} label={d.day} />
                   <div className="lg:pt-2">
                     <h3 className="text-2xl font-semibold leading-snug">{d.title}</h3>
                     <p className="mt-3 max-w-[34rem] text-[17px] leading-relaxed text-ink/75">{d.body}</p>
                   </div>
-                  <div className={NARROW.has(d.img) ? 'max-w-sm lg:justify-self-start' : ''}>
+                  <Reveal variant="image" className={NARROW.has(d.img) ? 'max-w-sm lg:justify-self-start' : ''}>
                     <img
                       src={`/screens/${d.img}.webp`}
                       alt={d.alt}
                       loading="lazy"
                       className="w-full rounded-xl border border-line bg-white shadow-[0_18px_44px_-24px_rgba(30,64,52,0.4)]"
                     />
-                  </div>
+                  </Reveal>
                 </li>
               ))}
-            </ol>
+            </WeekRail>
+            </div>
           </div>
         </section>
 
@@ -101,11 +122,8 @@ export function Landing({ lang }: { lang: Lang }) {
               <p className="mt-4 max-w-md text-lg leading-relaxed text-white/75">{t.rules.lead}</p>
             </div>
             <dl className="grid gap-x-10 gap-y-7 sm:grid-cols-2">
-              {t.rules.items.map(([k, v]) => (
-                <div key={k} className="border-t border-white/20 pt-4">
-                  <dt className="font-serif text-2xl">{k}</dt>
-                  <dd className="mt-1 text-[15px] leading-relaxed text-white/70">{v}</dd>
-                </div>
+              {t.rules.items.map(([k, v], i) => (
+                <CheckedRule key={k} title={k} body={v} delay={i * 120} />
               ))}
             </dl>
           </div>
@@ -115,11 +133,11 @@ export function Landing({ lang }: { lang: Lang }) {
         <section className="mx-auto max-w-6xl px-5 py-20 sm:px-8 lg:py-28">
           <h2 className="font-serif text-4xl leading-[1.08] text-forest sm:text-5xl">{t.more.title}</h2>
           <dl className="mt-10 grid gap-x-10 gap-y-8 sm:grid-cols-2 lg:grid-cols-3">
-            {t.more.items.map(([k, v]) => (
-              <div key={k}>
+            {t.more.items.map(([k, v], i) => (
+              <Reveal key={k} delay={(i % 3) * 90}>
                 <dt className="font-semibold">{k}</dt>
                 <dd className="mt-1 text-[15px] leading-relaxed text-ink/70">{v}</dd>
-              </div>
+              </Reveal>
             ))}
           </dl>
 
@@ -143,10 +161,11 @@ export function Landing({ lang }: { lang: Lang }) {
               <h2 className="font-serif text-4xl leading-[1.08] text-forest sm:text-5xl">{t.pricing.title}</h2>
               <p className="mt-4 text-lg text-ink/75">{t.pricing.lead}</p>
             </div>
-            <div className="mx-auto mt-12 max-w-xl rounded-2xl border border-line bg-white p-7 shadow-[0_24px_60px_-30px_rgba(30,64,52,0.45)] sm:p-10">
+            <Reveal className="mx-auto mt-12 max-w-xl">
+            <div className="rounded-2xl border border-line bg-white p-7 shadow-[0_24px_60px_-30px_rgba(30,64,52,0.45)] sm:p-10">
               <div className="flex items-baseline gap-3">
                 <span className="font-serif text-4xl text-forest">{t.pricing.name}</span>
-                <span className="mb-2 flex-1 border-b-2 border-dotted border-sage-dark" aria-hidden />
+                <Leader />
                 <span className="font-serif text-5xl text-forest sm:text-6xl">{price}</span>
               </div>
               <p className="mt-1 text-right text-sm text-muted">{t.pricing.per}</p>
@@ -170,6 +189,7 @@ export function Landing({ lang }: { lang: Lang }) {
               </div>
               <p className="mt-5 text-center text-sm text-muted">{t.pricing.vat}</p>
             </div>
+            </Reveal>
           </div>
         </section>
 
@@ -192,7 +212,7 @@ export function Landing({ lang }: { lang: Lang }) {
         </section>
 
         {/* Closing call to action */}
-        <section className="px-5 pb-20 sm:px-8">
+        <section id="final" className="px-5 pb-20 sm:px-8">
           <div className="mx-auto flex max-w-6xl flex-col items-start gap-8 rounded-3xl bg-forest px-7 py-14 text-white sm:px-12 lg:flex-row lg:items-end lg:justify-between">
             <div>
               <h2 className="font-serif text-4xl leading-[1.08] sm:text-5xl">{t.final.title}</h2>
@@ -223,6 +243,7 @@ export function Landing({ lang }: { lang: Lang }) {
           </div>
         </div>
       </footer>
+      <MobileCta price={price} per={t.pricing.perShort} label={t.nav.demo} href={demoHref('Rota demo')} external={external} />
     </>
   )
 }
