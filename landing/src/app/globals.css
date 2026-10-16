@@ -1,0 +1,65 @@
+@import "tailwindcss";
+
+/* Rota brand tokens: the same greens and shift colours as the app, on a cool sage page. */
+@theme {
+  --color-forest: #1e4034;
+  --color-forest-600: #2a5646;
+  --color-forest-100: #dce8e0;
+  --color-forest-50: #eef3ef;
+  --color-sage: #e3eae4;
+  --color-sage-dark: #c4cec7;
+  --color-paper: #f7f8f6;
+  --color-ink: #17221d;
+  --color-muted: #5b6660;
+  --color-line: #d3dcd5;
+  --color-brass: #b7791f;
+  --color-bark: #54302c;
+  --color-morning: #f4e3ae;
+  --color-day: #d2e6d8;
+  --color-evening: #edd5cc;
+  --color-night: #d6daea;
+
+  --font-sans: var(--font-instrument-sans), system-ui, sans-serif;
+  --font-serif: var(--font-instrument-serif), Georgia, serif;
+
+  --animate-fill: fill 0.32s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  --animate-rise: rise 0.4s ease-out both;
+}
+
+@keyframes fill {
+  0% { opacity: 0; transform: scale(0.9); }
+  60% { opacity: 1; transform: scale(1.03); }
+  100% { transform: none; }
+}
+@keyframes rise {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 5rem;
+}
+body {
+  background: var(--color-sage);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+:focus-visible {
+  outline: 2px solid var(--color-forest);
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+::selection {
+  background: var(--color-forest-100);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-delay: 0ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
