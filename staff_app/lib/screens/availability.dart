@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../data/dates.dart';
 import '../data/rules.dart';
 import '../state/app_state.dart';
 import '../theme.dart';
 import '../widgets.dart';
-import 'shell.dart';
 
 /// Availability for the coming weeks, sent to the manager before the deadline (CR-07).
 class AvailabilityScreen extends StatefulWidget {
@@ -16,7 +16,7 @@ class AvailabilityScreen extends StatefulWidget {
 }
 
 class _AvailabilityScreenState extends State<AvailabilityScreen> {
-  int _offset = 1; // next week by default: the one that's being planned
+  int _offset = 1; // next week: the one being planned
   final Map<DateTime, List<bool>> _draft = {};
 
   @override
@@ -30,81 +30,130 @@ class _AvailabilityScreenState extends State<AvailabilityScreen> {
     final sent = s.availabilitySent(week);
     final values = _draft[week] ?? s.weekAvailability(week);
     final changed = _draft[week] != null;
+    final count = values.where((v) => v).length;
 
-    return ScreenFrame(
+    return PageFrame(
       title: l.tr('avail.title'),
       subtitle: l.tr('avail.sub'),
       children: [
-        Panel(
-          padding: const EdgeInsets.fromLTRB(6, 6, 6, 6),
-          child: Row(children: [
-            IconButton(onPressed: _offset > 1 ? () => setState(() => _offset--) : null, icon: const Icon(Icons.chevron_left)),
-            Expanded(child: Text(l.tr('avail.week', {'date': l.range(week, days.last)}), textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.w600))),
-            IconButton(onPressed: _offset < 4 ? () => setState(() => _offset++) : null, icon: const Icon(Icons.chevron_right)),
-          ]),
-        ),
-        const SizedBox(height: 10),
         Row(children: [
-          Icon(closed ? Icons.lock_outline : Icons.schedule, size: 16, color: closed ? C.muted : C.forest),
-          const SizedBox(width: 6),
-          Expanded(child: Text(closed ? l.tr('avail.closed') : l.tr('avail.due', {'when': '${l.day(deadline)}, ${l.time(deadline)}'}), style: TextStyle(color: closed ? C.muted : C.forest, fontSize: 13))),
-          Pill(sent ? l.tr('avail.sent') : l.tr('avail.notSent'), bg: sent ? C.forest50 : C.warn50, fg: sent ? C.forest : C.warn, icon: sent ? Icons.check : null),
+          _Arrow(icon: Icons.chevron_left_rounded, onTap: _offset > 1 ? () => setState(() => _offset--) : null),
+          Expanded(
+            child: Column(children: [
+              Text(l.range(week, days.last), style: serif(26, color: C.forest)),
+              const SizedBox(height: 4),
+              Text(closed ? l.tr('avail.closed') : l.tr('avail.due', {'when': '${l.day(deadline)}, ${l.time(deadline)}'}), textAlign: TextAlign.center, style: sans(13, color: closed ? C.muted : C.forest)),
+            ]),
+          ),
+          _Arrow(icon: Icons.chevron_right_rounded, onTap: _offset < 4 ? () => setState(() => _offset++) : null),
         ]),
-        if (!sent) Padding(padding: const EdgeInsets.only(top: 8), child: Text(l.tr('avail.usual'), style: const TextStyle(color: C.muted, fontSize: 13))),
-        const SizedBox(height: 14),
-        Panel(
+        const SizedBox(height: 20),
+        GridView.count(
+          crossAxisCount: 4,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
           padding: EdgeInsets.zero,
-          child: Column(children: [
-            for (var i = 0; i < 7; i++) ...[
-              if (i > 0) const Divider(),
-              _DayRow(
-                label: l.dayLong(days[i]),
+          mainAxisSpacing: 10,
+          crossAxisSpacing: 10,
+          childAspectRatio: 0.78,
+          children: [
+            for (var i = 0; i < 7; i++)
+              _DayTile(
+                day: days[i],
                 value: values[i],
                 leave: s.onLeave(days[i]),
                 enabled: !closed,
-                onChanged: (v) => setState(() => (_draft[week] = List.of(values))[i] = v),
+                onTap: () => setState(() => (_draft[week] = List.of(values))[i] = !values[i]),
               ),
-            ],
-          ]),
+            _Summary(count: count, sent: sent && !changed),
+          ],
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 12),
+        Padding(padding: const EdgeInsets.symmetric(horizontal: 4), child: Text(sent ? l.tr('avail.tapHint') : '${l.tr('avail.usual')} ${l.tr('avail.tapHint')}', style: sans(13, color: C.muted, height: 1.4))),
+        const SizedBox(height: 22),
         FilledButton(
           onPressed: closed || (sent && !changed)
               ? null
               : () {
+                  HapticFeedback.mediumImpact();
                   s.sendAvailability(week, values);
                   setState(() => _draft.remove(week));
                   ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l.tr('avail.saved'))));
                 },
-          child: Text(l.tr('avail.save')),
+          child: Text(sent && !changed ? '✓ ${l.tr('avail.sent')}' : l.tr('avail.save')),
         ),
       ],
     );
   }
 }
 
-class _DayRow extends StatelessWidget {
-  const _DayRow({required this.label, required this.value, required this.leave, required this.enabled, required this.onChanged});
-  final String label;
+class _Arrow extends StatelessWidget {
+  const _Arrow({required this.icon, this.onTap});
+  final IconData icon;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: onTap == null ? Colors.transparent : C.surface,
+      shape: const CircleBorder(),
+      child: InkWell(customBorder: const CircleBorder(), onTap: onTap, child: Padding(padding: const EdgeInsets.all(10), child: Icon(icon, color: onTap == null ? C.line : C.ink))),
+    );
+  }
+}
+
+/// One day: tap to switch between "can work" and "off". Leave is fixed.
+class _DayTile extends StatelessWidget {
+  const _DayTile({required this.day, required this.value, required this.leave, required this.enabled, required this.onTap});
+  final DateTime day;
   final bool value;
   final bool leave;
   final bool enabled;
-  final ValueChanged<bool> onChanged;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final l = AppScope.of(context).l;
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Row(children: [
-        Expanded(child: Text(label, style: const TextStyle(fontWeight: FontWeight.w500))),
-        if (leave)
-          Pill(l.tr('avail.leave'), bg: C.bark50, fg: C.bark, icon: Icons.flight_outlined)
-        else ...[
-          Text(value ? l.tr('avail.can') : l.tr('avail.cant'), style: TextStyle(fontSize: 13, color: value ? C.forest : C.muted)),
-          const SizedBox(width: 8),
-          Switch(value: value, onChanged: enabled ? onChanged : null, activeThumbColor: Colors.white, activeTrackColor: C.forest),
-        ],
+    final on = value && !leave;
+    final bg = leave ? C.bark50 : on ? C.forest : C.surface;
+    final fg = leave ? C.bark : on ? Colors.white : C.muted;
+    return GestureDetector(
+      onTap: enabled && !leave
+          ? () {
+              HapticFeedback.selectionClick();
+              onTap();
+            }
+          : null,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOut,
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 6),
+        decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(18), border: Border.all(color: on || leave ? Colors.transparent : C.line)),
+        child: Column(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+          Text(l.weekdayShort(day), style: sans(13, color: fg.withValues(alpha: on ? 0.8 : 1), weight: FontWeight.w600)),
+          Text('${day.day}', style: serif(32, color: on ? Colors.white : (leave ? C.bark : C.ink))),
+          Icon(leave ? Icons.flight_rounded : on ? Icons.check_rounded : Icons.remove_rounded, size: 18, color: fg),
+        ]),
+      ),
+    );
+  }
+}
+
+class _Summary extends StatelessWidget {
+  const _Summary({required this.count, required this.sent});
+  final int count;
+  final bool sent;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppScope.of(context).l;
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 6),
+      decoration: BoxDecoration(color: sent ? C.forest50 : C.warn50, borderRadius: BorderRadius.circular(18)),
+      child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+        Text('$count/7', style: serif(30, color: sent ? C.forest : C.warn)),
+        const SizedBox(height: 4),
+        Text(sent ? l.tr('avail.sent') : l.tr('avail.notSent'), textAlign: TextAlign.center, style: sans(11.5, color: sent ? C.forest : C.warn, weight: FontWeight.w600)),
       ]),
     );
   }

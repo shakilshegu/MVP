@@ -1,11 +1,13 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../data/dates.dart';
 import '../data/models.dart';
 import '../state/app_state.dart';
 import '../theme.dart';
 import '../widgets.dart';
-import 'shell.dart';
 
 /// Today's checklist (CR-03). Leaders also see their team's progress (CR-04).
 class ChecklistScreen extends StatelessWidget {
@@ -16,13 +18,12 @@ class ChecklistScreen extends StatelessWidget {
     final s = AppScope.of(context);
     final l = s.l;
     final d = s.data!;
-    // The shift running now, else today's next one, else one from last night still running.
     final todays = s.myShifts(from: addDays(today(), -1), to: addDays(today(), 1)).where((a) => s.span(a).$2.isAfter(DateTime.now())).toList();
     final a = todays.isEmpty ? null : todays.first;
 
     if (a == null) {
-      return ScreenFrame(title: l.tr('check.title'), subtitle: l.tr('check.sub'), children: [
-        EmptyNote(icon: Icons.checklist, title: l.tr('check.noShift'), body: l.tr('check.noShiftBody')),
+      return PageFrame(title: l.tr('check.title'), subtitle: l.tr('check.sub'), children: [
+        EmptyNote(icon: Icons.task_alt_rounded, title: l.tr('check.noShift'), body: l.tr('check.noShiftBody')),
       ]);
     }
     final tpl = d.template(a.templateId);
@@ -30,58 +31,99 @@ class ChecklistScreen extends StatelessWidget {
     final done = items.where((i) => i.$5 != null).length;
     final open = s.isRunning(a);
     final team = a.isLeader && d.leadersSeeReport ? s.teammates(a) : <Assignment>[];
+    final all = items.isNotEmpty && done == items.length;
 
-    return ScreenFrame(
+    return PageFrame(
       title: l.tr('check.title'),
-      subtitle: l.tr('check.sub'),
       children: [
-        Panel(
-          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            Row(children: [
-              Expanded(child: Text('${tpl.name} · ${tpl.start}–${tpl.end}', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16))),
-              Text(l.tr('check.done', {'done': done, 'total': items.length}), style: const TextStyle(color: C.muted, fontWeight: FontWeight.w600)),
-            ]),
-            const SizedBox(height: 4),
-            Text(d.dept(a.dept).name, style: const TextStyle(color: C.muted)),
-            const SizedBox(height: 12),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(99),
-              child: TweenAnimationBuilder<double>(
-                tween: Tween(end: items.isEmpty ? 0 : done / items.length),
-                duration: const Duration(milliseconds: 400),
-                curve: Curves.easeOutCubic,
-                builder: (_, v, _) => LinearProgressIndicator(value: v, minHeight: 8, backgroundColor: C.forest50, color: C.forest),
-              ),
+        Surface(
+          padding: const EdgeInsets.all(20),
+          child: Row(children: [
+            _Ring(value: items.isEmpty ? 0 : done / items.length, label: '$done/${items.length}', complete: all),
+            const SizedBox(width: 18),
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text('${tpl.start} – ${tpl.end}', style: serif(28)),
+                const SizedBox(height: 4),
+                Text('${tpl.name} · ${d.dept(a.dept).name}', style: sans(14, color: C.muted)),
+                const SizedBox(height: 8),
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 250),
+                  child: Text(
+                    !open ? l.tr('check.upcoming') : all ? l.tr('check.allDone') : l.tr('check.sub'),
+                    key: ValueKey('$open$all'),
+                    style: sans(13.5, color: !open ? C.warn : all ? C.forest : C.muted, weight: all ? FontWeight.w600 : FontWeight.w400, height: 1.35),
+                  ),
+                ),
+              ]),
             ),
-            AnimatedSize(
-              duration: const Duration(milliseconds: 250),
-              child: done == items.length && items.isNotEmpty
-                  ? Padding(padding: const EdgeInsets.only(top: 12), child: Row(children: [const Icon(Icons.celebration_outlined, color: C.forest, size: 18), const SizedBox(width: 8), Text(l.tr('check.allDone'), style: const TextStyle(color: C.forest, fontWeight: FontWeight.w600))]))
-                  : const SizedBox(width: double.infinity),
-            ),
-            if (!open) Padding(padding: const EdgeInsets.only(top: 12), child: Text(l.tr('check.upcoming'), style: const TextStyle(color: C.warn))),
           ]),
         ),
-        const SizedBox(height: 12),
-        Panel(
-          padding: EdgeInsets.zero,
-          child: Column(children: [
-            for (var i = 0; i < items.length; i++) ...[
-              if (i > 0) const Divider(),
-              _Item(a: a, item: items[i], enabled: open),
-            ],
-          ]),
-        ),
+        const SizedBox(height: 14),
+        for (var i = 0; i < items.length; i++) Padding(padding: const EdgeInsets.only(bottom: 8), child: Entrance(delay: i * 45, child: _Item(a: a, item: items[i], enabled: open))),
         if (team.isNotEmpty) ...[
           const SizedBox(height: 22),
-          SectionTitle(l.tr('check.team')),
-          Text(l.tr('check.teamSub'), style: const TextStyle(color: C.muted)),
-          const SizedBox(height: 10),
+          SectionLabel(l.tr('check.team')),
+          Padding(padding: const EdgeInsets.fromLTRB(4, 0, 4, 12), child: Text(l.tr('check.teamSub'), style: sans(13.5, color: C.muted, height: 1.4))),
           for (final x in team) _TeamRow(x),
         ],
       ],
     );
   }
+}
+
+/// Progress ring with the count inside.
+class _Ring extends StatelessWidget {
+  const _Ring({required this.value, required this.label, required this.complete});
+  final double value;
+  final String label;
+  final bool complete;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 86,
+      height: 86,
+      child: TweenAnimationBuilder<double>(
+        tween: Tween(end: value),
+        duration: const Duration(milliseconds: 500),
+        curve: Curves.easeOutCubic,
+        builder: (_, v, _) => CustomPaint(
+          painter: _RingPainter(v),
+          child: Center(
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 250),
+              child: complete ? const Icon(Icons.check_rounded, key: ValueKey('ok'), color: C.forest, size: 34) : Text(label, key: ValueKey(label), style: serif(26, color: C.forest)),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _RingPainter extends CustomPainter {
+  _RingPainter(this.v);
+  final double v;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final r = Rect.fromLTWH(5, 5, size.width - 10, size.height - 10);
+    final base = Paint()
+      ..color = C.forest50
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 8;
+    final fg = Paint()
+      ..color = C.forest
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 8
+      ..strokeCap = StrokeCap.round;
+    canvas.drawArc(r, 0, math.pi * 2, false, base);
+    if (v > 0) canvas.drawArc(r, -math.pi / 2, math.pi * 2 * v, false, fg);
+  }
+
+  @override
+  bool shouldRepaint(_RingPainter old) => old.v != v;
 }
 
 class _Item extends StatelessWidget {
@@ -95,31 +137,42 @@ class _Item extends StatelessWidget {
     final s = AppScope.of(context);
     final (id, title, detail, extra, tick) = item;
     final on = tick != null;
-    return InkWell(
-      onTap: enabled ? () => s.tick(a, id, !on) : null,
+    return GestureDetector(
+      onTap: enabled
+          ? () {
+              HapticFeedback.lightImpact();
+              s.tick(a, id, !on);
+            }
+          : null,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 300),
-        color: on ? C.forest50.withValues(alpha: 0.6) : Colors.transparent,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        duration: const Duration(milliseconds: 260),
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+        decoration: BoxDecoration(color: on ? C.forest50 : C.surface, borderRadius: BorderRadius.circular(18)),
         child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
           AnimatedContainer(
             duration: const Duration(milliseconds: 200),
-            width: 26,
-            height: 26,
-            decoration: BoxDecoration(color: on ? C.forest : Colors.white, borderRadius: BorderRadius.circular(8), border: Border.all(color: on ? C.forest : C.sageDark, width: 2)),
-            child: AnimatedScale(scale: on ? 1 : 0, duration: const Duration(milliseconds: 220), curve: Curves.easeOutBack, child: const Icon(Icons.check, size: 18, color: Colors.white)),
+            width: 28,
+            height: 28,
+            decoration: BoxDecoration(color: on ? C.forest : Colors.transparent, shape: BoxShape.circle, border: Border.all(color: on ? C.forest : C.sageDark, width: 2)),
+            child: AnimatedScale(scale: on ? 1 : 0, duration: const Duration(milliseconds: 240), curve: Curves.easeOutBack, child: const Icon(Icons.check_rounded, size: 18, color: Colors.white)),
           ),
           const SizedBox(width: 14),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Wrap(spacing: 8, crossAxisAlignment: WrapCrossAlignment.center, children: [
-                Text(title, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: on ? C.muted : C.ink)),
-                if (extra) Pill(s.l.tr('check.extra'), bg: C.paper, fg: C.muted),
+              Row(children: [
+                Flexible(
+                  child: AnimatedDefaultTextStyle(
+                    duration: const Duration(milliseconds: 200),
+                    style: sans(15.5, color: on ? C.muted : C.ink, weight: FontWeight.w600),
+                    child: Text(title),
+                  ),
+                ),
+                if (extra) ...[const SizedBox(width: 8), Pill(s.l.tr('check.extra'), bg: C.brass50, fg: C.brassInk)],
               ]),
-              if (detail.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 3), child: Text(detail, style: const TextStyle(fontSize: 13, color: C.muted, height: 1.35))),
+              if (detail.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 4), child: Text(detail, style: sans(13.5, color: C.muted, height: 1.4))),
             ]),
           ),
-          if (on) Padding(padding: const EdgeInsets.only(left: 8, top: 2), child: Text(s.l.time(tick), style: const TextStyle(fontSize: 12, color: C.muted))),
+          if (on) Padding(padding: const EdgeInsets.only(left: 10, top: 3), child: Text(s.l.time(tick), style: sans(12.5, color: C.forest, weight: FontWeight.w600))),
         ]),
       ),
     );
@@ -138,19 +191,20 @@ class _TeamRow extends StatelessWidget {
     final done = items.where((i) => i.$5 != null).length;
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
-      child: Panel(
+      child: Surface(
+        padding: const EdgeInsets.all(14),
         child: Row(children: [
-          Avatar(e),
+          Avatar(e, size: 36),
           const SizedBox(width: 12),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(e.name, style: const TextStyle(fontWeight: FontWeight.w600)),
-              const SizedBox(height: 6),
+              Text(e.name, style: sans(15, weight: FontWeight.w600)),
+              const SizedBox(height: 8),
               ClipRRect(borderRadius: BorderRadius.circular(99), child: LinearProgressIndicator(value: items.isEmpty ? 0 : done / items.length, minHeight: 6, backgroundColor: C.forest50, color: C.forest)),
             ]),
           ),
-          const SizedBox(width: 12),
-          Text('$done/${items.length}', style: const TextStyle(fontWeight: FontWeight.w600)),
+          const SizedBox(width: 14),
+          Text('$done/${items.length}', style: serif(22, color: C.forest)),
         ]),
       ),
     );

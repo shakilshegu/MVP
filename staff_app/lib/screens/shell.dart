@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../state/app_state.dart';
 import '../theme.dart';
@@ -35,20 +36,79 @@ class _ShellState extends State<Shell> {
       const AvailabilityScreen(),
       const MeScreen(),
     ];
+    final items = [
+      (Icons.wb_twilight_rounded, l.tr('nav.home')),
+      (Icons.calendar_today_rounded, l.tr('nav.shifts')),
+      (Icons.task_alt_rounded, l.tr('nav.checklist')),
+      (Icons.event_available_rounded, l.tr('nav.availability')),
+      (Icons.person_rounded, l.tr('nav.me')),
+    ];
     return ShellTabs(
       go: go,
       child: Scaffold(
-        body: SafeArea(bottom: false, child: IndexedStack(index: _tab, children: pages)),
-        bottomNavigationBar: NavigationBar(
-          selectedIndex: _tab,
-          onDestinationSelected: (i) => go(i),
-          destinations: [
-            NavigationDestination(icon: const Icon(Icons.home_outlined), selectedIcon: const Icon(Icons.home), label: l.tr('nav.home')),
-            NavigationDestination(icon: const Icon(Icons.calendar_month_outlined), selectedIcon: const Icon(Icons.calendar_month), label: l.tr('nav.shifts')),
-            NavigationDestination(icon: const Icon(Icons.checklist_outlined), selectedIcon: const Icon(Icons.checklist), label: l.tr('nav.checklist')),
-            NavigationDestination(icon: const Icon(Icons.event_available_outlined), selectedIcon: const Icon(Icons.event_available), label: l.tr('nav.availability')),
-            NavigationDestination(icon: const Icon(Icons.person_outline), selectedIcon: const Icon(Icons.person), label: l.tr('nav.me')),
-          ],
+        extendBody: true,
+        body: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 220),
+          switchInCurve: Curves.easeOut,
+          child: KeyedSubtree(key: ValueKey('$_tab-$_openShifts'), child: SafeArea(bottom: false, child: pages[_tab])),
+        ),
+        bottomNavigationBar: _BottomBar(items: items, index: _tab, onTap: (i) => go(i)),
+      ),
+    );
+  }
+}
+
+/// Floating, quiet bottom bar: icons, a small label, and a dot under the current tab.
+class _BottomBar extends StatelessWidget {
+  const _BottomBar({required this.items, required this.index, required this.onTap});
+  final List<(IconData, String)> items;
+  final int index;
+  final ValueChanged<int> onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      minimum: const EdgeInsets.fromLTRB(14, 0, 14, 12),
+      child: Center(
+        heightFactor: 1,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 560),
+          child: Container(
+            height: 70,
+            decoration: BoxDecoration(
+              color: C.surface,
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: [BoxShadow(color: C.forest.withValues(alpha: 0.10), blurRadius: 30, offset: const Offset(0, 10))],
+            ),
+            child: Row(children: [
+              for (var i = 0; i < items.length; i++)
+                Expanded(
+                  child: Semantics(
+                    selected: i == index,
+                    button: true,
+                    label: items[i].$2,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(20),
+                      onTap: () {
+                        HapticFeedback.selectionClick();
+                        onTap(i);
+                      },
+                      child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                        AnimatedScale(
+                          scale: i == index ? 1.08 : 1,
+                          duration: const Duration(milliseconds: 180),
+                          child: Icon(items[i].$1, size: 23, color: i == index ? C.forest : C.faint),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(items[i].$2, maxLines: 1, overflow: TextOverflow.fade, softWrap: false, style: sans(11, color: i == index ? C.forest : C.faint, weight: i == index ? FontWeight.w700 : FontWeight.w500)),
+                        const SizedBox(height: 3),
+                        AnimatedContainer(duration: const Duration(milliseconds: 200), width: i == index ? 4 : 0, height: 4, decoration: const BoxDecoration(color: C.brass, shape: BoxShape.circle)),
+                      ]),
+                    ),
+                  ),
+                ),
+            ]),
+          ),
         ),
       ),
     );
@@ -63,38 +123,4 @@ class ShellTabs extends InheritedWidget {
 
   @override
   bool updateShouldNotify(ShellTabs old) => false;
-}
-
-/// Standard screen frame: big serif title, optional subtitle, scrolling content.
-class ScreenFrame extends StatelessWidget {
-  const ScreenFrame({super.key, required this.title, this.subtitle, required this.children, this.trailing});
-  final String title;
-  final String? subtitle;
-  final List<Widget> children;
-  final Widget? trailing;
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 640),
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(18, 18, 18, 28),
-          children: [
-            Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Expanded(
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(title, style: serif(36)),
-                  if (subtitle != null) Padding(padding: const EdgeInsets.only(top: 6), child: Text(subtitle!, style: const TextStyle(color: C.muted, height: 1.4))),
-                ]),
-              ),
-              ?trailing,
-            ]),
-            const SizedBox(height: 18),
-            ...children,
-          ],
-        ),
-      ),
-    );
-  }
 }
