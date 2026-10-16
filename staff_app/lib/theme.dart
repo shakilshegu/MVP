@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import 'data/models.dart';
 
@@ -41,15 +40,30 @@ class C {
       Tone.night => (const Color(0xFFD4D9EC), const Color(0xFF2C3457)),
     };
 
-TextStyle serif(double size, {Color color = C.ink, double height = 1.0}) => GoogleFonts.instrumentSerif(fontSize: size, height: height, color: color, letterSpacing: -0.2);
-TextStyle sans(double size, {Color color = C.ink, FontWeight weight = FontWeight.w400, double height = 1.3}) => GoogleFonts.instrumentSans(fontSize: size, color: color, fontWeight: weight, height: height);
+const kSans = 'Figtree';
+const kSerif = 'InstrumentSerif';
+const _tabular = [FontFeature.tabularFigures()];
+
+/// Display type for times and big numbers.
+TextStyle serif(double size, {Color color = C.ink, double height = 1.0}) => TextStyle(fontFamily: kSerif, fontSize: size, height: height, color: color, letterSpacing: size > 30 ? -0.6 : -0.2);
+
+/// UI text. Figures line up (hours, money, times) and small sizes get a touch more spacing.
+TextStyle sans(double size, {Color color = C.ink, FontWeight weight = FontWeight.w400, double height = 1.35}) => TextStyle(
+      fontFamily: kSans,
+      fontSize: size,
+      color: color,
+      fontWeight: weight,
+      height: height,
+      letterSpacing: size <= 13 ? 0.15 : (size >= 20 ? -0.2 : 0),
+      fontFeatures: _tabular,
+    );
 
 ThemeData buildTheme() {
-  final base = ThemeData(useMaterial3: true, colorScheme: ColorScheme.fromSeed(seedColor: C.forest, primary: C.forest, surface: C.surface));
+  final base = ThemeData(useMaterial3: true, fontFamily: kSans, colorScheme: ColorScheme.fromSeed(seedColor: C.forest, primary: C.forest, surface: C.surface));
   return base.copyWith(
     scaffoldBackgroundColor: C.bg,
     splashFactory: InkSparkle.splashFactory,
-    textTheme: base.textTheme.apply(fontFamily: GoogleFonts.instrumentSans().fontFamily, bodyColor: C.ink, displayColor: C.ink),
+    textTheme: base.textTheme.apply(fontFamily: kSans, bodyColor: C.ink, displayColor: C.ink),
     filledButtonTheme: FilledButtonThemeData(
       style: FilledButton.styleFrom(
         backgroundColor: C.forest,

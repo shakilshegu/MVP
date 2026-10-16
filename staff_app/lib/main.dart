@@ -29,6 +29,12 @@ class RotaStaffApp extends StatelessWidget {
           title: 'Rota',
           debugShowCheckedModeBanner: false,
           theme: buildTheme(),
+          scrollBehavior: const _SmoothScroll(),
+          // Respect the phone's text size, but cap it so layouts stay intact.
+          builder: (context, child) {
+            final mq = MediaQuery.of(context);
+            return MediaQuery(data: mq.copyWith(textScaler: mq.textScaler.clamp(minScaleFactor: 0.9, maxScaleFactor: 1.3)), child: child!);
+          },
           home: AnimatedSwitcher(
             duration: const Duration(milliseconds: 250),
             child: s.signedIn ? const Shell(key: ValueKey('app')) : const SignInScreen(key: ValueKey('signin')),
@@ -37,4 +43,15 @@ class RotaStaffApp extends StatelessWidget {
       }),
     );
   }
+}
+
+/// Natural, bouncy scrolling on every platform, without the Android glow.
+class _SmoothScroll extends MaterialScrollBehavior {
+  const _SmoothScroll();
+
+  @override
+  ScrollPhysics getScrollPhysics(BuildContext context) => const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics());
+
+  @override
+  Widget buildOverscrollIndicator(BuildContext context, Widget child, ScrollableDetails details) => child;
 }

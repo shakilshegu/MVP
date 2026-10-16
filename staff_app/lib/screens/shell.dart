@@ -17,13 +17,26 @@ class Shell extends StatefulWidget {
   State<Shell> createState() => _ShellState();
 }
 
-class _ShellState extends State<Shell> {
+class _ShellState extends State<Shell> with SingleTickerProviderStateMixin {
+  late final AnimationController _fade = AnimationController(vsync: this, duration: const Duration(milliseconds: 220), value: 1);
+
+  @override
+  void dispose() {
+    _fade.dispose();
+    super.dispose();
+  }
+
   int _tab = 0;
   bool _openShifts = false;
 
+  /// Bumped on every "go to open shifts", so the Shifts tab switches even if it was already shown.
+  int _request = 0;
+
   void go(int tab, {bool openShifts = false}) => setState(() {
+        if (tab != _tab) _fade.forward(from: 0);
         _tab = tab;
         _openShifts = openShifts;
+        if (openShifts) _request++;
       });
 
   @override
@@ -31,7 +44,7 @@ class _ShellState extends State<Shell> {
     final l = AppScope.of(context).l;
     final pages = [
       const HomeScreen(),
-      ShiftsScreen(key: ValueKey(_openShifts), startOnOpen: _openShifts),
+      ShiftsScreen(startOnOpen: _openShifts, request: _request),
       const ChecklistScreen(),
       const AvailabilityScreen(),
       const MeScreen(),
@@ -47,10 +60,10 @@ class _ShellState extends State<Shell> {
       go: go,
       child: Scaffold(
         extendBody: true,
-        body: AnimatedSwitcher(
-          duration: const Duration(milliseconds: 220),
-          switchInCurve: Curves.easeOut,
-          child: KeyedSubtree(key: ValueKey('$_tab-$_openShifts'), child: SafeArea(bottom: false, child: pages[_tab])),
+        // Every tab stays alive (scroll position and state kept); only the current one is shown, fading in.
+        body: SafeArea(
+          bottom: false,
+          child: FadeTransition(opacity: CurvedAnimation(parent: _fade, curve: Curves.easeOut), child: IndexedStack(index: _tab, children: pages)),
         ),
         bottomNavigationBar: _BottomBar(items: items, index: _tab, onTap: (i) => go(i)),
       ),

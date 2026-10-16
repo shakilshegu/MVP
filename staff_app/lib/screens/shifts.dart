@@ -8,8 +8,9 @@ import '../theme.dart';
 import '../widgets.dart';
 
 class ShiftsScreen extends StatefulWidget {
-  const ShiftsScreen({super.key, this.startOnOpen = false});
+  const ShiftsScreen({super.key, this.startOnOpen = false, this.request = 0});
   final bool startOnOpen;
+  final int request;
 
   @override
   State<ShiftsScreen> createState() => _ShiftsScreenState();
@@ -17,6 +18,12 @@ class ShiftsScreen extends StatefulWidget {
 
 class _ShiftsScreenState extends State<ShiftsScreen> {
   late bool _open = widget.startOnOpen;
+
+  @override
+  void didUpdateWidget(ShiftsScreen old) {
+    super.didUpdateWidget(old);
+    if (widget.request != old.request && widget.startOnOpen) setState(() => _open = true);
+  }
 
   @override
   Widget build(BuildContext context) {
