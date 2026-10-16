@@ -2,9 +2,10 @@ import { copy, site } from '@/content'
 import type { Lang } from '@/content'
 import { ShiftBoard } from './ShiftBoard'
 import { CheckedRule, DayMark, HeaderShell, Leader, MobileCta, Reveal, WeekRail } from './motion'
+import { SavingsCalc, VideoPhone } from './interactive'
 
 const demoHref = (subject: string) => site.appUrl || `mailto:${site.email}?subject=${encodeURIComponent(subject)}`
-const talkHref = (subject: string) => `mailto:${site.email}?subject=${encodeURIComponent(subject)}`
+const talkHref = (subject: string) => site.bookingUrl || `mailto:${site.email}?subject=${encodeURIComponent(subject)}`
 const external = Boolean(site.appUrl)
 
 const btn = 'btn-motion inline-flex h-12 items-center justify-center rounded-lg px-5 text-[15px] font-medium'
@@ -63,6 +64,16 @@ export function Landing({ lang }: { lang: Lang }) {
               </a>
             </div>
             <p className="mt-5 text-sm text-muted">{t.hero.note}</p>
+            <ul className="mt-6 flex flex-wrap gap-x-5 gap-y-2 text-sm text-ink/75">
+              {t.hero.trust.map((x) => (
+                <li key={x} className="flex items-center gap-1.5">
+                  <svg viewBox="0 0 20 20" className="h-4 w-4 text-forest" aria-hidden>
+                    <path d="M5 10.5l3.2 3.2L15 6.8" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                  {x}
+                </li>
+              ))}
+            </ul>
           </div>
           <div className="intro-board">
             <ShiftBoard t={t.hero.board} />
@@ -82,6 +93,42 @@ export function Landing({ lang }: { lang: Lang }) {
                 </span>
               ))}
             </div>
+          </div>
+        </section>
+
+        {/* Before and after */}
+        <section className="mx-auto max-w-6xl px-5 py-20 sm:px-8 lg:py-24">
+          <Reveal>
+            <h2 className="max-w-2xl font-serif text-4xl leading-[1.08] text-forest sm:text-5xl">{t.before.title}</h2>
+            <p className="mt-4 max-w-xl text-lg leading-relaxed text-ink/75">{t.before.lead}</p>
+          </Reveal>
+          <div className="mt-10 grid gap-4 md:grid-cols-2">
+            <Reveal className="rounded-2xl border border-sage-dark/70 bg-white/40 p-6 sm:p-8">
+              <h3 className="text-sm font-semibold text-muted">{t.before.beforeLabel}</h3>
+              <ul className="mt-4 space-y-3">
+                {t.before.beforeItems.map((x) => (
+                  <li key={x} className="flex gap-3 text-[16px] leading-snug text-ink/60">
+                    <svg viewBox="0 0 20 20" className="mt-0.5 h-5 w-5 shrink-0 text-bark/60" aria-hidden>
+                      <path d="M6 6l8 8M14 6l-8 8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                    </svg>
+                    {x}
+                  </li>
+                ))}
+              </ul>
+            </Reveal>
+            <Reveal delay={120} className="rounded-2xl bg-forest p-6 text-white shadow-[0_24px_50px_-28px_rgba(30,64,52,0.7)] sm:p-8">
+              <h3 className="text-sm font-semibold text-white/70">{t.before.afterLabel}</h3>
+              <ul className="mt-4 space-y-3">
+                {t.before.afterItems.map((x) => (
+                  <li key={x} className="flex gap-3 text-[16px] leading-snug">
+                    <svg viewBox="0 0 20 20" className="mt-0.5 h-5 w-5 shrink-0 text-forest-100" aria-hidden>
+                      <path d="M5 10.5l3.2 3.2L15 6.8" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                    {x}
+                  </li>
+                ))}
+              </ul>
+            </Reveal>
           </div>
         </section>
 
@@ -112,6 +159,25 @@ export function Landing({ lang }: { lang: Lang }) {
             </WeekRail>
             </div>
           </div>
+        </section>
+
+        {/* Short product video */}
+        <section className="mx-auto grid max-w-6xl items-center gap-12 px-5 py-20 sm:px-8 md:grid-cols-[minmax(0,1fr)_auto] lg:gap-20 lg:py-28">
+          <Reveal>
+            <h2 className="font-serif text-4xl leading-[1.08] text-forest sm:text-5xl">{t.video.title}</h2>
+            <p className="mt-4 max-w-lg text-lg leading-relaxed text-ink/75">{t.video.body}</p>
+            <ul className="mt-6 space-y-3">
+              {t.video.points.map((x) => (
+                <li key={x} className="flex gap-3 text-[16px]">
+                  <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-brass" aria-hidden />
+                  {x}
+                </li>
+              ))}
+            </ul>
+          </Reveal>
+          <Reveal variant="image">
+            <VideoPhone t={t.video} />
+          </Reveal>
         </section>
 
         {/* Rules band */}
@@ -161,7 +227,11 @@ export function Landing({ lang }: { lang: Lang }) {
               <h2 className="font-serif text-4xl leading-[1.08] text-forest sm:text-5xl">{t.pricing.title}</h2>
               <p className="mt-4 text-lg text-ink/75">{t.pricing.lead}</p>
             </div>
-            <Reveal className="mx-auto mt-12 max-w-xl">
+            <div className="mx-auto mt-12 grid max-w-5xl items-start gap-6 lg:grid-cols-2">
+            <Reveal>
+              <SavingsCalc t={t.calc} lang={lang} price={site.price} />
+            </Reveal>
+            <Reveal delay={120}>
             <div className="rounded-2xl border border-line bg-white p-7 shadow-[0_24px_60px_-30px_rgba(30,64,52,0.45)] sm:p-10">
               <div className="flex items-baseline gap-3">
                 <span className="font-serif text-4xl text-forest">{t.pricing.name}</span>
@@ -179,17 +249,18 @@ export function Landing({ lang }: { lang: Lang }) {
                   </li>
                 ))}
               </ul>
-              <div className="mt-9 flex flex-col gap-3 sm:flex-row">
-                <a href={demoHref('Rota demo')} {...(external && { target: '_blank', rel: 'noopener' })} className={`${primary} sm:flex-1`}>
+              <div className="mt-9 flex flex-col gap-3">
+                <a href={demoHref('Rota demo')} {...(external && { target: '_blank', rel: 'noopener' })} className={primary}>
                   {t.pricing.cta}
                 </a>
-                <a href={talkHref('Rota')} className={`${secondary} sm:flex-1`}>
+                <a href={talkHref('Rota')} className={secondary}>
                   {t.pricing.talk}
                 </a>
               </div>
               <p className="mt-5 text-center text-sm text-muted">{t.pricing.vat}</p>
             </div>
             </Reveal>
+            </div>
           </div>
         </section>
 

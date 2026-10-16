@@ -55,6 +55,33 @@ body {
   background: var(--color-forest-100);
 }
 
+/* Range sliders (savings calculator): filled track up to the thumb. */
+.range {
+  appearance: none;
+  height: 6px;
+  border-radius: 999px;
+  background: linear-gradient(to right, var(--color-forest) var(--fill), var(--color-forest-100) var(--fill));
+  cursor: pointer;
+}
+.range::-webkit-slider-thumb {
+  appearance: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #fff;
+  border: 2px solid var(--color-forest);
+  box-shadow: 0 2px 8px rgb(30 64 52 / 0.25);
+  transition: transform 0.15s;
+}
+.range::-webkit-slider-thumb:hover { transform: scale(1.1); }
+.range::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #fff;
+  border: 2px solid var(--color-forest);
+}
+
 /* ---------- Motion ---------- */
 
 /* Scroll reveals: content rises in once; images also settle from a slight zoom. */
@@ -71,6 +98,7 @@ body {
 .intro > *:nth-child(2) { animation-delay: 0.08s; }
 .intro > *:nth-child(3) { animation-delay: 0.16s; }
 .intro > *:nth-child(4) { animation-delay: 0.24s; }
+.intro > *:nth-child(5) { animation-delay: 0.32s; }
 .intro-board { animation: rise 0.8s 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
 
 /* Faint rota-paper grid behind the hero, fading out towards the edges. */

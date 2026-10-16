@@ -3,8 +3,12 @@
 export type Lang = 'en' | 'de'
 
 export const site = {
-  /** Link to the Rota app. Set NEXT_PUBLIC_APP_URL when deploying; until then the demo button opens an email. */
-  appUrl: process.env.NEXT_PUBLIC_APP_URL ?? '',
+  /** The live Rota app (demo data). NEXT_PUBLIC_APP_URL overrides it, e.g. for a custom domain. */
+  appUrl: process.env.NEXT_PUBLIC_APP_URL ?? 'https://rota-app-ruddy.vercel.app',
+  /** Calendar booking page (Cal.com, Calendly…). Set NEXT_PUBLIC_BOOKING_URL; until then "Book a demo" opens an email. */
+  bookingUrl: process.env.NEXT_PUBLIC_BOOKING_URL ?? '',
+  /** Public address of this site, used for link previews. */
+  siteUrl: process.env.NEXT_PUBLIC_SITE_URL ?? 'https://rota-landing-ten.vercel.app',
   /** Contact address for demos and sales. Replace with the real one. */
   email: 'hello@rota.app',
   price: 65,
@@ -22,6 +26,7 @@ const en = {
     primary: 'Open the live demo',
     secondary: 'See the price',
     note: '€65 a month per restaurant. Everything included.',
+    trust: ['German labour rules checked', 'Works on any phone', 'English and German'],
     board: { title: 'Harbor House', week: 'Week 42', covered: 'covered', open: 'Open', published: 'Published, 6 people notified', days: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'], shifts: ['Morning', 'Evening', 'Night'] },
   },
   ticker: [
@@ -38,6 +43,22 @@ const en = {
     ['Lukas', 'Night', '22:00', 'night'],
     ['Hana', 'Day', '11:00', 'day'],
   ] as [string, string, string, 'morning' | 'day' | 'evening' | 'night'][],
+  before: {
+    title: 'From five places to one',
+    lead: 'Most restaurants plan the week across paper, chats and phone calls. Rota puts it on one screen.',
+    beforeLabel: 'Without Rota',
+    beforeItems: ['A paper rota on the wall that’s out of date by Tuesday', 'A WhatsApp group where swaps get lost', 'A spreadsheet only one person understands', 'Phone calls to find someone for Friday night', 'Checking rest times and hours by hand, or not at all'],
+    afterLabel: 'With Rota',
+    afterItems: ['One weekly schedule for Bar, Service and Kitchen', 'Swaps in two clicks, with the best person suggested', 'Rest time, daily and weekly hours checked for you', 'Only the people whose shifts changed get told', 'The same plan on the computer, tablet and phone'],
+  },
+  video: {
+    title: 'See Rota in under a minute',
+    body: 'A short tour of planning a week: filling open shifts, the rule checks, and publishing to the team.',
+    points: ['Plan the whole week on one screen', 'Fill a shift with the best person', 'Publish and notify only who changed'],
+    play: 'Play the video',
+    src: '/video/rota-en.mp4',
+    poster: '/video/rota-en.webp',
+  },
   week: {
     title: 'A week in your restaurant, with Rota',
     lead: 'Rota follows the way a restaurant week actually goes. Here is what that looks like for a manager.',
@@ -113,6 +134,17 @@ const en = {
       ['Staff', 'An app for staff to see their shifts, set availability and tick off checklists is coming next.'],
     ],
   },
+  calc: {
+    title: 'What does planning cost you today?',
+    lead: 'Move the sliders to match your restaurant.',
+    hours: 'Hours spent on the rota each week',
+    rate: 'Your cost per hour',
+    today: 'Planning time today',
+    perMonth: 'a month',
+    rota: 'Rota',
+    ifHalf: 'If Rota halves your planning time, that is about {amount} of your time back every month.',
+    hoursUnit: 'h',
+  },
   pricing: {
     title: 'One plan, everything included',
     lead: 'No tiers, no feature locks, no per-user maths.',
@@ -122,7 +154,7 @@ const en = {
     vat: 'Prices excl. VAT. Pay monthly, cancel any month.',
     includes: ['Weekly and monthly schedule', 'Rule checks and shift leaders', 'Review & publish with notifications', 'Checklists and daily report', 'Availability and leave', 'Announcements and weather', 'Team profiles and earnings', 'English and German'],
     cta: 'Open the live demo',
-    talk: 'Talk to us',
+    talk: 'Book a 15-minute demo',
   },
   faq: {
     title: 'Questions',
@@ -135,7 +167,7 @@ const en = {
       ['Can my staff use it?', 'Managers and owners use Rota today. A staff app for shifts, availability and checklists is coming next.'],
     ],
   },
-  final: { title: 'Plan next week in Rota', body: 'Open the demo and plan a week for Harbor House. It takes a few minutes to see how it works.', cta: 'Open the live demo', talk: 'Talk to us' },
+  final: { title: 'Plan next week in Rota', body: 'Open the demo and plan a week for Harbor House. It takes a few minutes to see how it works.', cta: 'Open the live demo', talk: 'Book a 15-minute demo' },
   footer: { imprint: 'Imprint', privacy: 'Privacy', contact: 'Contact', rights: 'Staff scheduling for restaurants.' },
 }
 
@@ -153,6 +185,7 @@ const de: Copy = {
     primary: 'Live-Demo öffnen',
     secondary: 'Zum Preis',
     note: '65 € im Monat pro Restaurant. Alles inklusive.',
+    trust: ['Arbeitszeitgesetz geprüft', 'Läuft auf jedem Handy', 'Deutsch und Englisch'],
     board: { title: 'Harbor House', week: 'KW 42', covered: 'besetzt', open: 'Offen', published: 'Veröffentlicht, 6 Personen informiert', days: ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'], shifts: ['Früh', 'Abend', 'Nacht'] },
   },
   ticker: [
@@ -169,6 +202,22 @@ const de: Copy = {
     ['Lukas', 'Nacht', '22:00', 'night'],
     ['Hana', 'Tag', '11:00', 'day'],
   ],
+  before: {
+    title: 'Von fünf Orten zu einem',
+    lead: 'Die meisten Restaurants planen die Woche mit Papier, Chats und Anrufen. Rota bringt alles auf einen Bildschirm.',
+    beforeLabel: 'Ohne Rota',
+    beforeItems: ['Ein Papierplan an der Wand, der dienstags schon veraltet ist', 'Eine WhatsApp-Gruppe, in der Tausche untergehen', 'Eine Tabelle, die nur eine Person versteht', 'Anrufe, um jemanden für Freitagabend zu finden', 'Ruhezeiten und Stunden von Hand prüfen – oder gar nicht'],
+    afterLabel: 'Mit Rota',
+    afterItems: ['Ein Wochenplan für Bar, Service und Küche', 'Tauschen mit zwei Klicks, mit der passendsten Person als Vorschlag', 'Ruhezeit, Tages- und Wochenstunden werden geprüft', 'Nur wessen Schicht sich ändert, wird informiert', 'Derselbe Plan auf Computer, Tablet und Handy'],
+  },
+  video: {
+    title: 'Rota in unter einer Minute',
+    body: 'Eine kurze Tour durch die Wochenplanung: offene Schichten besetzen, die Regelprüfung und das Veröffentlichen ans Team.',
+    points: ['Die ganze Woche auf einem Bildschirm planen', 'Eine Schicht mit der passendsten Person besetzen', 'Veröffentlichen und nur Betroffene informieren'],
+    play: 'Video abspielen',
+    src: '/video/rota-de.mp4',
+    poster: '/video/rota-de.webp',
+  },
   week: {
     title: 'Eine Woche in deinem Restaurant, mit Rota',
     lead: 'Rota folgt dem echten Ablauf einer Restaurantwoche. So sieht das für die Leitung aus.',
@@ -177,35 +226,35 @@ const de: Copy = {
         day: 'Mo',
         title: 'Die ganze Woche in einem Zug planen',
         body: 'Alle Bereiche und Schichten auf einem Bildschirm. Vorwoche kopieren, dann auf einen offenen Platz klicken: Rota schlägt zuerst die passendste Person vor, mit ihren Stunden und dem Grund. Oder Lücken automatisch als Entwurf füllen lassen.',
-        img: 'schedule',
+        img: 'schedule-de',
         alt: 'Der Wochenplan mit Bar, Service und Küche, offenen Plätzen und dem Wetter pro Tag',
       },
       {
         day: 'Mi',
         title: 'Jemand meldet sich krank',
         body: 'Schicht öffnen und sehen, wer frei ist, wer gern abends arbeitet und wer kurz vor seinem Wochenlimit steht. Wer Urlaub hat oder zu wenig Ruhezeit, wird markiert, bevor du ihn auswählst.',
-        img: 'fill-panel',
+        img: 'fill-panel-de',
         alt: 'Das Fenster zum Besetzen einer Schicht mit den besten Vorschlägen und Stunden pro Person',
       },
       {
         day: 'Do',
         title: 'Veröffentlichen und nur die Richtigen informieren',
         body: 'Änderungen bleiben Entwürfe, bis du veröffentlichst. Alle Änderungen in einer Liste prüfen, bei Bedarf rückgängig machen – Rota informiert nur, wessen Schicht sich geändert hat.',
-        img: 'review',
+        img: 'review-de',
         alt: 'Prüfen und veröffentlichen mit allen Änderungen und den Personen, die informiert werden',
       },
       {
         day: 'Fr',
         title: 'Geschlossene Gesellschaft, 40 Gäste',
         body: 'Eine Ankündigung mit Uhrzeit, Details und zwei zusätzlichen Personen im Service anlegen. Die Plätze erscheinen als offene Schicht im Plan, neben dem Wetter für den Abend.',
-        img: 'announcements',
+        img: 'announcements-de',
         alt: 'Ankündigungen für eine Feier und eine Weinprobe mit zusätzlichem Personal',
       },
       {
         day: 'Sa',
         title: 'Nach Feierabend sehen, was erledigt ist',
         body: 'Jede Person hat eine Checkliste für ihre Schicht. Der Tagesbericht zeigt, was abgehakt wurde, von wem und wann, und hebt Vergessenes hervor. Als PDF herunterladen.',
-        img: 'report',
+        img: 'report-de',
         alt: 'Der Tagesbericht mit erledigten und offenen Aufgaben pro Schicht',
       },
     ],
@@ -244,6 +293,17 @@ const de: Copy = {
       ['Team', 'Eine App für das Team – Schichten sehen, Verfügbarkeit eintragen, Checklisten abhaken – kommt als Nächstes.'],
     ],
   },
+  calc: {
+    title: 'Was kostet dich die Planung heute?',
+    lead: 'Stell die Regler auf dein Restaurant ein.',
+    hours: 'Stunden pro Woche für den Dienstplan',
+    rate: 'Deine Kosten pro Stunde',
+    today: 'Planungszeit heute',
+    perMonth: 'im Monat',
+    rota: 'Rota',
+    ifHalf: 'Wenn Rota deine Planungszeit halbiert, sind das etwa {amount} an Zeit, die du jeden Monat zurückgewinnst.',
+    hoursUnit: 'Std.',
+  },
   pricing: {
     title: 'Ein Tarif, alles inklusive',
     lead: 'Keine Stufen, keine gesperrten Funktionen, kein Rechnen pro Nutzer.',
@@ -253,7 +313,7 @@ const de: Copy = {
     vat: 'Preise zzgl. MwSt. Monatlich zahlen, monatlich kündbar.',
     includes: ['Wochen- und Monatsplan', 'Regelprüfung und Schichtleitung', 'Prüfen & veröffentlichen mit Benachrichtigung', 'Checklisten und Tagesbericht', 'Verfügbarkeit und Urlaub', 'Ankündigungen und Wetter', 'Teamprofile und Verdienst', 'Deutsch und Englisch'],
     cta: 'Live-Demo öffnen',
-    talk: 'Mit uns sprechen',
+    talk: '15-Minuten-Demo buchen',
   },
   faq: {
     title: 'Fragen',
@@ -266,7 +326,7 @@ const de: Copy = {
       ['Kann mein Team es nutzen?', 'Heute nutzen Leitung und Inhaber Rota. Eine App für das Team mit Schichten, Verfügbarkeit und Checklisten kommt als Nächstes.'],
     ],
   },
-  final: { title: 'Plane die nächste Woche in Rota', body: 'Öffne die Demo und plane eine Woche für Harbor House. In wenigen Minuten siehst du, wie es funktioniert.', cta: 'Live-Demo öffnen', talk: 'Mit uns sprechen' },
+  final: { title: 'Plane die nächste Woche in Rota', body: 'Öffne die Demo und plane eine Woche für Harbor House. In wenigen Minuten siehst du, wie es funktioniert.', cta: 'Live-Demo öffnen', talk: '15-Minuten-Demo buchen' },
   footer: { imprint: 'Impressum', privacy: 'Datenschutz', contact: 'Kontakt', rights: 'Dienstplanung für Restaurants.' },
 }
 
