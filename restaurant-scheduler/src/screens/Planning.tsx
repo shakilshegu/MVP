@@ -11,7 +11,7 @@ import { doneCount, shiftItems, shiftPhase } from '../lib/report'
 import { GetStarted } from '../components/onboarding'
 import { ShiftWeatherTag } from '../components/weather'
 import type { Dept, ShiftTemplate, Tone } from '../lib/types'
-import { Avatar, Badge, Button, DeptDot, Drawer, EmptyState, Field, PageHeader, PageSkeleton, cx, toneCls } from '../components/ui'
+import { Avatar, Badge, Button, DeptDot, Drawer, EmptyState, Field, PageHeader, PageSkeleton, Segmented, cx, toneCls } from '../components/ui'
 
 function coverage(s: ReturnType<typeof useStore>['s'], branchId: string, date: string) {
   let need = 0
@@ -42,7 +42,6 @@ export function Dashboard() {
     .map((x) => ({ x, e: s.employees.find((e) => e.id === x.employeeId)!, tpl: s.templates.find((y) => y.id === x.templateId)! }))
     .filter((r) => r.e && r.tpl)
     .sort((p, q) => s.departments.findIndex((d) => d.id === p.x.dept) - s.departments.findIndex((d) => d.id === q.x.dept) || toMin(p.tpl.start) - toMin(q.tpl.start))
-  const nowMin = hour * 60 + new Date().getMinutes()
   const onNow = new Set(todays.filter((r) => shiftPhase(s, r.x) === 'running').map((r) => r.e.id))
   const firstGap = next7.find((d) => {
     const c = coverage(s, branch!.id, d)
@@ -64,9 +63,6 @@ export function Dashboard() {
     .filter((x) => x.branchId === branch!.id && x.date >= today && x.date <= addDays(today, 13))
     .sort((x, y) => x.date.localeCompare(y.date))
     .slice(0, 3)
-  const axisStart = 5 * 60
-  const axisLen = 22 * 60
-  const pos = (m: number) => `${(Math.max(0, Math.min(axisLen, m - axisStart)) / axisLen) * 100}%`
 
   return (
     <div className="mx-auto max-w-[1500px]">
@@ -130,13 +126,15 @@ export function Dashboard() {
       </div>
 
       {changes.length > 0 && (
-        <a href="#/review" className="mb-6 flex items-center gap-3 rounded-xl bg-forest px-5 py-4 text-white hover:bg-forest-600">
-          {s.pendingApproval[branch!.id] ? <Hourglass className="h-5 w-5 shrink-0" /> : <Send className="h-5 w-5 shrink-0" />}
-          <span className="flex-1 text-sm">
+        <a href="#/review" className="mb-4 flex items-center gap-2.5 rounded-xl bg-forest px-4 py-2.5 text-white hover:bg-forest-600">
+          {s.pendingApproval[branch!.id] ? <Hourglass className="h-4 w-4 shrink-0" /> : <Send className="h-4 w-4 shrink-0" />}
+          <span className="flex-1 text-[13px]">
             <span className="font-medium">{t('shell.unpublished', { count: changes.length })}</span>
             <span className="text-white/75"> · {t(s.pendingApproval[branch!.id] ? 'dashboard.waiting' : 'dashboard.bannerHint')}</span>
           </span>
-          <span className="text-sm font-medium">{t('dashboard.review')}</span>
+          <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-white/15 px-2.5 py-1 text-[12px] font-semibold">
+            {t('dashboard.review')} <ChevronRight className="h-3 w-3" aria-hidden />
+          </span>
         </a>
       )}
 
@@ -164,46 +162,55 @@ export function Dashboard() {
           {todays.length === 0 ? (
             <EmptyState icon={<Clock3 className="h-5 w-5" />} title={t('dashboard.emptyTitle')} body={t('dashboard.emptyBody')} action={<Button onClick={() => navigate('/schedule')}>{t('common.openSchedule')}</Button>} />
           ) : (
-            <div className="px-5 py-4">
-              <div className="relative ml-[140px] hidden h-5 text-[11px] text-muted sm:block">
-                {[6, 10, 14, 18, 22, 2].map((h) => (
-                  <span key={h} className="absolute -translate-x-1/2" style={{ left: pos((h < 5 ? h + 24 : h) * 60) }}>
-                    {pad(h)}:00
-                  </span>
-                ))}
-              </div>
-              <ul className="relative space-y-1.5">
-                <li aria-hidden className="pointer-events-none absolute inset-y-0 left-[140px] right-0 hidden sm:block">
-                  {nowMin >= axisStart && <span className="absolute inset-y-0 w-px bg-bark" style={{ left: pos(nowMin) }} />}
-                </li>
-                {todays.map(({ x, e, tpl }) => {
-                  const st = toMin(tpl.start)
-                  let en = toMin(tpl.end)
-                  if (en <= st) en += 1440
-                  return (
-                    <li key={x.id} className="flex items-center gap-3">
-                      <a href={`#/team/${e.id}`} className="flex w-[128px] shrink-0 items-center gap-2 hover:underline">
-                        <DeptDot id={x.dept} className="h-1.5 w-1.5" />
-                        <span className={cx('truncate text-sm', onNow.has(e.id) && shiftPhase(s, x) === 'running' && 'font-semibold')}>{e.name}</span>
-                        {x.isLeader && <Crown className="h-3 w-3 shrink-0 text-bar" aria-label={t('schedule.leader')} />}
-                      </a>
-                      <div className="relative hidden h-7 flex-1 sm:block">
-                        <div
-                          className={cx('absolute inset-y-0 flex items-center rounded-md px-2 text-xs font-medium', toneCls[tpl.tone], shiftPhase(s, x) === 'running' && 'ring-2 ring-forest ring-offset-1', shiftPhase(s, x) === 'over' && 'opacity-50')}
-                          style={{ left: pos(st), width: `calc(${pos(en)} - ${pos(st)})` }}
-                        >
-                          <span className="truncate">
-                            {tpl.name} {tpl.start}–{tpl.end}
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[560px] border-collapse text-left">
+                <thead>
+                  <tr className="border-b border-line text-xs font-semibold uppercase tracking-wide text-muted">
+                    <th scope="col" className="px-5 py-2.5 font-semibold">{t('dashboard.colName')}</th>
+                    <th scope="col" className="px-3 py-2.5 font-semibold">{t('dashboard.colDept')}</th>
+                    <th scope="col" className="px-3 py-2.5 font-semibold">{t('dashboard.colShift')}</th>
+                    <th scope="col" className="px-3 py-2.5 font-semibold">{t('dashboard.colTime')}</th>
+                    <th scope="col" className="px-5 py-2.5 text-right font-semibold">{t('dashboard.colStatus')}</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-line">
+                  {todays.map(({ x, e, tpl }) => {
+                    const phase = shiftPhase(s, x)
+                    return (
+                      <tr key={x.id} className={cx('text-[15px]', phase === 'running' && 'bg-forest-50')}>
+                        <td className="px-5 py-3">
+                          <a href={`#/team/${e.id}`} className="flex items-center gap-2.5 hover:underline">
+                            <Avatar e={e} size={28} />
+                            <span className={cx('truncate', phase === 'running' && 'font-semibold')}>{e.name}</span>
+                            {x.isLeader && <Crown className="h-3.5 w-3.5 shrink-0 text-bar" aria-label={t('schedule.leader')} />}
+                          </a>
+                        </td>
+                        <td className="px-3 py-3 text-muted">
+                          <span className="flex items-center gap-1.5">
+                            <DeptDot id={x.dept} />
+                            {deptName(s, x.dept)}
                           </span>
-                        </div>
-                      </div>
-                      <span className={cx('rounded-md px-2 py-0.5 text-xs font-medium sm:hidden', toneCls[tpl.tone])}>
-                        {tpl.start}–{tpl.end}
-                      </span>
-                    </li>
-                  )
-                })}
-              </ul>
+                        </td>
+                        <td className="px-3 py-3">
+                          <span className={cx('inline-block rounded-md px-2 py-0.5 text-[13px] font-medium', toneCls[tpl.tone])}>{tpl.name}</span>
+                        </td>
+                        <td className="px-3 py-3 font-medium tabular-nums text-ink/85">
+                          {tpl.start}–{tpl.end}
+                        </td>
+                        <td className="px-5 py-3 text-right">
+                          {phase === 'running' && (
+                            <span className="inline-flex items-center gap-1.5 rounded-full bg-forest px-2.5 py-1 text-[12px] font-semibold text-white">
+                              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-white" aria-hidden /> {t('dashboard.onNowBadge')}
+                            </span>
+                          )}
+                          {phase === 'over' && <span className="inline-block rounded-full bg-line px-2.5 py-1 text-[12px] font-medium text-muted">{t('common.done')}</span>}
+                          {phase === 'upcoming' && <span className="inline-block text-[12px] font-medium text-muted">{t('dashboard.upcoming')}</span>}
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
             </div>
           )}
         </section>
@@ -343,16 +350,27 @@ export function MonthlySchedule({ month }: { month: string | null }) {
         title={title}
         sub={t('month.summary', { pct: need ? Math.round((got / need) * 100) : 0, open: need - got })}
         actions={
-          <div className="flex items-center rounded-lg bg-surface ring-1 ring-line">
-            <button aria-label={t('month.prev')} onClick={() => navigate(`/month?m=${prevMonth.slice(0, 7)}`)} className="inline-flex h-9 w-9 items-center justify-center text-muted hover:text-ink">
-              <ChevronLeft className="h-4 w-4" />
-            </button>
-            <button onClick={() => navigate('/month')} className="h-9 px-2 text-[13px] font-medium">
-              {t('common.today')}
-            </button>
-            <button aria-label={t('month.next')} onClick={() => navigate(`/month?m=${nextMonth.slice(0, 7)}`)} className="inline-flex h-9 w-9 items-center justify-center text-muted hover:text-ink">
-              <ChevronRight className="h-4 w-4" />
-            </button>
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex items-center rounded-lg bg-surface ring-1 ring-line">
+              <button aria-label={t('month.prev')} onClick={() => navigate(`/month?m=${prevMonth.slice(0, 7)}`)} className="inline-flex h-9 w-9 items-center justify-center text-muted hover:text-ink">
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+              <button onClick={() => navigate('/month')} className="h-9 px-2 text-[13px] font-medium">
+                {t('common.today')}
+              </button>
+              <button aria-label={t('month.next')} onClick={() => navigate(`/month?m=${nextMonth.slice(0, 7)}`)} className="inline-flex h-9 w-9 items-center justify-center text-muted hover:text-ink">
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
+            <Segmented
+              label={t('nav.main')}
+              value="month"
+              onChange={(v) => v === 'week' && navigate('/schedule')}
+              options={[
+                { value: 'week', label: t('nav.week') },
+                { value: 'month', label: t('nav.month') },
+              ]}
+            />
           </div>
         }
       />

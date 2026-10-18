@@ -5,7 +5,7 @@ import { fmtLong } from '../lib/date'
 import { useT } from '../i18n'
 import { Button, cx, Popover } from './ui'
 
-/** A day's note under the schedule header, or a quiet "+ Note" on hover. */
+/** A day's note under the schedule header: a small badge once set (hover or open it to read), or a quiet "+ Note" button when empty. */
 export function DayNote({ note, editable, onEdit }: { note?: string; editable: boolean; onEdit: (el: HTMLElement) => void }) {
   const { t } = useT()
   if (note) {
@@ -14,10 +14,10 @@ export function DayNote({ note, editable, onEdit }: { note?: string; editable: b
         disabled={!editable}
         onClick={(e) => onEdit(e.currentTarget)}
         title={note}
-        className="mt-1.5 flex w-full items-start gap-1.5 rounded-md bg-morning/50 px-1.5 py-1 text-left text-xs leading-snug text-morning-ink hover:bg-morning disabled:cursor-default disabled:hover:bg-morning/50"
+        className="mt-1 inline-flex items-center gap-1 rounded-full bg-morning/60 px-1.5 py-0.5 text-[10px] font-medium text-morning-ink hover:bg-morning disabled:cursor-default disabled:hover:bg-morning/60"
       >
-        <StickyNote className="mt-px h-3 w-3 shrink-0" aria-hidden />
-        <span className="line-clamp-2">{note}</span>
+        <StickyNote className="h-2.5 w-2.5 shrink-0" aria-hidden />
+        {t('notes.badge')}
       </button>
     )
   }
@@ -25,9 +25,10 @@ export function DayNote({ note, editable, onEdit }: { note?: string; editable: b
   return (
     <button
       onClick={(e) => onEdit(e.currentTarget)}
-      className="mt-1.5 flex h-6 items-center gap-1 rounded-md px-1.5 text-xs text-muted opacity-0 transition-opacity hover:bg-paper hover:text-ink focus-visible:opacity-100 group-hover/day:opacity-100"
+      title={t('notes.add')}
+      className="mt-1 inline-flex items-center gap-1 rounded-full border border-dashed border-sage-dark px-1.5 py-0.5 text-[10px] font-medium text-muted transition-colors hover:border-forest hover:bg-paper hover:text-ink"
     >
-      <StickyNote className="h-3 w-3" aria-hidden /> {t('notes.add')}
+      <StickyNote className="h-2.5 w-2.5 shrink-0" aria-hidden /> {t('notes.add')}
     </button>
   )
 }

@@ -3,7 +3,6 @@ import type { ReactNode } from 'react'
 import {
   Bell,
   CalendarDays,
-  CalendarRange,
   Check,
   ChevronDown,
   Clock3,
@@ -83,8 +82,7 @@ export default function Shell({ path, children }: { path: string; children: Reac
     {
       items: [
         { to: '/dashboard', label: t('nav.today'), icon: <LayoutDashboard />, match: (p) => p === '/dashboard' || p === '/' },
-        { to: '/schedule', label: t('nav.weekly'), icon: <CalendarDays />, match: (p) => p.startsWith('/schedule') || p === '/review' || p === '/published' },
-        { to: '/month', label: t('nav.month'), icon: <CalendarRange />, match: (p) => p === '/month' },
+        { to: '/schedule', label: t('nav.weekly'), icon: <CalendarDays />, match: (p) => p.startsWith('/schedule') || p === '/month' || p === '/review' || p === '/published' },
         { to: '/templates', label: t('nav.templates'), icon: <Clock3 />, match: (p) => p === '/templates' },
         { to: '/report', label: t('nav.report'), icon: <ClipboardCheck />, match: (p) => p === '/report' },
       ],
@@ -260,7 +258,7 @@ export default function Shell({ path, children }: { path: string; children: Reac
         <nav aria-label={t('nav.main')} className={cx('grid shrink-0 grid-cols-5 border-t border-sage-dark/60 bg-surface pb-[env(safe-area-inset-bottom)] md:hidden', focus && 'hidden')}>
           {[
             { to: '/dashboard', label: t('nav.today'), icon: LayoutDashboard, on: path === '/dashboard' || path === '/' },
-            { to: '/schedule', label: t('nav.week'), icon: CalendarDays, on: path.startsWith('/schedule') || path === '/review' },
+            { to: '/schedule', label: t('nav.week'), icon: CalendarDays, on: path.startsWith('/schedule') || path === '/month' || path === '/review' },
             { to: '/team', label: t('nav.team'), icon: Users, on: path.startsWith('/team') },
             { to: '/report', label: t('nav.reportShort'), icon: ClipboardCheck, on: path === '/report' },
           ].map((x) => (

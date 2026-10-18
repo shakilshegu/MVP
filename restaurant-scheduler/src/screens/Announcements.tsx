@@ -261,23 +261,17 @@ export function AnnouncementPill({ x }: { x: Announcement }) {
     <a
       href="#/announcements"
       title={[x.title, x.body].filter(Boolean).join('\n')}
-      className="mt-1.5 flex w-full items-start gap-1.5 rounded-md bg-bar/10 px-1.5 py-1 text-left text-xs leading-snug text-note hover:bg-bar/20"
+      className="mt-1 flex w-full max-w-full items-center gap-1 rounded-full bg-bar/15 px-1.5 py-0.5 text-[10px] font-medium text-note hover:bg-bar/25"
     >
-      <Megaphone className="mt-px h-3 w-3 shrink-0" aria-label={t('announce.one')} />
-      <span className="min-w-0">
-        <span className="line-clamp-2 font-medium">{x.title}</span>
-        {(x.start || x.extraStaff) && (
-          <span className="flex items-center gap-1 opacity-80">
-            {x.start}
-            {x.extraStaff ? (
-              <>
-                {x.start && ' · '}+{x.extraStaff}
-                {x.dept && <DeptDot id={x.dept} className="h-1.5 w-1.5" />}
-              </>
-            ) : null}
-          </span>
-        )}
-      </span>
+      <Megaphone className="h-2.5 w-2.5 shrink-0" aria-label={t('announce.one')} />
+      <span className="truncate">{x.title}</span>
+      {x.start && <span className="shrink-0 opacity-70">· {x.start}</span>}
+      {x.extraStaff ? (
+        <span className="flex shrink-0 items-center gap-0.5 opacity-70">
+          +{x.extraStaff}
+          {x.dept && <DeptDot id={x.dept} className="h-1.5 w-1.5" />}
+        </span>
+      ) : null}
     </a>
   )
 }

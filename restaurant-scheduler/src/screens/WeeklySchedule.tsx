@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import { AlertTriangle, CalendarRange, ClipboardList, Clock3, Crown, ChevronDown, Download, Scale, StickyNote, Wand2, Loader2, MapPin, Maximize2, Megaphone, Minimize2, MoreHorizontal, ChevronLeft, ChevronRight, Copy, Eye, Plus, Undo2, UserPlus, UserRoundCheck, Users } from 'lucide-react'
+import { AlertTriangle, ClipboardList, Clock3, Crown, ChevronDown, Download, Scale, StickyNote, Wand2, Loader2, MapPin, Maximize2, Megaphone, Minimize2, MoreHorizontal, ChevronLeft, ChevronRight, Copy, Eye, Plus, Undo2, UserPlus, UserRoundCheck, Users } from 'lucide-react'
 import { branchChanges, useStore } from '../lib/store'
 import { useFocusMode } from '../lib/focus'
 import { useT } from '../i18n'
@@ -33,6 +33,9 @@ export default function WeeklySchedule({ week }: { week: string | null }) {
   const days = weekDays(weekStart)
   const [dept, setDept] = useState<'All' | Dept>('All')
   const [assignAt, setAssignAt] = useState<{ slot: Slot; rect: DOMRect } | null>(null)
+  const [selectedDay, setSelectedDay] = useState<string | null>(null)
+  // A slot being assigned always wins over a header click, so only one column is ever highlighted.
+  const highlightDate = assignAt?.slot.date ?? selectedDay ?? null
   const [menu, setMenu] = useState<{ id: string; rect: DOMRect } | null>(null)
   const [pending, setPending] = useState<Pending | null>(null)
   const [noteAt, setNoteAt] = useState<{ date: string; rect: DOMRect } | null>(null)
@@ -71,15 +74,18 @@ export default function WeeklySchedule({ week }: { week: string | null }) {
   }
   // The grid scrolls inside its own box; its height is measured so the day header, totals and
   // the floating "unpublished changes" bar all fit on screen whatever the toolbar above does.
+  // The bar's own height is measured live (rather than guessed) so this stays correct if its
+  // content ever wraps to more lines (long names, a narrow window, a longer translation, ...).
   const gridBox = useRef<HTMLDivElement>(null)
+  const barBox = useRef<HTMLDivElement>(null)
   const [gridMax, setGridMax] = useState<number | undefined>(undefined)
-  const barRoom = changes.length > 0 && editable ? 120 : 40
   useLayoutEffect(() => {
     const measure = () => {
       const el = gridBox.current
       if (!el || !el.offsetParent) return
       const main = document.getElementById('main')
       const top = el.getBoundingClientRect().top - (main?.getBoundingClientRect().top ?? 0) + (main?.scrollTop ?? 0)
+      const barRoom = barBox.current ? barBox.current.offsetHeight + 24 : 16
       setGridMax(Math.max(360, (main?.clientHeight ?? window.innerHeight) - top - barRoom))
     }
     measure()
@@ -195,6 +201,7 @@ export default function WeeklySchedule({ week }: { week: string | null }) {
     onDrop,
     openAssign: (slot: Slot, el: HTMLElement) => setAssignAt({ slot, rect: el.getBoundingClientRect() }),
     activeKey: assignAt ? `${assignAt.slot.date}|${assignAt.slot.templateId}|${assignAt.slot.dept}` : null,
+    activeDate: highlightDate,
     openMenu: (x: Assignment, el: HTMLElement) => setMenu({ id: x.id, rect: el.getBoundingClientRect() }),
     employees: s.employees,
   }
@@ -205,7 +212,7 @@ export default function WeeklySchedule({ week }: { week: string | null }) {
   const isPastWeek = days[6] < today
 
   return (
-    <div className="mx-auto max-w-[1400px] 2xl:max-w-[1840px]">
+    <div className="mx-auto max-w-[1400px] pb-6 2xl:max-w-[1840px]">
       <div className="mb-5 flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="page-title">
@@ -217,8 +224,7 @@ export default function WeeklySchedule({ week }: { week: string | null }) {
               <>
                 {' '}
                 · <span className="text-ink">{t('schedule.covered', { pct: stats.coverage })}</span> ·{' '}
-                <span className={stats.open ? 'text-bark' : ''}>{t('schedule.openSlots', { count: stats.open })}</span> ·{' '}
-                {t('common.people', { count: stats.people })} · {t('schedule.shiftsHours', { shifts: stats.shifts, hours: stats.hours })}
+                <span className={stats.open ? 'text-bark' : ''}>{t('schedule.openSlots', { count: stats.open })}</span>
               </>
             )}
             {city && (
@@ -245,6 +251,15 @@ export default function WeeklySchedule({ week }: { week: string | null }) {
               <ChevronRight className="h-4 w-4" />
             </IconButton>
           </div>
+          <Segmented
+            label={t('nav.main')}
+            value="week"
+            onChange={(v) => v === 'month' && navigate('/month')}
+            options={[
+              { value: 'week', label: t('nav.week') },
+              { value: 'month', label: t('nav.month') },
+            ]}
+          />
           <Segmented
             label={t('common.department')}
             value={dept}
@@ -322,10 +337,15 @@ export default function WeeklySchedule({ week }: { week: string | null }) {
         <>
           {weekIsEmpty && !isPastWeek && editable && (
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-forest px-5 py-4 text-white">
-              <div>
-                <div className="font-medium">{t('schedule.emptyWeekTitle')}</div>
-                <div className="text-sm text-white/75">
-                  {t(prevWeekHasShifts ? 'schedule.emptyWeekCopy' : 'schedule.emptyWeekClick')}
+              <div className="flex items-center gap-3">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/15">
+                  <Wand2 className="h-4 w-4" aria-hidden />
+                </div>
+                <div>
+                  <div className="font-medium">{t('schedule.emptyWeekTitle')}</div>
+                  <div className="text-sm text-white/75">
+                    {t(prevWeekHasShifts ? 'schedule.emptyWeekCopy' : 'schedule.emptyWeekClick')}
+                  </div>
                 </div>
               </div>
               {prevWeekHasShifts && (
@@ -357,8 +377,17 @@ export default function WeeklySchedule({ week }: { week: string | null }) {
                     got += Math.min(n, inWeek.filter((x) => isActive(x) && x.date === d && x.templateId === tpl.id && x.dept === dp).length)
                   }
                 const isToday = d === today
+                const isActiveCol = highlightDate === d
                 return (
-                  <div key={d} className={cx('group/day sticky top-0 z-20 border-b border-l border-line px-2.5 pb-3 pt-4 xl:px-3', d < today ? 'bg-paper' : 'bg-surface')}>
+                  <div
+                    key={d}
+                    onClick={() => setSelectedDay((cur) => (cur === d ? null : d))}
+                    title={t('schedule.highlightDay')}
+                    className={cx(
+                      'group/day sticky top-0 z-20 cursor-pointer border-b border-l border-line px-2.5 pb-2 pt-3 transition-colors xl:px-3',
+                      isToday || isActiveCol ? 'bg-forest-100' : d < today ? 'bg-paper hover:bg-forest-50/60' : 'bg-surface hover:bg-forest-50/60',
+                    )}
+                  >
                     <div className="flex flex-wrap items-baseline justify-between gap-x-2 gap-y-0.5">
                       <div className="flex items-baseline gap-1.5 xl:gap-2">
                         <span className={cx('text-[13px]', isToday ? 'font-semibold text-forest' : 'text-muted')}>{dayShort(i)}</span>
@@ -403,27 +432,29 @@ export default function WeeklySchedule({ week }: { week: string | null }) {
                   ))}
                 </DeptBand>
               ))}
-              <div className="sticky bottom-0 left-0 z-30 border-t-2 border-line bg-paper px-3 py-3 xl:px-4">
-                <div className="text-sm font-semibold">{t('schedule.totals')}</div>
-                <div className="text-xs text-muted">
-                  <span className="hidden xl:inline">{t('schedule.weekTotal')}: </span>
-                  {t('common.people', { count: stats.people })}
+              <div className="sticky bottom-0 left-0 z-30 overflow-hidden border-t-2 border-line bg-paper px-3 py-2 xl:px-4">
+                <div className="truncate text-sm font-semibold">{t('schedule.totals')}</div>
+                <div className="mt-0.5 flex items-center gap-1 text-xs text-muted" title={t('common.people', { count: stats.people })}>
+                  <Users className="h-3.5 w-3.5 shrink-0" aria-hidden /> {stats.people}
+                  <span className="text-line">·</span>
+                  <Clock3 className="h-3.5 w-3.5 shrink-0" aria-hidden /> {t('common.hoursShort', { count: stats.hours })}
                 </div>
-                <div className="text-xs text-muted">{t('schedule.hoursTotal', { hours: stats.hours })}</div>
               </div>
               {days.map((d, i) => (
-                <div key={d} className={cx('sticky bottom-0 z-20 border-l border-t-2 border-line bg-paper px-2.5 py-3 xl:px-3', d < today && 'text-muted')}>
-                  <div className="flex items-center gap-1.5 text-sm font-semibold">
-                    <Users className="h-3.5 w-3.5 text-muted" aria-hidden />
-                    <span className="xl:hidden" title={t('common.people', { count: stats.perDay[i].people })}>
-                      {stats.perDay[i].people}
-                    </span>
-                    <span className="hidden xl:inline">{t('common.people', { count: stats.perDay[i].people })}</span>
-                  </div>
-                  <div className="mt-0.5 flex items-center gap-1.5 text-xs text-muted">
-                    <Clock3 className="h-3.5 w-3.5" aria-hidden />
-                    {t('schedule.hoursTotal', { hours: stats.perDay[i].hours })}
-                  </div>
+                <div
+                  key={d}
+                  className={cx(
+                    'sticky bottom-0 z-20 flex flex-wrap items-center gap-x-3 gap-y-0.5 overflow-hidden border-l border-t-2 border-line px-2.5 py-2 text-xs font-medium xl:px-3',
+                    d === today || highlightDate === d ? 'bg-forest-100' : 'bg-paper',
+                    d < today && 'text-muted',
+                  )}
+                >
+                  <span className="flex items-center gap-1" title={t('common.people', { count: stats.perDay[i].people })}>
+                    <Users className="h-3.5 w-3.5 text-muted" aria-hidden /> {stats.perDay[i].people}
+                  </span>
+                  <span className="flex items-center gap-1 text-muted">
+                    <Clock3 className="h-3.5 w-3.5" aria-hidden /> {t('schedule.hoursTotal', { hours: stats.perDay[i].hours })}
+                  </span>
                 </div>
               ))}
             </div>
@@ -482,14 +513,12 @@ export default function WeeklySchedule({ week }: { week: string | null }) {
               </section>
             ))}
           </MobileDay>
-
-          <Legend />
         </>
       )}
 
       {changes.length > 0 && (
-        <div className="sticky bottom-4 z-40 mt-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-inverse px-5 py-3 text-white shadow-2xl">
-          <div className="text-sm">
+        <div ref={barBox} className="sticky bottom-3 z-40 mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl bg-inverse px-4 py-2 text-white shadow-2xl">
+          <div className="text-[13px]">
             <span className="font-semibold">{t('shell.unpublished', { count: changes.length })}</span>
             <span className="text-white/65">
               {' '}
@@ -627,9 +656,6 @@ function MoreMenu({
             <a role="menuitem" href={`#/availability?week=${weekStart}`} onClick={() => setRect(null)} className={item}>
               <UserRoundCheck className="h-4 w-4 text-muted" /> {t('schedule.teamAvailability')}
             </a>
-            <a role="menuitem" href="#/month" onClick={() => setRect(null)} className={item}>
-              <CalendarRange className="h-4 w-4 text-muted" /> {t('schedule.monthView')}
-            </a>
           </div>
         </Popover>
       )}
@@ -718,16 +744,20 @@ type CellProps = {
   openAssign: (slot: Slot, el: HTMLElement) => void
   /** The cell being filled in the side panel, outlined on the grid. */
   activeKey?: string | null
+  /** The day of that cell, so its whole column can be highlighted too. */
+  activeDate?: string | null
   openMenu: (a: Assignment, el: HTMLElement) => void
   employees: Employee[]
   bare?: boolean
 }
 
-function Cell({ slot, list, needed, extra = 0, tone, today, editable, dragOver, setDragOver, onDrop, openAssign, activeKey, openMenu, employees, bare }: CellProps) {
+function Cell({ slot, list, needed, extra = 0, tone, today, editable, dragOver, setDragOver, onDrop, openAssign, activeKey, activeDate, openMenu, employees, bare }: CellProps) {
   const { t } = useT()
   const { s } = useStore()
   const key = `${slot.date}|${slot.templateId}|${slot.dept}`
   const past = slot.date < today
+  const isToday = slot.date === today
+  const isActiveCol = activeDate === slot.date
   const canEdit = editable && !past
   const filled = list.filter(isActive).length
   const needsLeader = s.departments.find((d) => d.id === slot.dept)?.needsLeader
@@ -759,6 +789,7 @@ function Cell({ slot, list, needed, extra = 0, tone, today, editable, dragOver, 
         'group/cell flex flex-col gap-1 transition-colors',
         !bare && 'min-h-[68px] border-l border-t border-line p-1.5',
         !bare && past && 'bg-paper/60',
+        !bare && (isToday || isActiveCol) && !past && activeKey !== key && 'bg-forest-50',
         dragOver === key && 'bg-forest-50 ring-2 ring-inset ring-forest',
         activeKey === key && 'bg-forest-50/70 ring-2 ring-inset ring-forest',
         flash > 0 && activeKey !== key && dragOver !== key && 'animate-flash',
@@ -826,9 +857,11 @@ function Cell({ slot, list, needed, extra = 0, tone, today, editable, dragOver, 
           <button
             key={i}
             onClick={(ev) => openAssign(slot, ev.currentTarget)}
-            className="flex w-full items-center justify-center gap-1 rounded-md border border-dashed border-bark/35 py-1 text-xs font-medium text-bark/80 transition-colors hover:border-bark hover:bg-bark-50 hover:text-bark"
+            aria-label={t('schedule.openSlot')}
+            title={t('schedule.openSlot')}
+            className="flex w-full items-center justify-center rounded-md border border-dashed border-bark/35 py-1 text-bark/80 transition-colors hover:border-bark hover:bg-bark-50 hover:text-bark"
           >
-            <Plus className="h-3 w-3" /> {t('schedule.openSlot')}
+            <Plus className="h-3.5 w-3.5" />
           </button>
         ))}
       {!past && needsLeader && filled > 0 && !list.some((x) => isActive(x) && x.isLeader) && (
@@ -958,33 +991,6 @@ function MobileDay({ days, active, setActive, weather, children }: { days: strin
   )
 }
 
-function Legend() {
-  const { t } = useT()
-  return (
-    <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-muted">
-      <span className="flex items-center gap-1.5">
-        <span className="h-3 w-5 rounded bg-day" /> {t('schedule.legendPublished')}
-      </span>
-      <span className="flex items-center gap-1.5">
-        <span className="h-3 w-5 rounded border-[1.5px] border-dashed border-forest bg-surface" /> {t('schedule.legendUnpublished')}
-      </span>
-      <span className="flex items-center gap-1.5">
-        <span className="line-through decoration-bark">{t('schedule.legendName')}</span> {t('schedule.legendRemoved')}
-      </span>
-      <span className="flex items-center gap-1.5">
-        <AlertTriangle className="h-3.5 w-3.5 text-warn" /> {t('schedule.override')}
-      </span>
-      <span className="flex items-center gap-1.5">
-        <span className="flex h-3 w-5 items-center justify-center rounded bg-forest">
-          <Crown className="h-2.5 w-2.5 text-[#E8C15A]" />
-        </span>{' '}
-        {t('schedule.leader')}
-      </span>
-      <span className="hidden md:inline">{t('schedule.legendHint')}</span>
-      <span className="hidden lg:inline">{t('schedule.shortcuts')}</span>
-    </div>
-  )
-}
 
 function GridSkeleton() {
   const { t } = useT()
